@@ -1,56 +1,7 @@
 import BookCard from "./BookCard";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-
-const books = [
-  {
-    title: "The Midnight Library",
-    author: "Matt Haig",
-    price: 14.99,
-    originalPrice: 18.99,
-    rating: 4.8,
-    image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=600&fit=crop",
-    badge: "Bestseller",
-  },
-  {
-    title: "Atomic Habits",
-    author: "James Clear",
-    price: 16.99,
-    rating: 4.9,
-    image: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&h=600&fit=crop",
-  },
-  {
-    title: "The Silent Patient",
-    author: "Alex Michaelides",
-    price: 12.99,
-    originalPrice: 15.99,
-    rating: 4.7,
-    image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&h=600&fit=crop",
-    badge: "Sale",
-  },
-  {
-    title: "Where the Crawdads Sing",
-    author: "Delia Owens",
-    price: 15.99,
-    rating: 4.8,
-    image: "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=400&h=600&fit=crop",
-  },
-  {
-    title: "Project Hail Mary",
-    author: "Andy Weir",
-    price: 17.99,
-    rating: 4.9,
-    image: "https://images.unsplash.com/photo-1519682577862-22b62b24e493?w=400&h=600&fit=crop",
-    badge: "New",
-  },
-  {
-    title: "The House in the Pines",
-    author: "Ana Reyes",
-    price: 13.99,
-    rating: 4.5,
-    image: "https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=400&h=600&fit=crop",
-  },
-];
+import { books } from "@/data/books";
 
 const FeaturedBooks = () => {
   return (
