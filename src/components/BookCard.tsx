@@ -1,7 +1,9 @@
 import { Heart, ShoppingCart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 interface BookCardProps {
+  id?: string;
   title: string;
   author: string;
   price: number;
@@ -11,9 +13,15 @@ interface BookCardProps {
   badge?: string;
 }
 
-const BookCard = ({ title, author, price, originalPrice, rating, image, badge }: BookCardProps) => {
+const BookCard = ({ id, title, author, price, originalPrice, rating, image, badge }: BookCardProps) => {
+  const CardWrapper = id ? Link : "div";
+  const wrapperProps = id ? { to: `/book/${id}` } : {};
+
   return (
-    <div className="group relative bg-card rounded-xl overflow-hidden shadow-card transition-all duration-300 hover:shadow-book-hover hover:-translate-y-1">
+    <CardWrapper 
+      {...wrapperProps as any}
+      className="group relative bg-card rounded-xl overflow-hidden shadow-card transition-all duration-300 hover:shadow-book-hover hover:-translate-y-1 block"
+    >
       {/* Image Container */}
       <div className="relative aspect-[3/4] overflow-hidden bg-muted">
         <img
@@ -68,7 +76,7 @@ const BookCard = ({ title, author, price, originalPrice, rating, image, badge }:
           )}
         </div>
       </div>
-    </div>
+    </CardWrapper>
   );
 };
 
