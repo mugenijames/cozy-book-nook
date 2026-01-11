@@ -1,48 +1,29 @@
-import { BookOpen, Flame, Ghost, Heart, Lightbulb, Rocket, Scroll, TreePine } from "lucide-react";
-
-const categories = [
-  { name: "Fiction", icon: BookOpen, color: "bg-primary/10 text-primary" },
-  { name: "Romance", icon: Heart, color: "bg-pink-100 text-pink-600" },
-  { name: "Mystery", icon: Ghost, color: "bg-slate-100 text-slate-600" },
-  { name: "Sci-Fi", icon: Rocket, color: "bg-blue-100 text-blue-600" },
-  { name: "Self-Help", icon: Lightbulb, color: "bg-amber/20 text-amber" },
-  { name: "Fantasy", icon: Flame, color: "bg-orange-100 text-orange-600" },
-  { name: "History", icon: Scroll, color: "bg-stone-100 text-stone-600" },
-  { name: "Nature", icon: TreePine, color: "bg-emerald-100 text-emerald-600" },
-];
-
 const Categories = () => {
-  return (
-    <section className="py-16 bg-muted/30">
-      <div className="container">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">
-            Browse by Genre
-          </h2>
-          <p className="mt-2 text-muted-foreground">
-            Find your next adventure in any genre
-          </p>
-        </div>
+  const categories = [
+    { name: "Fiction", image: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=200&h=200&fit=crop" },
+    { name: "Non-Fiction", image: "https://images.unsplash.com/photo-1581091870620-8be5c07f8da4?w=200&h=200&fit=crop" },
+    { name: "Children's", image: "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=200&h=200&fit=crop" },
+    { name: "Audiobooks", image: "https://images.unsplash.com/photo-1588776814546-380f2d4e5f61?w=200&h=200&fit=crop" },
+    { name: "Science", image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=200&h=200&fit=crop" },
+  ];
 
-        {/* Categories Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-          {categories.map((category, index) => {
-            const Icon = category.icon;
-            return (
-              <button
-                key={index}
-                className="group flex flex-col items-center gap-3 p-6 rounded-xl bg-card border border-border/50 transition-all duration-300 hover:border-primary/30 hover:shadow-card hover:-translate-y-1"
-              >
-                <div className={`p-3 rounded-xl ${category.color} transition-transform duration-300 group-hover:scale-110`}>
-                  <Icon className="h-6 w-6" />
-                </div>
-                <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
-                  {category.name}
-                </span>
-              </button>
-            );
-          })}
+  return (
+    <section className="py-16 md:py-20 bg-muted/50">
+      <div className="container">
+        <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-foreground">
+          Browse by Category
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+          {categories.map((cat, i) => (
+            <div key={i} className="group text-center">
+              <img
+                src={cat.image}
+                alt={cat.name}
+                className="w-full h-40 object-cover rounded-lg shadow-book transition-all duration-300 group-hover:shadow-book-hover group-hover:-translate-y-2"
+              />
+              <p className="mt-2 font-medium text-foreground">{cat.name}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>

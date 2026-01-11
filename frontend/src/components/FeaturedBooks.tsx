@@ -1,33 +1,29 @@
-import BookCard from "./BookCard";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
-import { books } from "@/data/books";
-
 const FeaturedBooks = () => {
+  const books = [
+    { title: "The Great Adventure", image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=200&h=300&fit=crop" },
+    { title: "Mystery of the Night", image: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=200&h=300&fit=crop" },
+    { title: "Secrets of the Mind", image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=200&h=300&fit=crop" },
+    { title: "Journey Through Time", image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=200&h=300&fit=crop" },
+    { title: "Hidden Gems", image: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=200&h=300&fit=crop" },
+  ];
+
   return (
     <section className="py-16 md:py-20">
       <div className="container">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
-          <div>
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground">
-              Featured Books
-            </h2>
-            <p className="mt-2 text-muted-foreground">
-              Handpicked selections from our curators
-            </p>
-          </div>
-          <Button variant="ghost" className="group self-start sm:self-auto">
-            View All
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Button>
-        </div>
-
-        {/* Books Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
-          {books.map((book, index) => (
-            <div key={index} className="animate-fade-up" style={{ animationDelay: `${index * 100}ms` }}>
-              <BookCard {...book} />
+        <h2 className="font-display text-3xl md:text-4xl font-bold mb-8 text-foreground">
+          Featured Books
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+          {books.map((book, i) => (
+            <div key={i} className="group relative">
+              <img
+                src={book.image}
+                alt={book.title}
+                className="w-full h-64 object-cover rounded-lg shadow-book transition-all duration-300 group-hover:shadow-book-hover group-hover:-translate-y-2"
+              />
+              <p className="mt-2 text-sm font-medium text-foreground text-center">
+                {book.title}
+              </p>
             </div>
           ))}
         </div>

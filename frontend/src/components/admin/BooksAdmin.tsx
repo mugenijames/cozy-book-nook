@@ -1,6 +1,6 @@
 // Example: src/components/BooksAdmin.tsx
 import AddBook from "./AddBook";
-import BooksList from "./BooksList";
+import BooksList from "../BooksList";
 
 interface BooksAdminProps {
   userRole: "USER" | "ADMIN";

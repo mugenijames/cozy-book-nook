@@ -2,144 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Your custom CSS below */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap');
 
 @layer base {
-  :root {
-    --background: 40 33% 97%;
-    --foreground: 30 15% 15%;
-
-    --card: 40 30% 99%;
-    --card-foreground: 30 15% 15%;
-
-    --popover: 40 30% 99%;
-    --popover-foreground: 30 15% 15%;
-
-    --primary: 348 55% 35%;
-    --primary-foreground: 40 33% 97%;
-
-    --secondary: 150 25% 30%;
-    --secondary-foreground: 40 33% 97%;
-
-    --muted: 40 20% 92%;
-    --muted-foreground: 30 10% 45%;
-
-    --accent: 35 60% 50%;
-    --accent-foreground: 30 15% 15%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 35 20% 88%;
-    --input: 35 20% 88%;
-    --ring: 348 55% 35%;
-
-    --radius: 0.75rem;
-
-    /* Custom bookstore tokens */
-    --warm-cream: 40 33% 97%;
-    --rich-burgundy: 348 55% 35%;
-    --forest-green: 150 25% 30%;
-    --golden-amber: 35 60% 50%;
-    --soft-brown: 30 20% 40%;
-    --paper-white: 40 30% 99%;
-
-    /* Shadows */
-    --shadow-book: 0 4px 20px -4px hsl(30 20% 20% / 0.15);
-    --shadow-book-hover: 0 12px 32px -8px hsl(30 20% 20% / 0.25);
-    --shadow-card: 0 2px 12px -2px hsl(30 20% 20% / 0.1);
-
-    /* Gradients */
-    --gradient-warm: linear-gradient(135deg, hsl(40 33% 97%) 0%, hsl(35 25% 93%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(40 33% 97%) 0%, hsl(35 30% 92%) 100%);
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 30 15% 10%;
-    --foreground: 40 20% 92%;
-
-    --card: 30 15% 13%;
-    --card-foreground: 40 20% 92%;
-
-    --popover: 30 15% 13%;
-    --popover-foreground: 40 20% 92%;
-
-    --primary: 348 50% 55%;
-    --primary-foreground: 30 15% 10%;
-
-    --secondary: 150 20% 45%;
-    --secondary-foreground: 30 15% 10%;
-
-    --muted: 30 10% 20%;
-    --muted-foreground: 40 15% 65%;
-
-    --accent: 35 55% 55%;
-    --accent-foreground: 30 15% 10%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 30 10% 22%;
-    --input: 30 10% 22%;
-    --ring: 348 50% 55%;
-
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
   body {
-    @apply bg-background text-foreground;
     font-family: 'Source Sans 3', sans-serif;
   }
-
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Playfair Display', serif;
-  }
-}
-
-@layer utilities {
-  .font-display {
-    font-family: 'Playfair Display', serif;
-  }
-
-  .font-body {
-    font-family: 'Source Sans 3', sans-serif;
-  }
-
-  .shadow-book {
-    box-shadow: var(--shadow-book);
-  }
-
-  .shadow-book-hover {
-    box-shadow: var(--shadow-book-hover);
-  }
-
-  .gradient-warm {
-    background: var(--gradient-warm);
-  }
-
-  .gradient-hero {
-    background: var(--gradient-hero);
   }
 }

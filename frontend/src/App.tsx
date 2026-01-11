@@ -1,72 +1,41 @@
-import { useState } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
+import { Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import Books from "./pages/Books";
 import BookDetail from "./pages/BookDetail";
-import Checkout from "./pages/Checkout";
+import Cart from "./components/ui/Cart";
 import Contact from "./pages/Contact";
-import Subscribe from "./pages/Subscribe";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./components/admin/AdminDashboard";
+import AdminBooks from "./components/admin/AdminBooks";
+import ProtectedRoute from "./components/admin/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminBooks from "./components/admin/AdminBooks";
-import AdminOrders from "./components/admin/AdminOrders";
-
-import { useAuth } from "./contexts/AuthContext";
-
-const queryClient = new QueryClient();
-
 const App = () => {
-  const { user } = useAuth(); // Admin user
-  const [refresh, setRefresh] = useState(false);
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route
-              path="/"
-              element={<Index refresh={refresh} />}
-            />
-            <Route path="/book/:id" element={<BookDetail />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/subscribe" element={<Subscribe />} />
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={<Index />} />
+      <Route path="/books" element={<Books />} />
+      <Route path="/book/:id" element={<BookDetail />} />
+      <Route path="/cart" element={<Cart />} />
+      <Route path="/contact" element={<Contact />} />
 
-            {/* Admin routes - only accessible if admin is logged in */}
-            <Route
-              path="/admin"
-              element={
-                user?.role === "ADMIN" ? <AdminDashboard /> : <Navigate to="/" />
-              }
-            />
-            <Route
-              path="/admin/books"
-              element={
-                user?.role === "ADMIN" ? <AdminBooks /> : <Navigate to="/" />
-              }
-            />
-            <Route
-              path="/admin/orders"
-              element={
-                user?.role === "ADMIN" ? <AdminOrders /> : <Navigate to="/" />
-              }
-            />
+      {/* Admin routes */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="books" element={<AdminBooks />} />
+      </Route>
 
-            {/* Catch all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+      {/* Fallback */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 };
 

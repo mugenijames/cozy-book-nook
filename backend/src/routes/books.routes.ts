@@ -1,4 +1,4 @@
-import express from "express";
+import { Router } from "express";
 import {
   getBooks,
   getBook,
@@ -6,14 +6,15 @@ import {
   updateBook,
   deleteBook,
 } from "../controllers/books.controller";
-import { isAdmin } from "../middlewares/auth.middleware";
 
-const router = express.Router();
+const router = Router();
 
-router.get("/", getBooks); // everyone can see books
-router.get("/:id", getBook); // everyone can see a single book
-router.post("/", isAdmin, createBook); // admin only
-router.put("/:id", isAdmin, updateBook); // admin only
-router.delete("/:id", isAdmin, deleteBook); // admin only
+router.get("/", getBooks);
+router.get("/:id", getBook);
+
+// ADMIN routes (we’ll protect later)
+router.post("/", createBook);
+router.put("/:id", updateBook);
+router.delete("/:id", deleteBook);
 
 export default router;

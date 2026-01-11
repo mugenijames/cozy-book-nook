@@ -1,7 +1,7 @@
 // src/components/EditBook.tsx
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { getBookById, updateBook } from "../api/books";
+import { getBookById, updateBook } from "../../api/books";
 
 interface EditBookProps {
   bookId: string;

@@ -4,10 +4,10 @@ import { Mail, Sparkles } from "lucide-react";
 
 const Newsletter = () => {
   return (
-    <section className="py-16 md:py-20 bg-primary text-primary-foreground">
+    <section className="py-16 md:py-20 bg-gradient-to-r from-amber-100 via-amber-200 to-amber-100 text-foreground">
       <div className="container">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-foreground/10 text-primary-foreground/80 text-sm font-medium mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 text-amber-800 text-sm font-medium mb-6">
             <Sparkles className="h-4 w-4" />
             <span>Join 12,000+ book lovers</span>
           </div>
@@ -15,7 +15,7 @@ const Newsletter = () => {
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
             Never Miss a New Release
           </h2>
-          <p className="text-primary-foreground/80 mb-8 text-lg">
+          <p className="text-foreground/80 mb-8 text-lg">
             Get personalized book recommendations, exclusive discounts, and updates on your favorite authors.
           </p>
 
@@ -25,15 +25,15 @@ const Newsletter = () => {
               <Input
                 type="email"
                 placeholder="Enter your email"
-                className="pl-10 h-12 bg-primary-foreground text-foreground border-transparent focus:border-amber"
+                className="pl-10 h-12 bg-background border border-border focus:border-primary transition-all"
               />
             </div>
-            <Button variant="warm" size="lg" className="shrink-0">
+            <Button variant="primary" size="lg" className="shrink-0">
               Subscribe
             </Button>
           </form>
 
-          <p className="text-xs text-primary-foreground/60 mt-4">
+          <p className="text-xs text-foreground/60 mt-4">
             No spam, ever. Unsubscribe anytime.
           </p>
         </div>

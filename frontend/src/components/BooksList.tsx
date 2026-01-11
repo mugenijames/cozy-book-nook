@@ -2,44 +2,45 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { Link } from "react-router-dom";
 
-export interface Book {
-  id: number;
-  title: string;
-  author: string;
-  description: string;
-  price: number;
-}
+const API = import.meta.env.VITE_API_URL;
 
-interface BooksListProps {
-  refresh?: boolean;
-}
-
-export default function BooksList({ refresh }: BooksListProps) {
-  const { data: books, isLoading, error, refetch } = useQuery<Book[]>({
-    queryKey: ["books", refresh],
+export default function BooksList() {
+  const { data: books, isLoading } = useQuery({
+    queryKey: ["books"],
     queryFn: async () => {
-      const res = await axios.get("http://localhost:5000/api/books");
+      const res = await axios.get(`${API}/books`);
       return res.data;
     },
   });
 
   if (isLoading) return <p>Loading books...</p>;
-  if (error) return <p>Failed to load books.</p>;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {books?.map((book) => (
-        <div key={book.id} className="border p-4 rounded shadow">
-          <h3 className="font-bold text-lg">{book.title}</h3>
-          <p className="text-sm text-gray-600">{book.author}</p>
-          <p className="mt-2">{book.description}</p>
-          <p className="mt-2 font-semibold">${book.price.toFixed(2)}</p>
-          <Link
-            to={`/book/${book.id}`}
-            className="mt-2 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            View Details
-          </Link>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {books.map((book: any) => (
+        <div
+          key={book.id}
+          className="bg-white rounded-xl shadow-sm hover:shadow-md transition"
+        >
+          <div className="p-5">
+            <h3 className="text-lg font-semibold">{book.title}</h3>
+            <p className="text-sm text-muted-foreground">{book.author}</p>
+            <p className="mt-2 text-sm line-clamp-3">
+              {book.description}
+            </p>
+
+            <div className="flex justify-between items-center mt-4">
+              <span className="font-bold text-primary">
+                KES {book.price}
+              </span>
+              <Link
+                to={`/book/${book.id}`}
+                className="text-sm text-primary hover:underline"
+              >
+                View →
+              </Link>
+            </div>
+          </div>
         </div>
       ))}
     </div>
