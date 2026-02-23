@@ -1,36 +1,24 @@
 import Header from "@/components/Header";
-import HeroSection from "@/components/home/HeroSection";
-import FeaturedBooks from "@/components/FeaturedBooks";
-import Categories from "@/components/Categories";
-import StaffPicks from "@/components/StaffPicks";
-import Newsletter from "@/components/Newsletter";
+import Hero from "@/components/Hero";
+import AboutAuthor from "@/components/AboutAuthor";
+import BookSection from "@/components/BookSection";
+import SpeakingSection from "@/components/SpeakingSection";
+import Testimonials from "@/components/Testimonials";
+import CallToAction from "@/components/CallToAction";
 import Footer from "@/components/Footer";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
-      {/* Header */}
+    <div className="min-h-screen bg-background text-foreground">
       <Header />
-
-      {/* Main Content */}
-      <main className="flex-1">
-        {/* Hero / Banner */}
-        <HeroSection />
-
-        {/* Featured Books */}
-        <FeaturedBooks />
-
-        {/* Categories */}
-        <Categories />
-
-        {/* Staff Picks */}
-        <StaffPicks />
-
-        {/* Newsletter */}
-        <Newsletter />
+      <main>
+        <Hero />
+        <AboutAuthor />
+        <BookSection />
+        <SpeakingSection />
+        <Testimonials />
+        <CallToAction />
       </main>
-
-      {/* Footer */}
       <Footer />
     </div>
   );

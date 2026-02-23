@@ -1,52 +1,40 @@
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import { Link } from "react-router-dom";
 
 const Books = () => {
-  const books = [
-    {
-      id: "1",
-      title: "Atomic Habits",
-      author: "James Clear",
-      image: "https://covers.openlibrary.org/b/id/10523337-L.jpg",
-    },
-    {
-      id: "2",
-      title: "The Alchemist",
-      author: "Paulo Coelho",
-      image: "https://covers.openlibrary.org/b/id/10958358-L.jpg",
-    },
-  ];
+  const [books, setBooks] = useState([]);
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/books")
+      .then(res => setBooks(res.data));
+  }, []);
 
   return (
-    <div className="container py-10">
-      <h1 className="text-3xl font-bold mb-6">Books</h1>
+    <section className="py-24">
+      <div className="container mx-auto">
+        <h2 className="text-3xl font-heading text-center mb-12">
+          Books & Publications
+        </h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-        {books.map((book) => (
-          <Card key={book.id} className="hover:shadow-lg transition">
-            <CardHeader className="p-0">
-              <img
-                src={book.image}
-                alt={book.title}
-                className="h-60 w-full object-cover rounded-t-lg"
-              />
-            </CardHeader>
+        <div className="grid md:grid-cols-4 gap-8">
+          {books.map((book: any) => (
+            <div key={book.id} className="bg-white p-6 shadow rounded">
+              <h3 className="font-semibold mb-4">
+                {book.title}
+              </h3>
 
-            <CardContent>
-              <CardTitle className="text-lg">{book.title}</CardTitle>
-              <p className="text-sm text-muted-foreground">{book.author}</p>
-            </CardContent>
-
-            <CardFooter>
-              <Link to={`/books/${book.id}`} className="w-full">
-                <Button className="w-full">View Details</Button>
+              <Link
+                to={`/book/${book.slug}`}
+                className="text-[#D4A017]"
+              >
+                View Details →
               </Link>
-            </CardFooter>
-          </Card>
-        ))}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
   );
 };
 

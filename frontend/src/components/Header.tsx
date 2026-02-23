@@ -31,18 +31,13 @@ const Header = () => {
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-2">
-          {["Browse", "Bestsellers", "New Arrivals"].map((item) => (
-            <Button
-              key={item}
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {item}
-            </Button>
-          ))}
+        <nav className="hidden md:flex gap-6">
+          <a href="#about" className="hover:text-primary">About</a>
+          <a href="#book" className="hover:text-primary">Book</a>
+          <a href="#speaking" className="hover:text-primary">Speaking</a>
+          <a href="#contact" className="hover:text-primary">Contact</a>
         </nav>
+
 
         {/* Actions */}
         <div className="flex items-center gap-2">

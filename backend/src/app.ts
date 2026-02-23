@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import authRoutes from "./routes/auth.routes";
-import booksRoutes from "./routes/books.routes";
+import books from "./routes/books";
 import ordersRoutes from "./routes/orders.routes";
 import paymentsRoutes from "./routes/payments.routes";
 import usersRoutes from "./routes/users.routes";
@@ -23,7 +23,7 @@ app.use(
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
-app.use("/api/books", booksRoutes);
+app.use("/api/books", books);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/payments", paymentsRoutes);
 app.use("/api/users", usersRoutes);
