@@ -8,7 +8,8 @@ interface Book {
   slug: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "https://cozy-book-nook.vercel.app/api/books";
+// Only the base API URL
+const API_URL = import.meta.env.VITE_API_URL || "https://cozy-book-nook.vercel.app/api";
 
 const Books = () => {
   const [books, setBooks] = useState<Book[]>([]);
@@ -18,7 +19,7 @@ const Books = () => {
   useEffect(() => {
     const fetchBooks = async () => {
       try {
-        const res = await axios.get(`${API_URL}/books`);
+        const res = await axios.get(`${API_URL}/books`); 
         setBooks(res.data);
       } catch (err: any) {
         setError("Failed to load books");
