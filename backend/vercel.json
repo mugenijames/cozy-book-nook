@@ -1,13 +1,15 @@
 {
-  "version": 2,
+  "version": 3,
   "builds": [
     {
-      "src": "src/server.ts",
+      "src": "package.json",
       "use": "@vercel/node",
-      "config": { "tsconfig": "tsconfig.json" }
+      "config": {
+        "distDir": "dist"
+      }
     }
   ],
-  "routes": [
-    { "src": "/(.*)", "dest": "src/server.ts" }
-  ]
+  "env": {
+    "DATABASE_URL": "postgresql://neondb_owner:npg_BXfKF9iEek3r@ep-super-morning-abynnpnn-pooler.eu-west-2.aws.neon.tech/emuria_db?sslmode=require&channel_binding=require"
+  }
 }
