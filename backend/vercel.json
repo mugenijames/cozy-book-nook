@@ -1,14 +1,8 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/node",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
+  "installCommand": "npm install",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "dist",
   "env": {
     "DATABASE_URL": "postgresql://neondb_owner:npg_BXfKF9iEek3r@ep-super-morning-abynnpnn-pooler.eu-west-2.aws.neon.tech/emuria_db?sslmode=require&channel_binding=require"
   }
