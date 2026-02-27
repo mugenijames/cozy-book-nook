@@ -2,68 +2,78 @@ import { motion } from "framer-motion";
 
 const Hero = () => {
   return (
-    <section className="pt-40 pb-24 overflow-hidden">
-      <div className="container mx-auto grid md:grid-cols-2 gap-12 items-center px-6">
+    <section className="relative pt-40 pb-32 overflow-hidden bg-gradient-to-b from-white to-[#f8f4f1]">
+
+      {/* Subtle Parallax Background Accent */}
+      <div
+        className="absolute inset-0 bg-fixed bg-center bg-cover opacity-5"
+        style={{
+          backgroundImage: "url('/hero-texture.jpg')",
+        }}
+      />
+
+      <div className="container mx-auto grid md:grid-cols-2 gap-16 items-center px-6 relative z-10">
 
         {/* Text Content */}
         <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, ease: "easeOut" }}
         >
-          <h1 className="text-5xl font-bold leading-tight text-[#4A1F0E]">
+          <h1 className="text-4xl md:text-6xl font-bold leading-tight text-[#4A1F0E] tracking-tight">
             Raising Resilient Individuals.
-            <span className="block text-[#D4A017]">
+            <span className="block text-[#D4A017] mt-3">
               Healing Leaders. Transforming Communities.
             </span>
           </h1>
 
-          <p className="mt-6 text-lg text-gray-700">
+          <p className="mt-8 text-lg text-gray-600 max-w-xl leading-relaxed">
             Author • Speaker • Consultant • Social Transformation Advocate
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-4">
+          {/* CTA Buttons */}
+          <div className="mt-10 flex flex-wrap gap-6">
+
             <a
               href="#books"
-              className="px-8 py-3 bg-[#D4A017] text-white rounded-md shadow-lg hover:bg-[#b88a14] transition-colors"
+              className="relative px-10 py-4 bg-[#D4A017] text-white rounded-full shadow-lg transition-all duration-500 hover:shadow-2xl hover:-translate-y-1"
             >
               Explore Books
             </a>
+
             <a
               href="#speaking"
-              className="px-8 py-3 border border-[#4A1F0E] text-[#4A1F0E] rounded-md hover:bg-[#4A1F0E] hover:text-white transition-all"
+              className="px-10 py-4 border-2 border-[#4A1F0E] text-[#4A1F0E] rounded-full transition-all duration-500 hover:bg-[#4A1F0E] hover:text-white hover:-translate-y-1"
             >
               Book to Speak
             </a>
+
           </div>
         </motion.div>
 
-        {/* Dynamic Image Container */}
+        {/* Image Section */}
         <div className="relative flex justify-center">
-          {/* Decorative Glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-[#D4A017]/10 rounded-full blur-3xl" />
+
+          {/* Premium Golden Glow */}
+          <div className="absolute w-96 h-96 bg-[#D4A017]/20 rounded-full blur-3xl animate-pulse" />
 
           <motion.img
-            src="./images/emuria1.jpg"
+            src="/images/emuria1.jpg"
             alt="David Emuria"
-            className="w-full max-w-sm rounded-2xl shadow-2xl relative z-10"
-            
-            // 1. Initial State (Hidden and slightly right)
+            className="w-full max-w-md rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.25)] relative z-10"
+
             initial={{ opacity: 0, x: 100 }}
-            
-            // 2. Combined Animation State
-            animate={{ 
-              opacity: 1, 
+            animate={{
+              opacity: 1,
               x: 0,
-              y: [0, -20, 0] // This handles the floating
+              y: [0, -15, 0]
             }}
-            
-            // 3. Transition logic for each property
+
             transition={{
-              opacity: { duration: 0.8 },
-              x: { duration: 0.8, ease: "easeOut" },
+              opacity: { duration: 1 },
+              x: { duration: 1, ease: "easeOut" },
               y: {
-                duration: 4,
+                duration: 5,
                 repeat: Infinity,
                 ease: "easeInOut"
               }

@@ -3,31 +3,15 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
-}
-
-model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Book {
-  id          String   @id @default(uuid())
+  id          Int      @id @default(autoincrement())
   title       String
-  author      String
-  description String?
+  description String
+  image       String?
   price       Float
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-enum Role {
-  USER
-  ADMIN
 }
