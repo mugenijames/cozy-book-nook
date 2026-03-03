@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import bookRoutes from './routes/book.routes';
+import uploadRoutes from './routes/upload.routes';
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/books', bookRoutes);
-
+app.use('/api/upload', uploadRoutes);
 // For Vercel serverless — export the app
 export default app;
 

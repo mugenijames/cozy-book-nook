@@ -1,18 +1,18 @@
-import express from 'express';
+import express from "express";
 import {
-  getAllBooks,
-  getBookById,
+  getBooks,
+  getBook,
   createBook,
   updateBook,
   deleteBook,
-} from '../controllers/book.controller';
+} from "../controllers/book.controller";
 
 const router = express.Router();
 
-router.get('/', getAllBooks);
-router.get('/:id', getBookById);
-router.post('/', createBook);
-router.put('/:id', updateBook);
-router.delete('/:id', deleteBook);
+router.get('/', getAllBooks);                  // public
+router.get('/:id', getBookById);               // public
+router.post('/', isAdmin, createBook);         // admin only
+router.put('/:id', isAdmin, updateBook);       // admin only
+router.delete('/:id', isAdmin, deleteBook);    // admin only
 
 export default router;

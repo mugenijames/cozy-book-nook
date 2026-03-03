@@ -1,13 +1,31 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // optional but recommended for migrations on Neon serverless
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
 model Book {
   id            String   @id @default(uuid())
+
   title         String
-  author        String   // assuming you already added @default("Unknown") or similar earlier
+  author        String
   description   String?
   genre         String?
-  coverImage    String?
+  coverImage    String?          // URL to cover image
   publishedYear Int?
   pages         Int?
-  rating        Float    @default(0)
+  rating        Float    @default(0.0)
+
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now()) @updatedAt   // ← Add @default(now()) here
+  updatedAt     DateTime @updatedAt
+
+  // Optional indexes / constraints you might want later
+  @@index([title])
+  @@index([author])
+  @@map("books")
 }
