@@ -13,14 +13,14 @@ import {
 import { Button } from "@/components/ui/button";
 
 interface ConfirmDialogProps {
-  trigger?: React.ReactNode;                  // Optional: custom trigger button/text
-  title?: string;                             // Default: "Are you absolutely sure?"
-  description?: string;                       // Default: "This action cannot be undone."
-  confirmText?: string;                       // Default: "Delete"
-  cancelText?: string;                        // Default: "Cancel"
-  variant?: "default" | "destructive";        // Button style for confirm
-  onConfirm: () => void | Promise<void>;      // What happens when confirmed
-  children?: React.ReactNode;                 // If no trigger, use children as trigger
+  trigger?: React.ReactNode;                  
+  title?: string;                             
+  description?: string;                     
+  confirmText?: string;                      
+  cancelText?: string;                     
+  variant?: "default" | "destructive";        
+  onConfirm: () => void | Promise<void>;     
+  children?: React.ReactNode;                
 }
 
 export default function ConfirmDialog({
@@ -54,7 +54,7 @@ export default function ConfirmDialog({
           <AlertDialogAction
             variant={variant}
             onClick={async (e) => {
-              e.preventDefault(); // prevent immediate close
+              e.preventDefault(); 
               try {
                 await onConfirm();
               } catch (err) {

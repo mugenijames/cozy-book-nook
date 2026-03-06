@@ -10,7 +10,7 @@ import AdminDashboard from "@/components/admin/AdminDashboard";
 import BookListPage from "@/components/admin/BookListPage";
 import BookFormPage from "@/components/admin/BookFormPage";
 
-import { AdminRoute } from "@/components/admin/ProtectedRoutes"; 
+import AdminRoute from "@/components/admin/ProtectedRoute";
 
 function App() {
   return (

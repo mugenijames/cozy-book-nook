@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner"; // or react-hot-toast
-import { createBook, updateBook, getBookById } from "@/services/api";
+import { toast } from "sonner"; 
+import { createBook, updateBook, getBook } from "@/services/api";
 
-// Zod schema (you can move this to types/book.ts later)
+
 const bookSchema = z.object({
   title: z.string().min(1, "Title is required"),
   author: z.string().min(1, "Author is required"),
@@ -47,12 +47,11 @@ export default function BookFormPage() {
     },
   });
 
-  // Fetch book data if editing
   useEffect(() => {
     if (isEdit && id) {
       const fetchBook = async () => {
         try {
-          const book = await getBookById(id);
+          const book = await getBook(id);
           form.reset(book);
           if (book.coverImage) setCoverPreview(book.coverImage);
         } catch (err) {
