@@ -1,3 +1,4 @@
+// src/components/admin/BookFormPage.tsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -8,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner"; 
+import { toast } from "sonner";
+import { Loader2, X, ImagePlus } from "lucide-react";
 import { createBook, updateBook, getBook } from "@/services/api";
+import { upload } from "@vercel/blob/client";
 
-
+// Zod schema (unchanged)
 const bookSchema = z.object({
   title: z.string().min(1, "Title is required"),
   author: z.string().min(1, "Author is required"),
@@ -31,6 +34,7 @@ export default function BookFormPage() {
   const isEdit = !!id;
 
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
   const form = useForm<BookFormData>({
@@ -47,20 +51,60 @@ export default function BookFormPage() {
     },
   });
 
+  // Fetch book data if editing
   useEffect(() => {
     if (isEdit && id) {
       const fetchBook = async () => {
         try {
           const book = await getBook(id);
           form.reset(book);
-          if (book.coverImage) setCoverPreview(book.coverImage);
+          if (book.coverImage) {
+            setCoverPreview(book.coverImage);
+            form.setValue("coverImage", book.coverImage);
+          }
         } catch (err) {
-          toast.error("Failed to load book");
+          toast.error("Failed to load book details");
         }
       };
       fetchBook();
     }
   }, [id, isEdit, form]);
+
+  // Handle file upload with Vercel Blob
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Immediate local preview
+    const reader = new FileReader();
+    reader.onloadend = () => setCoverPreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    setUploadingImage(true);
+
+    try {
+      const newBlob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload-cover", // your serverless endpoint
+      });
+
+      // Update form field with permanent URL
+      form.setValue("coverImage", newBlob.url, { shouldValidate: true });
+      toast.success("Cover image uploaded successfully");
+    } catch (err) {
+      toast.error("Failed to upload image");
+      console.error(err);
+      setCoverPreview(null); // rollback preview
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Remove uploaded/previewed image
+  const removeCoverImage = () => {
+    setCoverPreview(null);
+    form.setValue("coverImage", null);
+  };
 
   const onSubmit = async (data: BookFormData) => {
     setLoading(true);
@@ -79,22 +123,6 @@ export default function BookFormPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // For preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setCoverPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // TODO: Upload file → get real URL → set form value
-    // For now we just show preview
-    // Later replace with Vercel Blob / Cloudinary upload
   };
 
   return (
@@ -144,21 +172,57 @@ export default function BookFormPage() {
               <Input id="genre" {...form.register("genre")} />
             </div>
 
-            {/* Cover Image */}
+            {/* Cover Image Upload */}
             <div className="grid gap-2">
               <Label>Cover Image</Label>
-              <Input type="file" accept="image/*" onChange={handleImageChange} />
-              {coverPreview && (
-                <div className="mt-2">
-                  <img
-                    src={coverPreview}
-                    alt="Cover preview"
-                    className="h-48 w-auto object-cover rounded-md border"
-                  />
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+                {/* Preview area */}
+                <div className="relative h-48 w-36 overflow-hidden rounded-lg border bg-muted">
+                  {coverPreview ? (
+                    <>
+                      <img
+                        src={coverPreview}
+                        alt="Cover preview"
+                        className="h-full w-full object-cover"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1 right-1 h-6 w-6"
+                        onClick={removeCoverImage}
+                        disabled={uploadingImage || loading}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      <ImagePlus className="h-10 w-10" />
+                    </div>
+                  )}
                 </div>
-              )}
-              {/* Hidden input for URL */}
-              <Input type="hidden" {...form.register("coverImage")} />
+
+                {/* Upload controls */}
+                <div className="flex-1 space-y-3">
+                  <Input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleImageUpload}
+                    disabled={uploadingImage || loading}
+                  />
+                  {uploadingImage && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading...
+                    </div>
+                  )}
+                  {/* Hidden field for URL */}
+                  <Input type="hidden" {...form.register("coverImage")} />
+                  {form.formState.errors.coverImage && (
+                    <p className="text-sm text-red-600">{form.formState.errors.coverImage.message}</p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Published Year & Pages */}
@@ -196,10 +260,15 @@ export default function BookFormPage() {
 
             {/* Submit */}
             <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={() => navigate("/admin/books")}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/admin/books")}
+                disabled={loading || uploadingImage}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || uploadingImage}>
                 {loading ? "Saving..." : isEdit ? "Update Book" : "Create Book"}
               </Button>
             </div>

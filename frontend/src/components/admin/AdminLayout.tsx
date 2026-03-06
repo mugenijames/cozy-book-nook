@@ -1,26 +1,26 @@
 // src/components/admin/AdminLayout.tsx
 import { Outlet } from 'react-router-dom';
-import AdminSidebar from './AdminSidebar';
-import AdminHeader from './AdminHeader'; // ← we’ll create this next
+
+// We commented out the missing components to prevent the "ReferenceError"
+// import AdminSidebar from './AdminSidebar';
+// import AdminHeader from './AdminHeader'; 
 
 export default function AdminLayout() {
   return (
-    <div className="flex min-h-screen flex-col bg-muted/40 dark:bg-background">
-      {/* Top header bar – fixed or sticky */}
-      <AdminHeader />
+    <div className="flex min-h-screen flex-col bg-muted/40">
+      {/* Header - Commented out until file is ready */}
+      {/* <AdminHeader /> */}
 
-      {/* Main content area */}
       <div className="flex flex-1">
-        {/* Sidebar – hidden on mobile, shown on md+ */}
-        <aside className="hidden md:block w-64 shrink-0 border-r bg-background">
+        {/* Sidebar - Commented out until file is ready */}
+        {/* <aside className="hidden md:block w-64 border-r bg-background">
           <AdminSidebar />
-        </aside>
+        </aside> */}
 
-        {/* Mobile drawer can be added later if needed */}
-
-        {/* Scrollable main content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        {/* Main Content Area */}
+        <main className="flex-1 p-8">
           <div className="mx-auto max-w-7xl">
+            {/* The Outlet is where your Dashboard will appear */}
             <Outlet />
           </div>
         </main>
