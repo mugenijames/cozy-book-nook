@@ -4,6 +4,6 @@
   status = 200
   force = true
 
-  [build]
-  command = "npm run build"   # or "vite build"
-  publish = "dist"
+[build]
+  publish = "dist"              # ← must match Vite's output folder
+  command = "npm run build"     # or "vite build"
