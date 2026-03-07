@@ -1,5 +1,5 @@
 // src/App.tsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, Link } from "react-router-dom";
 
 // Public pages
 import Home from "./pages/Home";
@@ -14,6 +14,9 @@ import BookFormPage from "@/components/admin/BookFormPage";
 // Route protection
 import AdminRoute from "@/components/admin/ProtectedRoute";
 
+// Shadcn UI component (used in the 404 block)
+import { Button } from "@/components/ui/button";
+
 function App() {
   return (
     <Routes>
@@ -24,24 +27,28 @@ function App() {
       {/* ==================== Protected Admin routes ==================== */}
       <Route element={<AdminRoute />}>
         <Route element={<AdminLayout />}>
-          {/* Dashboard – shown when going to /admin */}
+          {/* Dashboard – shown at exactly /admin */}
           <Route index path="/admin" element={<AdminDashboard />} />
 
-          {/* Books section */}
+          {/* Books section – nested under /admin/books */}
           <Route path="/admin/books">
             <Route index element={<BookListPage />} />
             <Route path="new" element={<BookFormPage />} />
             <Route path=":id/edit" element={<BookFormPage />} />
           </Route>
 
-          {/* Optional: 404 inside admin layout */}
+          {/* Optional: 404 page inside admin layout */}
           <Route path="*" element={
-            <div className="flex min-h-screen items-center justify-center">
-              <div className="text-center">
-                <h1 className="text-4xl font-bold">404</h1>
-                <p className="mt-4 text-muted-foreground">Page not found in admin area</p>
-                <Button asChild className="mt-6">
-                  <Link to="/admin">Back to Dashboard</Link>
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div className="text-center space-y-6">
+                <h1 className="text-6xl font-bold text-primary">404</h1>
+                <p className="text-xl text-muted-foreground">
+                  Page not found in admin area
+                </p>
+                <Button asChild size="lg">
+                  <Link to="/admin">
+                    Back to Dashboard
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -49,7 +56,7 @@ function App() {
         </Route>
       </Route>
 
-      {/* ==================== Catch-all for public 404 ==================== */}
+      {/* ==================== Catch-all for public routes ==================== */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
