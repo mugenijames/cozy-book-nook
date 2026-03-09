@@ -7,15 +7,16 @@ import BookDetail from "./pages/BookDetail";
 
 // Admin layout & pages
 import AdminLayout from "@/components/admin/AdminLayout";
-import AdminDashboard from "@/components/admin/AdminDashboard";
-import BookListPage from "@/components/admin/BookListPage";
-import BookFormPage from "@/components/admin/BookFormPage";
+import AdminDashboard from "@/features/admin/dashboard/AdminDashboard";
+import BookListPage from "@/features/admin/books/BookListPage";
+import BookFormPage from "@/features/admin/books/BookFormPage";
 
 // Route protection
 import AdminRoute from "@/components/admin/ProtectedRoute";
 
 // Shadcn UI component (used in the 404 block)
 import { Button } from "@/components/ui/button";
+
 
 function App() {
   return (
@@ -28,8 +29,14 @@ function App() {
       <Route element={<AdminRoute />}>
         <Route element={<AdminLayout />}>
           {/* Dashboard – shown at exactly /admin */}
-          <Route index path="/admin" element={<AdminDashboard />} />
-
+          <Route index path="/admin" element={
+            <div style={{ padding: '50px', textAlign: 'center', background: '#f0f0f0', minHeight: '100vh' }}>
+              <h1 style={{ color: 'green', fontSize: '3rem' }}>ADMIN PAGE IS LOADED!</h1>
+              <p style={{ fontSize: '1.5rem', marginTop: '20px' }}>
+                If you see this green text → React is rendering correctly.
+              </p>
+            </div>
+          } />
           {/* Books section – nested under /admin/books */}
           <Route path="/admin/books">
             <Route index element={<BookListPage />} />

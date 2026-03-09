@@ -1,9 +1,7 @@
 import { z } from 'zod';
 
-// Helper for current year
 const CURRENT_YEAR = new Date().getFullYear();
 
-// Base schema
 const bookBaseSchema = z.object({
   title: z
     .string()
