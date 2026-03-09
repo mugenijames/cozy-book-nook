@@ -1,3 +1,4 @@
+// src/pages/Home.tsx
 import Header from "../sections/Header";
 import Hero from "../sections/Hero";
 import About from "../sections/About";
@@ -7,19 +8,29 @@ import Speaking from "../sections/Speaking";
 import Footer from "../sections/Footer";
 import LogoSplash from "../components/LogoSplash";
 
-const Home = () => {
+export default function Home() {
   return (
-    <div className="bg-[#F9F6EF] text-[#2E1208] font-body">
+    <div className="min-h-screen bg-[#F9F6EF] text-[#2E1208] font-body antialiased">
+      {/* Loading / splash screen - shown on first load */}
       <LogoSplash />
-      <Header />
-      <Hero />
-      <About />
-      <Books />
-      <Program />
-      <Speaking />
-      <Footer />
+
+      {/* Main document structure */}
+      <div className="flex flex-col min-h-screen">
+        {/* Header – fixed or sticky depending on your design */}
+        <Header />
+
+        {/* Main content */}
+        <main className="flex-grow">
+          <Hero />
+          <About />
+          <Books />
+          <Program />
+          <Speaking />
+        </main>
+
+        {/* Footer – always at the bottom */}
+        <Footer />
+      </div>
     </div>
   );
-};
-
-export default Home;
+}
