@@ -1,41 +1,43 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
-type UserRole = "ADMIN" | "USER" | null;
+type UserRole = "ADMIN" | null;
 
 interface AuthContextType {
-  role: UserRole;
   isAdmin: boolean;
-  signInAsAdmin: () => void;
-  signOut: () => void;
+  login: (token: string) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [role, setRole] = useState<UserRole>(null);
+  // Initialize from localStorage to persist login state
+  const [role, setRole] = useState<UserRole>(() => 
+    localStorage.getItem("user_role") as UserRole
+  );
 
-  const signInAsAdmin = () => setRole("ADMIN");
-  const signOut = () => setRole(null);
+  const login = (token: string) => {
+    // In a real app, save the actual JWT token here too
+    localStorage.setItem("admin_token", token);
+    localStorage.setItem("user_role", "ADMIN");
+    setRole("ADMIN");
+  };
+
+  const logout = () => {
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("user_role");
+    setRole(null);
+  };
 
   return (
-    <AuthContext.Provider
-      value={{
-        role,
-        isAdmin: role === "ADMIN",
-        signInAsAdmin,
-        signOut,
-      }}
-    >
+    <AuthContext.Provider value={{ isAdmin: role === "ADMIN", login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-/* ✅ THIS IS WHAT YOU ARE MISSING */
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };

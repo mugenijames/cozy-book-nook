@@ -1,9 +1,9 @@
-// src/App.tsx
 import { Routes, Route, Navigate, Link } from "react-router-dom";
 
 // Public pages
 import Home from "./pages/Home";
 import BookDetail from "./pages/BookDetail";
+import LoginPage from "./pages/admin/Login"; // Ensure this path is correct
 
 // Admin layout & pages
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -14,9 +14,8 @@ import BookFormPage from "@/features/admin/books/BookFormPage";
 // Route protection
 import AdminRoute from "@/components/admin/ProtectedRoute";
 
-// Shadcn UI component (used in the 404 block)
+// Shadcn UI component
 import { Button } from "@/components/ui/button";
-
 
 function App() {
   return (
@@ -25,37 +24,29 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/book/:slug" element={<BookDetail />} />
 
+      {/* Move Login OUTSIDE the protected routes so it's accessible */}
+      <Route path="/admin/login" element={<LoginPage />} />
+
       {/* ==================== Protected Admin routes ==================== */}
       <Route element={<AdminRoute />}>
-        <Route element={<AdminLayout />}>
-          {/* Dashboard – shown at exactly /admin */}
-          <Route index path="/admin" element={
-            <div style={{ padding: '50px', textAlign: 'center', background: '#f0f0f0', minHeight: '100vh' }}>
-              <h1 style={{ color: 'green', fontSize: '3rem' }}>ADMIN PAGE IS LOADED!</h1>
-              <p style={{ fontSize: '1.5rem', marginTop: '20px' }}>
-                If you see this green text → React is rendering correctly.
-              </p>
-            </div>
-          } />
+        <Route path="/admin" element={<AdminLayout />}>
+          {/* Dashboard – shown at /admin */}
+          <Route index element={<AdminDashboard />} />
+
           {/* Books section – nested under /admin/books */}
-          <Route path="/admin/books">
+          <Route path="books">
             <Route index element={<BookListPage />} />
             <Route path="new" element={<BookFormPage />} />
             <Route path=":id/edit" element={<BookFormPage />} />
           </Route>
 
-          {/* Optional: 404 page inside admin layout */}
           <Route path="*" element={
             <div className="flex min-h-screen items-center justify-center p-4">
               <div className="text-center space-y-6">
                 <h1 className="text-6xl font-bold text-primary">404</h1>
-                <p className="text-xl text-muted-foreground">
-                  Page not found in admin area
-                </p>
+                <p className="text-xl text-muted-foreground">Page not found in admin area</p>
                 <Button asChild size="lg">
-                  <Link to="/admin">
-                    Back to Dashboard
-                  </Link>
+                  <Link to="/admin">Back to Dashboard</Link>
                 </Button>
               </div>
             </div>
@@ -63,7 +54,7 @@ function App() {
         </Route>
       </Route>
 
-      {/* ==================== Catch-all for public routes ==================== */}
+      {/* Catch-all for public routes */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

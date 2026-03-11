@@ -10,7 +10,7 @@ const BookSection = () => {
         <p className="text-muted-foreground mb-8">
           A powerful story of faith, cross-cultural mission, and leadership.
         </p>
-        <Button size="lg">Order on Amazon</Button>
+        <Button size="lg">Order Now</Button>
       </div>
     </section>
   );

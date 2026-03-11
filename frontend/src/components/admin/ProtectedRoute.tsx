@@ -1,17 +1,16 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const { user, isAdmin } = useAuth();
+const ProtectedRoute = () => {
+  const { isAdmin } = useAuth();
 
   const bypassAuth = true;
 
-
-  if (!bypassAuth && (!user || !isAdmin)) {
+  if (!bypassAuth && !isAdmin) {
     return <Navigate to="/" replace />;
   }
 
-  return children;
+  return <Outlet />;
 };
 
 export default ProtectedRoute;
