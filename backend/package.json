@@ -14,7 +14,6 @@
   "type": "commonjs",
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
-    "@types/multer": "^2.1.0",
     "@vercel/blob": "^2.3.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
@@ -28,6 +27,8 @@
     "@prisma/client": "^6.19.2",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.1.0",
     "@types/node": "^25.3.3",
     "prisma": "^6.19.2",
     "ts-node": "^10.9.2",

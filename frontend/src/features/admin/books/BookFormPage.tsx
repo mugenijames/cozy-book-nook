@@ -70,37 +70,40 @@ export default function BookFormPage() {
     }
   }, [id, isEdit, form]);
 
-  // Handle file upload with Vercel Blob
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+ // Inside handleImageUpload in BookFormPage.tsx
+const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    // Immediate local preview
-    const reader = new FileReader();
-    reader.onloadend = () => setCoverPreview(reader.result as string);
-    reader.readAsDataURL(file);
+  setUploadingImage(true);
+  form.clearErrors("coverImage"); // Prevent Zod validation errors during upload
 
-    setUploadingImage(true);
+  try {
+    const formData = new FormData();
+    formData.append('file', file); // 'file' matches upload.single('file')
 
-    try {
-      const newBlob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/upload-cover", // your serverless endpoint
-      });
+    const response = await fetch("/api/upload-cover", {
+      method: "POST",
+      headers: {
+        // Ensure you are pulling the token from local storage
+        "Authorization": `Bearer ${localStorage.getItem("admin_token")}`,
+      },
+      body: formData,
+    });
 
-      // Update form field with permanent URL
-      form.setValue("coverImage", newBlob.url, { shouldValidate: true });
-      toast.success("Cover image uploaded successfully");
-    } catch (err) {
-      toast.error("Failed to upload image");
-      console.error(err);
-      setCoverPreview(null); // rollback preview
-    } finally {
-      setUploadingImage(false);
-    }
-  };
+    if (!response.ok) throw new Error("Upload failed");
 
-  // Remove uploaded/previewed image
+    const data = await response.json();
+    form.setValue("coverImage", data.url);
+    setCoverPreview(data.url);
+    toast.success("Uploaded successfully!");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to upload image");
+  } finally {
+    setUploadingImage(false);
+  }
+};
   const removeCoverImage = () => {
     setCoverPreview(null);
     form.setValue("coverImage", null);
@@ -172,7 +175,6 @@ export default function BookFormPage() {
               <Input id="genre" {...form.register("genre")} />
             </div>
 
-            {/* Cover Image Upload */}
             <div className="grid gap-2">
               <Label>Cover Image</Label>
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
