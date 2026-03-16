@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, X, ImagePlus } from "lucide-react";
 import { createBook, updateBook, getBook } from "@/services/api";
-import { upload } from "@vercel/blob/client";
+
 
 // Zod schema (unchanged)
 const bookSchema = z.object({
@@ -70,40 +70,28 @@ export default function BookFormPage() {
     }
   }, [id, isEdit, form]);
 
- // Inside handleImageUpload in BookFormPage.tsx
-const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  setUploadingImage(true);
-  form.clearErrors("coverImage"); // Prevent Zod validation errors during upload
-
-  try {
+  // Inside handleImageUpload in BookFormPage.tsx
+  const handleImageUpload = async (file: File) => {
     const formData = new FormData();
-    formData.append('file', file); // 'file' matches upload.single('file')
+    formData.append('cover', file); // Ensure the key is 'cover'
 
-    const response = await fetch("/api/upload-cover", {
-      method: "POST",
-      headers: {
-        // Ensure you are pulling the token from local storage
-        "Authorization": `Bearer ${localStorage.getItem("admin_token")}`,
-      },
-      body: formData,
-    });
+    try {
+      const response = await fetch("http://localhost:5000/api/upload-cover", {
+        method: "POST",
+        body: formData,
+        // DO NOT SET 'Content-Type' here!
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("admin_token")}`,
+        },
+      });
 
-    if (!response.ok) throw new Error("Upload failed");
-
-    const data = await response.json();
-    form.setValue("coverImage", data.url);
-    setCoverPreview(data.url);
-    toast.success("Uploaded successfully!");
-  } catch (err) {
-    console.error(err);
-    toast.error("Failed to upload image");
-  } finally {
-    setUploadingImage(false);
-  }
-};
+      if (!response.ok) throw new Error("Upload failed");
+      const data = await response.json();
+      console.log("Success:", data.url);
+    } catch (err) {
+      console.error("Upload error:", err);
+    }
+  };
   const removeCoverImage = () => {
     setCoverPreview(null);
     form.setValue("coverImage", null);

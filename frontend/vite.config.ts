@@ -12,8 +12,21 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:5000",
         changeOrigin: true,
         secure: false,
-        timeout: 0,
-        proxyTimeout: 0,
+        // These settings prevent the proxy from buffering and reset issues
+        ws: true,
+        timeout: 600000, 
+        proxyTimeout: 600000,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('Proxy error:', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Ensure headers are correctly forwarded
+            if (req.headers['content-type']) {
+              proxyReq.setHeader('content-type', req.headers['content-type']);
+            }
+          });
+        }
       },
     },
   },
