@@ -1,3 +1,4 @@
+// src/components/admin/AdminLayout.tsx
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/admin/login"); // Make sure this matches your login route
   };
 
   return (
@@ -30,7 +31,6 @@ export default function AdminLayout() {
       {/* Main Content Area */}
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="mx-auto max-w-7xl">
-          {/* This is where your nested routes (Dashboard, BookList, etc.) render */}
           <Outlet />
         </div>
       </main>
