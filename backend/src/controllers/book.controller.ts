@@ -11,6 +11,11 @@ function getSingleParam(value: string | string[] | undefined): string {
   return value;
 }
 
+function parseBookId(value: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 function slugify(title: string): string {
   return title
     .toLowerCase()
@@ -92,6 +97,7 @@ const createBook = async (req: Request, res: Response) => {
       publishedYear,
       pages,
       rating,
+      priceCents,
     } = req.body;
 
     // Basic runtime check
@@ -100,6 +106,12 @@ const createBook = async (req: Request, res: Response) => {
     }
 
     const slug = req.body.slug ? String(req.body.slug) : await generateUniqueSlug(String(title));
+
+    let resolvedPrice: number | null = null;
+    if (priceCents !== undefined && priceCents !== null && priceCents !== "") {
+      const n = Number(priceCents);
+      resolvedPrice = Number.isInteger(n) && n >= 0 ? n : null;
+    }
 
     const newBook = await prisma.book.create({
       data: {
@@ -112,6 +124,7 @@ const createBook = async (req: Request, res: Response) => {
         pages: pages ? Number(pages) : null,
         rating: rating ? Number(rating) : 0,
         slug: slug,
+        priceCents: resolvedPrice,
       },
     });
 
@@ -126,7 +139,11 @@ const createBook = async (req: Request, res: Response) => {
 // Update a book
 const updateBook = async (req: Request, res: Response) => {
   try {
-    const id = getSingleParam(req.params.idOrSlug);
+    const idOrSlug = getSingleParam(req.params.idOrSlug);
+    const id = parseBookId(idOrSlug);
+    if (id === null) {
+      return res.status(400).json({ error: "A numeric book id is required for updates" });
+    }
 
     const {
       title,
@@ -138,6 +155,7 @@ const updateBook = async (req: Request, res: Response) => {
       pages,
       rating,
       slug,
+      priceCents,
     } = req.body;
 
     // Prepare update data
@@ -151,6 +169,15 @@ const updateBook = async (req: Request, res: Response) => {
     if (publishedYear !== undefined) updateData.publishedYear = Number(publishedYear);
     if (pages !== undefined) updateData.pages = Number(pages);
     if (rating !== undefined) updateData.rating = Number(rating);
+
+    if (priceCents !== undefined) {
+      if (priceCents === null || priceCents === "") {
+        updateData.priceCents = null;
+      } else {
+        const n = Number(priceCents);
+        updateData.priceCents = Number.isInteger(n) && n >= 0 ? n : null;
+      }
+    }
     
     // Handle slug update
     if (slug !== undefined) {
@@ -186,7 +213,11 @@ const updateBook = async (req: Request, res: Response) => {
 // Delete a book
 const deleteBook = async (req: Request, res: Response) => {
   try {
-    const id = getSingleParam(req.params.idOrSlug);
+    const idOrSlug = getSingleParam(req.params.idOrSlug);
+    const id = parseBookId(idOrSlug);
+    if (id === null) {
+      return res.status(400).json({ error: "A numeric book id is required for deletion" });
+    }
 
     await prisma.book.delete({ where: { id } });
 

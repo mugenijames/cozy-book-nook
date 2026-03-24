@@ -6,6 +6,8 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 // Public pages
 import Home from "./pages/Home";
 import BookDetail from "./pages/BookDetail";
+import BooksCatalogPage from "./pages/Books";
+import ProgramActivityPage from "./pages/ProgramActivity";
 import LoginPage from "./pages/admin/Login";
 
 // Admin layout & pages
@@ -37,7 +39,9 @@ function App() {
       <Routes>
         {/* ==================== Public routes ==================== */}
         <Route path="/" element={<Home />} />
+        <Route path="/books" element={<BooksCatalogPage />} />
         <Route path="/book/:slug" element={<BookDetail />} />
+        <Route path="/programs/:slug" element={<ProgramActivityPage />} />
 
         {/* Move Login OUTSIDE the protected routes so it's accessible */}
         <Route path="/admin/login" element={<LoginPage />} />

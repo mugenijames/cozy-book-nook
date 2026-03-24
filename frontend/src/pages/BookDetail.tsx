@@ -1,72 +1,130 @@
 // src/pages/BookDetail.tsx
-import { useParams, Navigate, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { Star, Calendar, User, BookOpen, ArrowLeft, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Star,
+  Calendar,
+  User,
+  BookOpen,
+  ArrowLeft,
+  Loader2,
+  ShoppingBag,
+  CreditCard,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { resolveBookCoverUrl } from "@/lib/resolveBookCover";
+import { bookPurchaseHref, bookPurchaseLabel } from "@/config/purchase";
+import { formatPrice } from "@/lib/formatPrice";
+import { createCheckoutSession, getBooks, getCheckoutStatus } from "@/services/api";
 
 interface Book {
   id: number;
   title: string;
   author: string;
-  slug: string;
+  slug?: string | null;
   description?: string;
   coverImage?: string;
   genre?: string;
   publishedYear?: number;
   pages?: number;
   rating?: number;
-  price?: number;
+  priceCents?: number | null;
 }
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const BookDetail = () => {
   const { slug } = useParams<{ slug: string }>();
-  
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [loading, setLoading] = useState(true);
   const [book, setBook] = useState<Book | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const { data: checkout } = useQuery({
+    queryKey: ["checkout", "status"],
+    queryFn: getCheckoutStatus,
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    const status = searchParams.get("checkout");
+    if (status === "success") {
+      toast.success("Payment received — thank you! You'll get a confirmation from Stripe.");
+      searchParams.delete("checkout");
+      setSearchParams(searchParams, { replace: true });
+    } else if (status === "cancel") {
+      toast.message("Checkout cancelled", {
+        description: "You can try again whenever you're ready.",
+      });
+      searchParams.delete("checkout");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (slug) {
-      fetchBookDetails();
+      void fetchBookDetails();
     }
   }, [slug]);
 
   const fetchBookDetails = async () => {
+    if (!slug) return;
     try {
       setLoading(true);
       setError(null);
-      
-      // Try fetching by ID or slug
-      // First try to get all books and find by slug
-      const response = await axios.get(`${API_URL}/books`);
-      const books = response.data;
-      
-      // Find book by slug or ID
-      const foundBook = books.find((b: any) => 
-        b.slug === slug || b.id === parseInt(slug || "") || b.id === slug
+
+      const books = await getBooks();
+      const foundBook = books.find(
+        (b) =>
+          b.slug === slug ||
+          String(b.id) === slug ||
+          (Number.isInteger(Number(slug)) && Number(b.id) === Number(slug))
       );
-      
+
       if (foundBook) {
-        setBook(foundBook);
+        setBook({
+          id: Number(foundBook.id),
+          title: foundBook.title,
+          author: foundBook.author,
+          slug: foundBook.slug ?? undefined,
+          description: foundBook.description ?? undefined,
+          coverImage: foundBook.coverImage ?? undefined,
+          genre: foundBook.genre ?? undefined,
+          publishedYear: foundBook.publishedYear ?? undefined,
+          pages: foundBook.pages ?? undefined,
+          rating: foundBook.rating,
+          priceCents: foundBook.priceCents ?? undefined,
+        });
       } else {
-        // If not found, try direct endpoint
-        try {
-          const directResponse = await axios.get(`${API_URL}/books/${slug}`);
-          setBook(directResponse.data);
-        } catch (err) {
-          setError("Book not found");
-        }
+        setError("Book not found");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch book:", err);
       setError("Book not found");
     } finally {
       setLoading(false);
     }
   };
+
+  const stripeReady = Boolean(checkout?.enabled);
+  const price = book?.priceCents != null ? Number(book.priceCents) : null;
+  const canStripePay = stripeReady && price != null && price > 0;
+
+  async function startCheckout() {
+    if (!book || !canStripePay) return;
+    setCheckoutLoading(true);
+    try {
+      const { url } = await createCheckoutSession(String(book.id));
+      window.location.href = url;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Could not start checkout.";
+      toast.error(msg);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -85,7 +143,7 @@ const BookDetail = () => {
             {error || "Book not found"}
           </h1>
           <p className="text-gray-600 mb-6">
-            The book you're looking for doesn't exist or has been removed.
+            The book you&apos;re looking for doesn&apos;t exist or has been removed.
           </p>
           <Link to="/">
             <Button className="bg-[#C17B4F] hover:bg-[#A55E36] text-white">
@@ -97,33 +155,36 @@ const BookDetail = () => {
     );
   }
 
+  const inquireHref = bookPurchaseHref(book.slug);
+  const inquireExternal = inquireHref.startsWith("http");
+
   return (
     <div className="min-h-screen bg-[#F9F6EF] py-12 px-6">
       <div className="max-w-6xl mx-auto">
-        {/* Back Button */}
-        <Link to="/" className="inline-block mb-6">
-          <Button variant="ghost" className="gap-2 text-[#2E1208] hover:text-[#C17B4F]">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Books
-          </Button>
-        </Link>
+        <div className="mb-6 flex flex-wrap gap-3">
+          <Link to="/">
+            <Button variant="ghost" className="gap-2 text-[#2E1208] hover:text-[#C17B4F]">
+              <ArrowLeft className="h-4 w-4" />
+              Home
+            </Button>
+          </Link>
+          <Link to="/books">
+            <Button variant="ghost" className="gap-2 text-[#2E1208] hover:text-[#C17B4F]">
+              All books
+            </Button>
+          </Link>
+        </div>
 
-        {/* Book Details */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="grid md:grid-cols-2 gap-8 p-8 md:p-12">
-            {/* Book Cover */}
             <div className="flex items-center justify-center">
               {book.coverImage ? (
-                <img 
-                  src={
-                    book.coverImage.startsWith("http")
-                      ? book.coverImage
-                      : `http://localhost:5000${book.coverImage}`
-                  }
-                  alt={book.title} 
+                <img
+                  src={resolveBookCoverUrl(book.coverImage) || ""}
+                  alt={book.title}
                   className="rounded-2xl shadow-xl w-full max-w-md h-auto object-cover"
                   onError={(e) => {
-                    e.currentTarget.src = "https://via.placeholder.com/400x600?text=Book+Cover";
+                    e.currentTarget.src = "/placeholder.svg";
                   }}
                 />
               ) : (
@@ -133,64 +194,99 @@ const BookDetail = () => {
               )}
             </div>
 
-            {/* Book Info */}
             <div className="space-y-6">
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-[#2E1208] mb-2">
+                <h1 className="text-3xl md:text-4xl font-bold text-[#2E1208] mb-2 font-heading">
                   {book.title}
                 </h1>
                 <p className="text-xl text-gray-600 flex items-center gap-2">
                   <User className="h-5 w-5 text-[#C17B4F]" />
                   by {book.author}
                 </p>
+                {price != null && price > 0 ? (
+                  <p className="mt-3 text-2xl font-semibold text-[#2E1208]">
+                    {formatPrice(price)}
+                  </p>
+                ) : null}
               </div>
 
-              {/* Metadata */}
               <div className="flex flex-wrap gap-3">
-                {book.rating && book.rating > 0 && (
+                {book.rating != null && book.rating > 0 && (
                   <div className="flex items-center gap-1 px-3 py-1.5 bg-yellow-50 rounded-full">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                     <span className="font-semibold text-gray-700">{book.rating.toFixed(1)}</span>
                     <span className="text-gray-500 text-sm">/ 5.0</span>
                   </div>
                 )}
-                {book.publishedYear && (
+                {book.publishedYear != null ? (
                   <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-full">
                     <Calendar className="h-4 w-4 text-gray-500" />
                     <span className="text-gray-700">{book.publishedYear}</span>
                   </div>
-                )}
-                {book.pages && (
+                ) : null}
+                {book.pages != null ? (
                   <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-full">
                     <BookOpen className="h-4 w-4 text-gray-500" />
                     <span className="text-gray-700">{book.pages} pages</span>
                   </div>
-                )}
-                {book.genre && (
+                ) : null}
+                {book.genre != null ? (
                   <div className="px-3 py-1.5 bg-[#C17B4F]/10 text-[#C17B4F] rounded-full text-sm font-medium">
                     {book.genre}
                   </div>
-                )}
+                ) : null}
               </div>
 
-              {/* Description */}
-              {book.description && (
+              {book.description != null ? (
                 <div>
-                  <h2 className="text-xl font-semibold text-[#2E1208] mb-3">
-                    About this book
-                  </h2>
+                  <h2 className="text-xl font-semibold text-[#2E1208] mb-3">About this book</h2>
                   <p className="text-gray-700 leading-relaxed whitespace-pre-line">
                     {book.description}
                   </p>
                 </div>
-              )}
+              ) : null}
 
-              {/* Purchase Button */}
-              <div className="pt-4">
-                <Button className="bg-[#C17B4F] hover:bg-[#A55E36] text-white px-8 py-6 text-lg rounded-full shadow-md hover:shadow-lg transition-all duration-300">
-                  Purchase Book →
+              <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:flex-wrap">
+                {canStripePay ? (
+                  <Button
+                    type="button"
+                    onClick={startCheckout}
+                    disabled={checkoutLoading}
+                    className="bg-[#D4A017] hover:bg-[#b58900] text-[#2E1208] px-8 py-6 text-lg rounded-full shadow-md gap-2 font-semibold"
+                  >
+                    {checkoutLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                    ) : (
+                      <CreditCard className="h-5 w-5" aria-hidden />
+                    )}
+                    Pay with card
+                  </Button>
+                ) : null}
+                <Button
+                  asChild
+                  variant={canStripePay ? "outline" : "default"}
+                  className={
+                    canStripePay
+                      ? "border-[#C9B8A8] text-[#2E1208] px-8 py-6 text-lg rounded-full gap-2"
+                      : "bg-[#C17B4F] hover:bg-[#A55E36] text-white px-8 py-6 text-lg rounded-full shadow-md gap-2"
+                  }
+                >
+                  <a
+                    href={inquireHref}
+                    {...(inquireExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  >
+                    <ShoppingBag className="h-5 w-5" aria-hidden />
+                    {bookPurchaseLabel()}
+                    {canStripePay ? "" : " →"}
+                  </a>
                 </Button>
               </div>
+              {canStripePay ? (
+                <p className="text-sm text-[#5C4436]">
+                  Secure checkout powered by Stripe. You can still use &quot;{bookPurchaseLabel()}&quot;
+                  for other payment options.
+                </p>
+              ) : null}
             </div>
           </div>
         </div>

@@ -1,190 +1,89 @@
-// src/sections/Books.tsx
-import { useEffect, useState } from "react";
-import axios from "axios";
 import { Link } from "react-router-dom";
-import { BookOpen, Star, ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, BookOpen, Loader2 } from "lucide-react";
+import Header from "@/sections/Header";
+import Footer from "@/sections/Footer";
+import { getBooks } from "@/services/api";
+import { BookShowcaseCard } from "@/components/BookShowcaseCard";
 
-interface Book {
-  id: number;
-  title: string;
-  author: string;
-  slug: string;
-  coverImage?: string;
-  rating?: number;
-  description?: string;
-  publishedYear?: number;
-}
-
-// Update this to match your backend URL
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-
-const Books = () => {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        setLoading(true);
-        console.log("Fetching books from:", `${API_URL}/books`);
-        
-        const res = await axios.get(`${API_URL}/books`);
-        console.log("Books fetched:", res.data);
-        
-        // Show all books or limit to first 4
-        setBooks(res.data.slice(0, 4));
-        setError(null);
-      } catch (err: any) {
-        console.error("Failed to load books:", err);
-        setError(err.message || "Failed to load books");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBooks();
-  }, []);
-
-  if (loading) {
-    return (
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#2E1208] mb-4">
-              Featured Books
-            </h2>
-            <div className="w-24 h-1 bg-[#C17B4F] mx-auto"></div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="aspect-[2/3] bg-gray-200 rounded-lg mb-4"></div>
-                <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4 text-center">
-          <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-[#C17B4F] hover:text-[#A55E36] underline"
-          >
-            Try Again
-          </button>
-        </div>
-      </section>
-    );
-  }
-
-  if (books.length === 0) {
-    return (
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4 text-center">
-          <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-[#2E1208] mb-2">
-            No Books Yet
-          </h2>
-          <p className="text-gray-600">
-            Check back soon for new book releases.
-          </p>
-        </div>
-      </section>
-    );
-  }
+export default function BooksCatalogPage() {
+  const { data: books = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ["books", "catalog"],
+    queryFn: getBooks,
+  });
 
   return (
-    <section id="books" className="py-20 bg-white">
-      <div className="container mx-auto px-4 max-w-7xl">
-        {/* Section Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#2E1208] mb-4">
-            Featured Books
-          </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Discover powerful stories of healing, identity, and purpose
-          </p>
-          <div className="w-24 h-1 bg-[#C17B4F] mx-auto mt-4"></div>
-        </div>
+    <div className="min-h-screen bg-[#F9F6EF] text-[#2E1208]">
+      <Header />
 
-        {/* Books Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {books.map((book) => (
-            <Link
-              key={book.id}
-              to={`/book/${book.slug || book.id}`}
-              className="group"
-            >
-              <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                {/* Book Cover */}
-                <div className="aspect-[2/3] overflow-hidden bg-gradient-to-br from-[#F9F6EF] to-[#E8E0D5]">
-                  {book.coverImage ? (
-                    <img
-                      src={
-                        book.coverImage.startsWith("http")
-                          ? book.coverImage
-                          : `http://localhost:5000${book.coverImage}`
-                      }
-                      alt={book.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        console.log("Failed to load image:", book.coverImage);
-                        e.currentTarget.src = "https://via.placeholder.com/300x450?text=Book+Cover";
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <BookOpen className="h-12 w-12 text-[#C17B4F]" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Book Info */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg text-[#2E1208] line-clamp-1 group-hover:text-[#C17B4F] transition-colors">
-                    {book.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-1">
-                    {book.author || "Author"}
-                  </p>
-                  {book.rating && book.rating > 0 && (
-                    <div className="flex items-center gap-1 mt-2">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm text-gray-600">
-                        {book.rating.toFixed(1)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
+      <main className="pt-28 pb-20">
+        <div className="container mx-auto max-w-7xl px-4">
+          <nav className="mb-8 text-sm text-[#5C4436]">
+            <Link to="/" className="inline-flex items-center gap-1 hover:text-[#8B4513]">
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Back to home
             </Link>
-          ))}
-        </div>
+          </nav>
 
-        {/* View All Books Button */}
-        {books.length > 0 && (
-          <div className="text-center mt-12">
-            <Link to="/books">
-              <button className="bg-[#C17B4F] hover:bg-[#A55E36] text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 shadow-md hover:shadow-lg inline-flex items-center gap-2">
-                View All Books
-                <ArrowRight className="h-5 w-5" />
+          <header className="mb-12 max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8B4513]">
+              Library
+            </p>
+            <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight md:text-4xl">
+              All books
+            </h1>
+            <p className="mt-4 text-lg leading-relaxed text-[#5C4436]">
+              Every title in one place—read summaries and covers here, then use{" "}
+              <strong className="font-medium text-[#2E1208]">Buy now</strong> or{" "}
+              <strong className="font-medium text-[#2E1208]">Order / inquire</strong> to get your
+              copy.
+            </p>
+          </header>
+
+          {isLoading ? (
+            <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-[#C17B4F]" aria-label="Loading" />
+              <p className="text-[#5C4436]">Loading books…</p>
+            </div>
+          ) : isError ? (
+            <div className="rounded-2xl border border-[#E8DDD4] bg-white p-10 text-center shadow-sm">
+              <BookOpen className="mx-auto mb-4 h-12 w-12 text-[#C17B4F]/60" />
+              <p className="text-[#2E1208] font-medium">Unable to load the catalog.</p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-6 rounded-full bg-[#C17B4F] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#A55E36]"
+              >
+                Try again
               </button>
-            </Link>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-};
+            </div>
+          ) : books.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#C9B8A8] bg-white/80 p-12 text-center">
+              <BookOpen className="mx-auto mb-4 h-12 w-12 text-[#C17B4F]/60" />
+              <p className="text-lg text-[#2E1208]">No books yet</p>
+              <p className="mt-2 text-[#5C4436]">Check back soon for new releases.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {books.map((book) => (
+                <BookShowcaseCard
+                  key={book.id}
+                  id={String(book.id)}
+                  title={book.title}
+                  author={book.author}
+                  slug={book.slug}
+                  coverImage={book.coverImage}
+                  rating={book.rating}
+                  description={book.description}
+                  priceCents={book.priceCents}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
 
-export default Books;
+      <Footer />
+    </div>
+  );
+}
