@@ -5,9 +5,9 @@ import { isAdmin } from '../middleware/authMiddleware';
 const router = Router();
 
 router.get('/', getBooks);
-router.get('/:id', getBook);
+router.get('/:idOrSlug', getBook);
 router.post('/', isAdmin, createBook);
-router.put('/:id', isAdmin, updateBook);
-router.delete('/:id', isAdmin, deleteBook);
+router.put('/:idOrSlug', isAdmin, updateBook);
+router.delete('/:idOrSlug', isAdmin, deleteBook);
 
 export default router;
