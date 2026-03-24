@@ -12,10 +12,11 @@ interface Book {
   coverImage?: string;
   rating?: number;
   description?: string;
+  publishedYear?: number;
 }
 
-// Only the base API URL
-const API_URL = import.meta.env.VITE_API_URL || "https://cozy-book-nook.vercel.app/api";
+// Update this to match your backend URL
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const Books = () => {
   const [books, setBooks] = useState<Book[]>([]);
@@ -25,12 +26,18 @@ const Books = () => {
   useEffect(() => {
     const fetchBooks = async () => {
       try {
+        setLoading(true);
+        console.log("Fetching books from:", `${API_URL}/books`);
+        
         const res = await axios.get(`${API_URL}/books`);
-        // Show only first 4 books on homepage
+        console.log("Books fetched:", res.data);
+        
+        // Show all books or limit to first 4
         setBooks(res.data.slice(0, 4));
+        setError(null);
       } catch (err: any) {
-        setError("Failed to load books");
-        console.error(err);
+        console.error("Failed to load books:", err);
+        setError(err.message || "Failed to load books");
       } finally {
         setLoading(false);
       }
@@ -86,10 +93,10 @@ const Books = () => {
         <div className="container mx-auto px-4 text-center">
           <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-[#2E1208] mb-2">
-            Coming Soon
+            No Books Yet
           </h2>
           <p className="text-gray-600">
-            New books and publications will be available soon.
+            Check back soon for new book releases.
           </p>
         </div>
       </section>
@@ -115,7 +122,7 @@ const Books = () => {
           {books.map((book) => (
             <Link
               key={book.id}
-              to={`/book/${book.slug}`}
+              to={`/book/${book.slug || book.id}`}
               className="group"
             >
               <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
@@ -126,11 +133,12 @@ const Books = () => {
                       src={
                         book.coverImage.startsWith("http")
                           ? book.coverImage
-                          : `${API_URL.replace('/api', '')}${book.coverImage}`
+                          : `http://localhost:5000${book.coverImage}`
                       }
                       alt={book.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
+                        console.log("Failed to load image:", book.coverImage);
                         e.currentTarget.src = "https://via.placeholder.com/300x450?text=Book+Cover";
                       }}
                     />
@@ -164,14 +172,16 @@ const Books = () => {
         </div>
 
         {/* View All Books Button */}
-        <div className="text-center mt-12">
-          <Link to="/books">
-            <button className="bg-[#C17B4F] hover:bg-[#A55E36] text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 shadow-md hover:shadow-lg inline-flex items-center gap-2">
-              View All Books
-              <ArrowRight className="h-5 w-5" />
-            </button>
-          </Link>
-        </div>
+        {books.length > 0 && (
+          <div className="text-center mt-12">
+            <Link to="/books">
+              <button className="bg-[#C17B4F] hover:bg-[#A55E36] text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 shadow-md hover:shadow-lg inline-flex items-center gap-2">
+                View All Books
+                <ArrowRight className="h-5 w-5" />
+              </button>
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );
