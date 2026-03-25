@@ -1,21 +1,89 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
 @layer base {
-  body {
-    font-family: 'Source Sans 3', sans-serif;
+  :root {
+    /* Backgrounds & Surfaces */
+    --background: 39 30% 96%;     /* #F9F6EF */
+    --foreground: 24 40% 12%;     /* #2E1208 */
+    
+    /* Primary Brand Colors */
+    --primary: 24 50% 53%;        /* #C17B4F */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary Colors */
+    --secondary: 24 40% 12%;      /* #2E1208 */
+    --secondary-foreground: 0 0% 100%;
+    
+    /* UI Elements */
+    --card: 0 0% 100%;
+    --card-foreground: 24 40% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 40% 12%;
+    --muted: 30 20% 92%;
+    --muted-foreground: 24 20% 40%;
+    --accent: 24 50% 53%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 15% 85%;
+    --input: 30 15% 85%;
+    --ring: 24 50% 53%;
+    
+    /* Custom Brand Colors */
+    --warm-cream: 39 30% 96%;     /* #F9F6EF */
+    --rich-burgundy: 24 40% 12%;  /* #2E1208 */
+    --forest-green: 120 30% 25%;
+    --golden-amber: 24 50% 53%;   /* #C17B4F */
+    --soft-brown: 24 30% 40%;
+    --paper-white: 0 0% 100%;
+    
+    /* Border Radius */
+    --radius: 0.5rem;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: 'Playfair Display', serif;
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-[#F9F6EF] text-[#2E1208] font-body antialiased;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-[#E8DDD4];
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[#C17B4F] rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-[#A55E36];
+  }
+}
+
+@layer components {
+  .container-custom {
+    @apply container mx-auto px-4 max-w-7xl;
+  }
+  
+  .heading-gradient {
+    @apply bg-gradient-to-r from-[#2E1208] to-[#C17B4F] bg-clip-text text-transparent;
+  }
+  
+  .gold-border {
+    @apply border border-[#C17B4F] shadow-sm;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
   }
 }

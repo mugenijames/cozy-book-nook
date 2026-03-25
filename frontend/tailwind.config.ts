@@ -54,29 +54,25 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
 
-        /* Your Custom Brand Colors */
-        cream: "hsl(var(--warm-cream))",
-        burgundy: "hsl(var(--rich-burgundy))",
-        forest: "hsl(var(--forest-green))",
-        amber: "hsl(var(--golden-amber))",
-        brown: "hsl(var(--soft-brown))",
-        paper: "hsl(var(--paper-white))",
+        /* Direct color values for fallback */
+        cream: "#F9F6EF",
+        burgundy: "#2E1208",
+        gold: "#C17B4F",
+        "dark-gold": "#A55E36",
+        brown: "#8B4513",
 
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
           primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground":
-            "hsl(var(--sidebar-primary-foreground))",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
           accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground":
-            "hsl(var(--sidebar-accent-foreground))",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
       },
 
-      /* ✅ PREMIUM FONT SYSTEM */
       fontFamily: {
         heading: ['"Playfair Display"', "serif"],
         body: ["Inter", "sans-serif"],
@@ -123,4 +119,4 @@ const config: Config = {
   plugins: [require("tailwindcss-animate")],
 };
 
-export default config; 
+export default config;
