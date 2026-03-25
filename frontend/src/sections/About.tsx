@@ -1,58 +1,116 @@
-import { motion } from 'framer-motion'; // This is the line that fixes the 'ReferenceError'
+// frontend/src/sections/About.tsx
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const About = () => {
+// Import your actual images from src/assets
+import churchImg from "@/assets/church.jpeg";
+import schoolImg from "@/assets/school.jpeg";
+import leaderTrainingImg from "@/assets/leader-training.jpeg";
+import communityImg2 from "@/assets/community2.jpeg";
+import communityImg from "@/assets/community.jpeg";
+import ariseTurkanaImg from "@/assets/ARISE-TURKANA.png";
+import logo from "@/assets/logo.png";
+
+const images = [
+  {
+    src: churchImg,
+    alt: "David Emuria at church event",
+    caption: "Mentoring the next generation of believers during a joyful youth fellowship service"
+  },
+  {
+    src: schoolImg,
+    alt: "David Emuria with students",
+    caption: "Inspiring young minds"
+  },
+  {
+    src: leaderTrainingImg,
+    alt: "David Emuria leadership training",
+    caption: "Leadership development programs"
+  },
+  {
+    src: communityImg2,
+    alt: "David Emuria community outreach",
+    caption: "Community transformation"
+  },
+  {
+    src: communityImg,
+    alt: "David Emuria church ministry",
+    caption: "Building strong church communities"
+  },
+  {
+    src: ariseTurkanaImg,
+    alt: "David Emuria philanthropy",
+    caption: "Arise Turkana initiative"
+  },
+  {
+    src: logo,
+    alt: "David Emuria",
+    caption: "Author & Speaker"
+  }
+];
+
+export default function About() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <section id="about" className="py-24 bg-white overflow-hidden">
-      <div className="container mx-auto max-w-6xl px-6 flex flex-col md:flex-row items-center gap-12">
-        
-        {/* Text Content (Left Side) */}
-        <motion.div 
-          className="md:w-1/2 text-left"
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-        >
-          <h2 className="text-3xl md:text-4xl font-bold mb-6 text-[#4A1F0E]">
-            About David Emuria
-          </h2>
-
-          <div className="space-y-4 text-lg text-gray-700 leading-relaxed">
-            <p>
-              David Emuria is a Kenyan author, speaker, leadership trainer, and social transformation advocate from Turkana. His life and work are shaped by lived experience—growing up in hardship, navigating fatherlessness, poverty and broken family systems, and later finding healing, purpose, and leadership through faith, discipline, and learning.
+    <section id="about" className="py-12 md:py-20 bg-white">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+          
+          {/* Image Carousel Section */}
+          <div className="order-1 md:order-1">
+            <div className="relative rounded-2xl shadow-xl overflow-hidden border-4 border-[#C17B4F]">
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={currentIndex}
+                  src={images[currentIndex].src}
+                  alt={images[currentIndex].alt}
+                  className="w-full h-96 object-cover"
+                  initial={{ opacity: 0, scale: 1.1 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.5 }}
+                />
+              </AnimatePresence>
+              
+              <motion.div 
+                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4"
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <p className="text-white text-sm text-center">
+                  {images[currentIndex].caption}
+                </p>
+              </motion.div>
+            </div>
+          </div>
+          
+          {/* Text Content */}
+          <div className="order-2 md:order-2 text-center md:text-left">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-[#2E1208] mb-3 md:mb-4">
+              About David Emuria
+            </h2>
+            <div className="w-20 h-1 bg-[#C17B4F] mx-auto md:mx-0 mb-4 md:mb-6"></div>
+            <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4 leading-relaxed">
+              David Emuria is a passionate author, speaker, and philanthropist dedicated to transforming lives through the power of storytelling and practical wisdom.
             </p>
-            <p>
-              David writes and speaks for the underdog, the overlooked, the struggling student, the leader in the making, and the generation searching for meaning. His message is raw, honest, and practical—bridging faith, psychology, leadership, personal development, and nation building.
+            <p className="text-sm md:text-base text-gray-700 mb-3 md:mb-4 leading-relaxed">
+              His work focuses on healing, identity, and purpose, helping individuals and communities discover their true potential and overcome life's challenges.
             </p>
-            <p>
-              He has served in multiple leadership roles within Christian unions, campus fellowships, and youth missions, and works closely with students, young leaders, churches, and communities across Kenya, particularly in marginalized regions such as Turkana.
-            </p>
-            <p className="font-semibold text-[#4A1F0E]">
-              Through his books, programs, and consulting work, David is committed to raising resilient individuals, healed leaders, and purpose-driven communities.
+            <p className="text-sm md:text-base text-gray-700 leading-relaxed">
+              Through his books, programs, and speaking engagements, David has touched thousands of lives across schools, churches, and community organizations.
             </p>
           </div>
-        </motion.div>
-
-      
-        <div className="md:w-1/2 flex justify-center relative">
-         
-          <div className="absolute inset-0 bg-[#D4A017]/5 rounded-full blur-3xl -z-10 scale-110" />
-          
-          <motion.img
-            src="./images/maximize_your_campus_life.jpg"
-            alt="David Emuria"
-            className="w-full max-w-sm rounded-2xl shadow-2xl"
-            initial={{ opacity: 0, scale: 0.8, x: 50 }}
-            whileInView={{ opacity: 1, scale: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            whileHover={{ scale: 1.03 }} 
-          />
         </div>
-
       </div>
     </section>
   );
-};
-
-export default About;
+}

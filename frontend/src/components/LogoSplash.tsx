@@ -20,13 +20,13 @@ export default function LogoSplash() {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#2E1208] to-[#4A2A1A]"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#F9F6EF]"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-center"
+            className="flex flex-col items-center justify-center text-center"
           >
             {/* Logo Animation */}
             <motion.div
@@ -39,12 +39,12 @@ export default function LogoSplash() {
                 repeat: 1,
                 ease: "easeInOut",
               }}
-              className="mx-auto mb-6"
+              className="mb-6"
             >
               <img 
                 src="/logo.png" 
                 alt="David Emuria" 
-                className="h-32 w-32 rounded-full border-4 border-[#D4A017] shadow-2xl object-cover"
+                className="h-32 w-32 rounded-full border-4 border-[#C17B4F] shadow-2xl object-cover"
               />
             </motion.div>
 
@@ -53,7 +53,7 @@ export default function LogoSplash() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.6 }}
-              className="font-heading text-3xl font-bold text-white md:text-4xl"
+              className="font-heading text-3xl font-bold text-[#2E1208] md:text-4xl"
             >
               David Emuria
             </motion.h1>
@@ -62,7 +62,7 @@ export default function LogoSplash() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.6 }}
-              className="mt-2 text-lg text-[#D4A017]"
+              className="mt-2 text-lg text-[#C17B4F]"
             >
               Author | Speaker | Philanthropist
             </motion.p>
@@ -72,10 +72,10 @@ export default function LogoSplash() {
               initial={{ width: 0 }}
               animate={{ width: "100%" }}
               transition={{ duration: 1.5, delay: 0.8 }}
-              className="mx-auto mt-8 h-1 w-48 overflow-hidden rounded-full bg-[#D4A017]/30"
+              className="mx-auto mt-8 h-1 w-48 overflow-hidden rounded-full bg-[#C17B4F]/30"
             >
               <motion.div
-                className="h-full w-full bg-[#D4A017]"
+                className="h-full w-full bg-[#C17B4F]"
                 initial={{ x: "-100%" }}
                 animate={{ x: "100%" }}
                 transition={{

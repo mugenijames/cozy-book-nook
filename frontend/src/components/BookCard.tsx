@@ -1,69 +1,73 @@
-// src/components/BookCard.tsx
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Star, BookOpen, Calendar } from "lucide-react";
+import { Star, ShoppingBag, BookOpen } from "lucide-react";
+import { resolveBookCoverUrl } from "@/lib/resolveBookCover";
 
-interface BookCardProps {
+interface BookShowcaseCardProps {
   id: string;
   title: string;
   author: string;
-  coverImage?: string;
+  coverImage?: string | null;
   rating?: number;
-  publishedYear?: number;
+  priceCents?: number | null;
   slug?: string;
+  description?: string;
 }
 
-export default function BookCard({ 
-  id, 
-  title, 
-  author, 
-  coverImage, 
-  rating, 
-  publishedYear,
-  slug 
-}: BookCardProps) {
+export default function BookShowcaseCard({
+  id,
+  title,
+  author,
+  coverImage,
+  rating,
+  priceCents,
+  slug,
+}: BookShowcaseCardProps) {
+  const coverSrc = resolveBookCoverUrl(coverImage);
+  
   return (
-    <Link to={`/book/${slug || id}`}>
-      <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer overflow-hidden h-full">
-        <div className="aspect-[2/3] overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-          {coverImage ? (
+    <Link to={`/book/${slug || id}`} className="group">
+      <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 h-full">
+        {/* Book Cover - REDUCED SIZE */}
+        <div className="aspect-[2/3] overflow-hidden bg-gradient-to-br from-[#F9F6EF] to-[#E8E0D5] max-h-[280px]">
+          {coverSrc ? (
             <img
-              src={coverImage.startsWith('http') ? coverImage : `http://localhost:5000${coverImage}`}
+              src={coverSrc}
               alt={title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               onError={(e) => {
-                e.currentTarget.src = "https://via.placeholder.com/300x450?text=No+Cover";
+                e.currentTarget.src = "https://via.placeholder.com/200x300?text=No+Cover";
               }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <BookOpen className="h-12 w-12 text-gray-400" />
+              <BookOpen className="h-10 w-10 text-[#C17B4F]" />
             </div>
           )}
         </div>
-        
-        <CardContent className="p-4">
-          <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">
+
+        {/* Book Info - Compact */}
+        <div className="p-3">
+          <h3 className="font-semibold text-sm line-clamp-1 text-[#2E1208] group-hover:text-[#C17B4F] transition-colors">
             {title}
           </h3>
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{author}</p>
+          <p className="text-xs text-gray-600 mt-1 line-clamp-1">{author}</p>
           
-          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-            {rating && rating > 0 && (
-              <div className="flex items-center gap-1">
-                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                <span>{rating.toFixed(1)}</span>
-              </div>
-            )}
-            {publishedYear && (
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                <span>{publishedYear}</span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          {/* Rating - Smaller */}
+          {rating && rating > 0 && (
+            <div className="flex items-center gap-0.5 mt-2">
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+              <span className="text-xs text-gray-600">{rating.toFixed(1)}</span>
+            </div>
+          )}
+          
+          {/* Price - Smaller */}
+          {priceCents && priceCents > 0 && (
+            <p className="text-sm font-semibold text-[#C17B4F] mt-2">
+              ${(priceCents / 100).toFixed(2)}
+            </p>
+          )}
+        </div>
+      </div>
     </Link>
   );
 }

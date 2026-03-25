@@ -6,7 +6,7 @@ import path from 'path';
 import bookRoutes from './routes/book.routes';
 import checkoutRoutes from './routes/checkout.routes';
 import uploadRoutes from './routes/upload.routes';
-
+import invitationRoutes from './routes/invitation.routes';
 dotenv.config();
 
 const app = express();
@@ -45,7 +45,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/books', bookRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api', uploadRoutes);
-
+app.use('/api/invite', invitationRoutes);
 // 5. Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
