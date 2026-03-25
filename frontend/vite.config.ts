@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
+  base: '/', // Important for Vercel
   server: {
     host: "::",
     port: 8080,
@@ -17,7 +18,6 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:5000",
         changeOrigin: true,
         secure: false,
-        // These settings prevent the proxy from buffering and reset issues
         ws: true,
         timeout: 600000, 
         proxyTimeout: 600000,
@@ -26,7 +26,6 @@ export default defineConfig(({ mode }) => ({
             console.log('Proxy error:', err);
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
-            // Ensure headers are correctly forwarded
             if (req.headers['content-type']) {
               proxyReq.setHeader('content-type', req.headers['content-type']);
             }
@@ -42,6 +41,17 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: mode === 'development',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
     },
   },
 }));
