@@ -23,6 +23,8 @@ const bookSchema = z.object({
   publishedYear: z.number().int().optional(),
   pages: z.number().int().positive().optional(),
   rating: z.number().min(0).max(5).optional(),
+  /** Major units (e.g. 12.99 USD); converted to priceCents on save */
+  listPrice: z.string().optional(),
 });
 
 type BookFormData = z.infer<typeof bookSchema>;
@@ -59,6 +61,7 @@ export default function BookFormPage() {
       publishedYear: undefined,
       pages: undefined,
       rating: 0,
+      listPrice: "",
     },
   });
 
@@ -67,7 +70,11 @@ export default function BookFormPage() {
       const fetchBook = async () => {
         try {
           const book = await getBook(id);
-          form.reset(book);
+          const listPrice =
+            book.priceCents != null && book.priceCents !== undefined
+              ? (Number(book.priceCents) / 100).toFixed(2).replace(/\.?0+$/, "")
+              : "";
+          form.reset({ ...book, listPrice });
           if (book.coverImage) {
             setCoverPreview(book.coverImage);
           }
@@ -180,13 +187,27 @@ export default function BookFormPage() {
       return;
     }
 
+    const { listPrice, ...rest } = data;
+    const trimmed = listPrice?.trim() ?? "";
+    let priceCents: number | null = null;
+    if (trimmed !== "") {
+      const n = parseFloat(trimmed);
+      if (!Number.isFinite(n) || n < 0) {
+        toast.error("List price must be a valid non-negative number");
+        return;
+      }
+      priceCents = Math.round(n * 100);
+    }
+
+    const payload = { ...rest, priceCents };
+
     setLoading(true);
     try {
       if (isEdit && id) {
-        await updateBook(id, data);
+        await updateBook(id, payload);
         toast.success("Book updated successfully");
       } else {
-        await createBook(data);
+        await createBook(payload);
         toast.success("Book created successfully");
       }
       navigate("/admin/books");
@@ -337,6 +358,21 @@ export default function BookFormPage() {
                 disabled={loading}
                 className="resize-none"
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="listPrice">List price (for online checkout)</Label>
+              <Input
+                id="listPrice"
+                inputMode="decimal"
+                placeholder="e.g. 12.99 — leave empty if not sold online"
+                {...form.register("listPrice")}
+                disabled={loading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Amount in your Stripe currency (see backend{" "}
+                <code className="rounded bg-muted px-1">STRIPE_CURRENCY</code>). Stored as cents.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

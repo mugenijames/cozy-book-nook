@@ -1,31 +1,30 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  // optional but recommended for migrations on Neon serverless
-  directUrl = env("DIRECT_URL")
-}
-
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
-model Book {
-  id            String   @id @default(uuid())
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
 
+model Book {
+  id            Int      @id @default(autoincrement())
+  slug          String?  @unique 
   title         String
   author        String
   description   String?
   genre         String?
-  coverImage    String?          // URL to cover image
+  coverImage    String?
   publishedYear Int?
   pages         Int?
   rating        Float    @default(0.0)
+  /** Price in smallest currency unit (e.g. cents for USD) for Stripe Checkout; null = not sold online */
+  priceCents    Int?
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Optional indexes / constraints you might want later
   @@index([title])
   @@index([author])
-  @@map("books")
 }

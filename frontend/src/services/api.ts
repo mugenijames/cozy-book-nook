@@ -65,6 +65,7 @@ const apiFetch = async <T>(
 
 export interface Book {
   id: string;
+  slug?: string | null;
   title: string;
   author: string;
   description?: string | null;
@@ -73,12 +74,15 @@ export interface Book {
   publishedYear?: number | null;
   pages?: number | null;
   rating: number;
+  /** Smallest currency unit (Stripe); omit or null = not sold online */
+  priceCents?: number | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export type BookInput = Omit<Book, 'id' | 'createdAt' | 'updatedAt'> & {
   rating?: number;
+  priceCents?: number | null;
 };
 
 export type BookUpdateInput = Partial<BookInput>;
@@ -103,6 +107,19 @@ export const updateBook = (id: string, bookData: BookUpdateInput): Promise<Book>
 export const deleteBook = (id: string): Promise<{ message: string }> =>
   apiFetch<{ message: string }>(`/api/books/${id}`, {
     method: 'DELETE',
+  });
+
+export type CheckoutStatus = { enabled: boolean };
+
+export const getCheckoutStatus = (): Promise<CheckoutStatus> =>
+  apiFetch<CheckoutStatus>('/api/checkout/status');
+
+export const createCheckoutSession = (
+  bookId: string
+): Promise<{ url: string }> =>
+  apiFetch<{ url: string }>('/api/checkout/session', {
+    method: 'POST',
+    body: JSON.stringify({ bookId }),
   });
 
 export default {

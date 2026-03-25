@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import bookRoutes from './routes/book.routes';
+import checkoutRoutes from './routes/checkout.routes';
 import uploadRoutes from './routes/upload.routes';
 
 dotenv.config();
@@ -42,6 +43,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // 4. Routes
 app.use('/api/books', bookRoutes);
+app.use('/api/checkout', checkoutRoutes);
 app.use('/api', uploadRoutes);
 
 // 5. Health check endpoint
@@ -65,6 +67,7 @@ app.listen(PORT, () => {
   console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔓 Auth Bypass: ${BYPASS_AUTH ? 'ENABLED' : 'DISABLED'}`);
   console.log(`📚 Books API: http://localhost:${PORT}/api/books`);
+  console.log(`💳 Checkout API: http://localhost:${PORT}/api/checkout/status | POST /api/checkout/session`);
   console.log(`🖼️  Upload API: http://localhost:${PORT}/api/upload-cover`);
   console.log(`📁 Uploads served from: /uploads\n`);
   
