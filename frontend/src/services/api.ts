@@ -1,9 +1,9 @@
 // src/services/api.ts
 import { mockBooks } from "@/data/mockBooks";
 
-// Set to true to use mock data (no backend needed for now)
-// Set to false when backend is deployed
-const USE_MOCK_DATA = true;
+// Use mock data only during local development.
+// Production builds must use the real backend APIs.
+const USE_MOCK_DATA = import.meta.env.DEV;
 
 const getApiBase = (): string => {
   if (import.meta.env.DEV) {
