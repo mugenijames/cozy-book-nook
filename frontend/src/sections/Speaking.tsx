@@ -55,31 +55,32 @@ const Speaking = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     if (!validateForm()) {
       toast.error("Please fill in all required fields correctly");
       return;
     }
-
+  
     setSubmitting(true);
-
+  
     try {
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
       
-      const response = await fetch(`${API_BASE}/api/invitations/invite`, {
+      // ✅ FIXED: Correct endpoint
+      const response = await fetch(`${API_BASE}/api/invite`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
-
+  
       const data = await response.json();
-
+  
       if (!response.ok) {
         throw new Error(data.error || "Failed to send invitation");
       }
-
+  
       toast.success("Invite sent successfully! You'll receive a confirmation email shortly.");
       setOpen(false);
       setFormData({
