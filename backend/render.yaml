@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: david-emuria-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        value: your-secret-key-here-change-this
+      - key: BYPASS_AUTH
+        value: false
+      - key: DATABASE_URL
+        value: file:./dev.db
