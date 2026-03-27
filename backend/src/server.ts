@@ -31,9 +31,6 @@ app.use((req, res, next) => {
     console.log(`>>> ${req.method} ${req.originalUrl} | Referrer: ${req.get('Referer') || 'direct'}`);
   }
   
-  // REMOVED the problematic filter that was blocking uploads
-  // The old code was returning 204 for GET requests to upload-cover
-  // which would block the upload functionality
   
   next();
 });
@@ -45,7 +42,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/books', bookRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api', uploadRoutes);
-app.use('/api/invite', inviteRoutes);
+app.use('/api/invite', invitationRoutes);
 // 5. Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
