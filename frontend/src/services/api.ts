@@ -1,9 +1,9 @@
 // src/services/api.ts
 import { mockBooks } from "@/data/mockBooks";
 
-// Use mock data only during local development.
-// Production builds must use the real backend APIs.
-const USE_MOCK_DATA = import.meta.env.DEV;
+// Mock mode is optional. Default is OFF so dev uses real backend when available.
+// To enable mock mode: set `VITE_USE_MOCK_DATA=true` in `frontend/.env.local`.
+const USE_MOCK_DATA = String(import.meta.env.VITE_USE_MOCK_DATA || "").toLowerCase() === "true";
 
 const getApiBase = (): string => {
   if (import.meta.env.DEV) {

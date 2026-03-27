@@ -267,7 +267,7 @@ const Speaking = () => {
                 </div>
               </div>
 
-              {/* Fixed Footer with Submit Button */}
+              
               <DialogFooter className="flex-shrink-0 flex-col gap-3 border-t border-[#E8DDD4] bg-[#FDF8F3] px-6 py-5 sm:flex-row sm:justify-end sm:gap-3">
                 <Button
                   type="button"
