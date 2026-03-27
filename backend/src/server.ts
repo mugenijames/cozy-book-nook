@@ -45,7 +45,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/books', bookRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api', uploadRoutes);
-app.use('/api/invite', invitationRoutes);
+app.use('/api/invite', inviteRoutes);
 // 5. Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
