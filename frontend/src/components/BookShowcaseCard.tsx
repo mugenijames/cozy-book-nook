@@ -26,7 +26,6 @@ export function BookShowcaseCard({
   slug,
   coverImage,
   rating,
-  description,
   priceCents,
 }: BookShowcaseCardProps) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -66,12 +65,13 @@ export function BookShowcaseCard({
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[#E8DDD4] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
       <Link to={detailHref} className="block shrink-0">
-        <div className="aspect-[2/3] overflow-hidden bg-gradient-to-br from-[#F9F6EF] to-[#E8E0D5]">
+        {/* Cover — fixed height so cards are uniform */}
+        <div className="h-48 w-full overflow-hidden bg-gradient-to-br from-[#F9F6EF] to-[#E8E0D5]">
           {coverSrc ? (
             <img
               src={coverSrc}
               alt={`Cover: ${title}`}
-              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-105"
               onError={(e) => {
                 e.currentTarget.onerror = null;
                 e.currentTarget.src = "/placeholder.svg";
@@ -87,7 +87,7 @@ export function BookShowcaseCard({
 
       <div className="flex flex-1 flex-col p-4">
         <Link to={detailHref}>
-          <h3 className="font-heading text-lg font-semibold leading-snug text-[#2E1208] transition group-hover:text-[#C17B4F] line-clamp-2">
+          <h3 className="font-heading text-base font-semibold leading-snug text-[#2E1208] transition group-hover:text-[#C17B4F] line-clamp-2">
             {title}
           </h3>
         </Link>
@@ -106,11 +106,7 @@ export function BookShowcaseCard({
           </div>
         )}
 
-        {description ? (
-          <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-[#5C4436]">
-            {description}
-          </p>
-        ) : null}
+        {/* Description intentionally hidden — visible on detail page only */}
 
         <div className="mt-auto flex flex-wrap gap-2 pt-4">
           <Link

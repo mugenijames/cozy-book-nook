@@ -1,34 +1,3 @@
-generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
-}
-
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
-model Book {
-  id            String   @id @default(uuid())
-  title         String
-  author        String
-  description   String?
-  genre         String?
-  coverImage    String?
-  publishedYear Int?
-  pages         Int?
-  rating        Float    @default(0.0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  slug          String?  @unique
-  priceCents    Int?
-
-  @@index([title])
-  @@index([author])
-  @@map("books")
-}
-
 // backend/src/controllers/order.controller.ts
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";

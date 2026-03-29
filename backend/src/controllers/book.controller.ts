@@ -2,18 +2,10 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 
-// Helper to safely extract single string param
 function getSingleParam(value: string | string[] | undefined): string {
   if (!value) throw new Error("Missing required parameter");
-  if (Array.isArray(value)) {
-    return value[0];
-  }
+  if (Array.isArray(value)) return value[0];
   return value;
-}
-
-function parseBookId(value: string): number | null {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function slugify(title: string): string {
@@ -24,29 +16,24 @@ function slugify(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-async function generateUniqueSlug(title: string): Promise<string> {
+async function generateUniqueSlug(title: string, excludeId?: string): Promise<string> {
   const baseSlug = slugify(title) || "book";
   let candidate = baseSlug;
   let counter = 1;
 
-  while (await prisma.book.findUnique({ where: { slug: candidate } })) {
+  while (true) {
+    const existing = await prisma.book.findUnique({ where: { slug: candidate } });
+    if (!existing || existing.id === excludeId) break;
     counter += 1;
-    candidate = `${baseSlug}-${counter}`;
+    candidate = baseSlug + "-" + counter;
   }
 
   return candidate;
 }
 
-// Get all books
 const getBooks = async (req: Request, res: Response) => {
   try {
-    const books = await prisma.book.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-    
-    console.log(`✅ Fetched ${books.length} books`);
+    const books = await prisma.book.findMany({ orderBy: { createdAt: "desc" } });
     res.json(books);
   } catch (error) {
     console.error("Error fetching books:", error);
@@ -54,30 +41,18 @@ const getBooks = async (req: Request, res: Response) => {
   }
 };
 
-// Get a single book by ID or slug
 const getBook = async (req: Request, res: Response) => {
   try {
     const idOrSlug = getSingleParam(req.params.idOrSlug);
-    const parsedId = Number(idOrSlug);
-    const isNumericId = Number.isInteger(parsedId) && String(parsedId) === idOrSlug;
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const isUUID = uuidPattern.test(idOrSlug);
 
-    console.log(`🔍 Looking for book with ID/slug: ${idOrSlug}`);
+    const book = isUUID
+      ? await prisma.book.findUnique({ where: { id: idOrSlug } })
+      : await prisma.book.findUnique({ where: { slug: idOrSlug } });
 
-    const book = isNumericId
-      ? await prisma.book.findFirst({
-          where: {
-            OR: [{ id: parsedId }, { slug: idOrSlug }],
-          },
-        })
-      : await prisma.book.findUnique({
-          where: { slug: idOrSlug },
-        });
+    if (!book) return res.status(404).json({ error: "Book not found" });
 
-    if (!book) {
-      return res.status(404).json({ error: "Book not found" });
-    }
-
-    console.log(`✅ Found book: ${book.title}`);
     res.json(book);
   } catch (error) {
     console.error("Error fetching book:", error);
@@ -85,27 +60,17 @@ const getBook = async (req: Request, res: Response) => {
   }
 };
 
-// Create a new book
 const createBook = async (req: Request, res: Response) => {
   try {
-    const {
-      title,
-      description,
-      coverImage,
-      author,
-      genre,
-      publishedYear,
-      pages,
-      rating,
-      priceCents,
-    } = req.body;
+    const { title, description, coverImage, author, genre, publishedYear, pages, rating, priceCents } = req.body;
 
-    // Basic runtime check
     if (!title || !author) {
       return res.status(400).json({ error: "Title and author are required" });
     }
 
-    const slug = req.body.slug ? String(req.body.slug) : await generateUniqueSlug(String(title));
+    const slug = req.body.slug
+      ? String(req.body.slug)
+      : await generateUniqueSlug(String(title));
 
     let resolvedPrice: number | null = null;
     if (priceCents !== undefined && priceCents !== null && priceCents !== "") {
@@ -128,7 +93,6 @@ const createBook = async (req: Request, res: Response) => {
       },
     });
 
-    console.log(`✅ Created new book: ${newBook.title} (slug: ${newBook.slug})`);
     res.status(201).json(newBook);
   } catch (error) {
     console.error("Error creating book:", error);
@@ -136,31 +100,13 @@ const createBook = async (req: Request, res: Response) => {
   }
 };
 
-// Update a book
 const updateBook = async (req: Request, res: Response) => {
   try {
-    const idOrSlug = getSingleParam(req.params.idOrSlug);
-    const id = parseBookId(idOrSlug);
-    if (id === null) {
-      return res.status(400).json({ error: "A numeric book id is required for updates" });
-    }
+    const id = getSingleParam(req.params.id);
+    const { title, description, coverImage, author, genre, publishedYear, pages, rating, slug, priceCents } = req.body;
 
-    const {
-      title,
-      description,
-      coverImage,
-      author,
-      genre,
-      publishedYear,
-      pages,
-      rating,
-      slug,
-      priceCents,
-    } = req.body;
-
-    // Prepare update data
     const updateData: any = {};
-    
+
     if (title !== undefined) updateData.title = String(title);
     if (description !== undefined) updateData.description = String(description);
     if (coverImage !== undefined) updateData.coverImage = String(coverImage);
@@ -178,31 +124,18 @@ const updateBook = async (req: Request, res: Response) => {
         updateData.priceCents = Number.isInteger(n) && n >= 0 ? n : null;
       }
     }
-    
-    // Handle slug update
+
     if (slug !== undefined) {
-      updateData.slug = slug;
-    } else if (title !== undefined && !slug) {
-      // Auto-generate slug from new title if not provided
-      const newSlug = slugify(String(title));
-      
-      // Check if new slug already exists (excluding current book)
-      const existingBook = await prisma.book.findFirst({
-        where: {
-          slug: newSlug,
-          NOT: { id: id }
-        }
-      });
-      
-      updateData.slug = existingBook ? await generateUniqueSlug(String(title)) : newSlug;
+      updateData.slug = String(slug);
+    } else if (title !== undefined) {
+      updateData.slug = await generateUniqueSlug(String(title), id);
     }
 
     const updatedBook = await prisma.book.update({
-      where: { id },
+      where: { id: id },
       data: updateData,
     });
 
-    console.log(`✅ Updated book: ${updatedBook.title}`);
     res.json(updatedBook);
   } catch (error) {
     console.error("Error updating book:", error);
@@ -210,18 +143,10 @@ const updateBook = async (req: Request, res: Response) => {
   }
 };
 
-// Delete a book
 const deleteBook = async (req: Request, res: Response) => {
   try {
-    const idOrSlug = getSingleParam(req.params.idOrSlug);
-    const id = parseBookId(idOrSlug);
-    if (id === null) {
-      return res.status(400).json({ error: "A numeric book id is required for deletion" });
-    }
-
-    await prisma.book.delete({ where: { id } });
-
-    console.log(`✅ Deleted book with ID: ${id}`);
+    const id = getSingleParam(req.params.id);
+    await prisma.book.delete({ where: { id: id } });
     res.status(200).json({ message: "Book deleted successfully" });
   } catch (error) {
     console.error("Error deleting book:", error);

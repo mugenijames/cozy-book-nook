@@ -33,13 +33,19 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       .json({ error: "Online card payments are not configured on the server." });
   }
 
-  const bookId = Number(req.body?.bookId ?? req.body?.id);
-  if (!Number.isInteger(bookId) || bookId < 1) {
+  // Accept either a UUID id or a slug
+  const bookIdOrSlug = String(req.body?.bookId ?? req.body?.id ?? "").trim();
+  if (!bookIdOrSlug) {
     return res.status(400).json({ error: "Valid bookId is required." });
   }
 
   const currency = (process.env.STRIPE_CURRENCY || "usd").toLowerCase();
-  const book = await prisma.book.findUnique({ where: { id: bookId } });
+
+  // Look up by UUID or slug
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const book = uuidPattern.test(bookIdOrSlug)
+    ? await prisma.book.findUnique({ where: { id: bookIdOrSlug } })
+    : await prisma.book.findUnique({ where: { slug: bookIdOrSlug } });
 
   if (!book) {
     return res.status(404).json({ error: "Book not found." });
@@ -52,13 +58,9 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       .json({ error: "This book does not have an online price set." });
   }
 
-  const slugSegment = book.slug || String(book.id);
-  const successUrl = `${frontendBase()}/book/${encodeURIComponent(
-    slugSegment
-  )}?checkout=success`;
-  const cancelUrl = `${frontendBase()}/book/${encodeURIComponent(
-    slugSegment
-  )}?checkout=cancel`;
+  const slugSegment = book.slug || book.id;
+  const successUrl = `${frontendBase()}/book/${encodeURIComponent(slugSegment)}?checkout=success`;
+  const cancelUrl = `${frontendBase()}/book/${encodeURIComponent(slugSegment)}?checkout=cancel`;
 
   let coverUrl: string | undefined;
   if (book.coverImage) {
@@ -95,7 +97,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
-        bookId: String(book.id),
+        bookId: book.id,
       },
     });
 
