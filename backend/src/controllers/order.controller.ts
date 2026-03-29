@@ -2,40 +2,84 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 
-// Create a new pending order
+// Create a new order with AUTOMATIC APPROVAL
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    const { bookId, bookTitle, paymentMethod, transactionCode, email, amountCents } = req.body;
+    const { 
+      bookId, 
+      bookTitle, 
+      paymentMethod, 
+      transactionCode, 
+      email, 
+      amountCents 
+    } = req.body;
 
+    // Validation
     if (!bookId || !paymentMethod || !transactionCode || !email) {
-      return res.status(400).json({ error: "Missing required fields." });
+      return res.status(400).json({ 
+        success: false, 
+        error: "Missing required fields: bookId, paymentMethod, transactionCode, email" 
+      });
     }
 
+    // Check if book exists
+    const book = await prisma.book.findUnique({
+      where: { id: String(bookId) }
+    });
+
+    if (!book) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Book not found" 
+      });
+    }
+
+    // Create order with automatic approval
     const order = await prisma.order.create({
       data: {
         bookId: String(bookId),
-        bookTitle: String(bookTitle),
+        bookTitle: String(bookTitle || book.title),
         paymentMethod: String(paymentMethod),
-        transactionCode: String(transactionCode),
-        email: String(email),
-        amountCents: Number(amountCents),
-        status: "pending",
+        transactionCode: String(transactionCode).trim().toUpperCase(),
+        email: String(email).toLowerCase().trim(),
+        amountCents: Number(amountCents) || 0,
+        status: "approved",                    // ← AUTOMATIC APPROVAL
       },
     });
 
-    console.log(`✅ New order created: ${order.id} for ${bookTitle}`);
-    res.status(201).json({ success: true, orderId: order.id });
-  } catch (error) {
+    console.log(`✅ Order automatically approved: ${order.id} | Book: ${bookTitle} | Email: ${email}`);
+
+    res.status(201).json({ 
+      success: true, 
+      message: "Payment successful! You now have access to the book.",
+      orderId: order.id,
+      status: "approved"
+    });
+
+  } catch (error: any) {
     console.error("Error creating order:", error);
-    res.status(500).json({ error: "Failed to create order." });
+
+    // Handle duplicate transaction code
+    if (error.code === 'P2002') {
+      return res.status(409).json({ 
+        success: false, 
+        error: "This transaction has already been processed." 
+      });
+    }
+
+    res.status(500).json({ 
+      success: false, 
+      error: "Failed to process your order. Please try again or contact support." 
+    });
   }
 };
 
-// Get all orders (admin)
+// Get all orders (for admin)
 export const getOrders = async (req: Request, res: Response) => {
   try {
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: "desc" },
+      include: { book: true },
     });
     res.json(orders);
   } catch (error) {
@@ -44,14 +88,14 @@ export const getOrders = async (req: Request, res: Response) => {
   }
 };
 
-// Approve or reject an order (admin)
+// Manual status update (admin override)
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!["approved", "rejected"].includes(status)) {
-      return res.status(400).json({ error: "Status must be approved or rejected." });
+    if (!["approved", "rejected", "pending"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
     }
 
     const order = await prisma.order.update({
@@ -59,15 +103,15 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       data: { status },
     });
 
-    console.log(`✅ Order ${id} marked as ${status}`);
+    console.log(`Order ${id} manually updated to ${status}`);
     res.json(order);
   } catch (error) {
     console.error("Error updating order:", error);
-    res.status(500).json({ error: "Failed to update order." });
+    res.status(500).json({ error: "Failed to update order status." });
   }
 };
 
-// Check if an order is approved for a given book + email
+// Check if user has access to a book
 export const checkOrderStatus = async (req: Request, res: Response) => {
   try {
     const { bookId, email } = req.query;
@@ -79,14 +123,17 @@ export const checkOrderStatus = async (req: Request, res: Response) => {
     const order = await prisma.order.findFirst({
       where: {
         bookId: String(bookId),
-        email: String(email),
+        email: String(email).toLowerCase().trim(),
         status: "approved",
       },
     });
 
-    res.json({ approved: Boolean(order) });
+    res.json({ 
+      approved: Boolean(order),
+      orderId: order?.id 
+    });
   } catch (error) {
     console.error("Error checking order:", error);
-    res.status(500).json({ error: "Failed to check order." });
+    res.status(500).json({ error: "Failed to check order status." });
   }
 };

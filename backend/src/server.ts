@@ -8,6 +8,7 @@ import bookRoutes from './routes/book.routes';
 import checkoutRoutes from './routes/checkout.routes';
 import uploadRoutes from './routes/upload.routes';
 import invitationRoutes from './routes/invitation.routes';
+import orderRoutes from './routes/order.routes';
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use('/api/books', bookRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/invite', invitationRoutes);
+app.use("/api/orders", orderRoutes);
 
 // 5. Health check endpoint
 app.get('/health', (req, res) => {
