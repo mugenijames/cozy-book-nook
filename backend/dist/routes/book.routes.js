@@ -7,6 +7,6 @@ const router = (0, express_1.Router)();
 router.get('/', book_controller_1.getBooks);
 router.get('/:idOrSlug', book_controller_1.getBook);
 router.post('/', authMiddleware_1.isAdmin, book_controller_1.createBook);
-router.put('/:idOrSlug', authMiddleware_1.isAdmin, book_controller_1.updateBook);
-router.delete('/:idOrSlug', authMiddleware_1.isAdmin, book_controller_1.deleteBook);
+router.put('/:id', authMiddleware_1.isAdmin, book_controller_1.updateBook);
+router.delete('/:id', authMiddleware_1.isAdmin, book_controller_1.deleteBook);
 exports.default = router;
