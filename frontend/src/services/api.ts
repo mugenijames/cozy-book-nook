@@ -6,15 +6,25 @@ import { mockBooks } from "@/data/mockBooks";
 const USE_MOCK_DATA = String(import.meta.env.VITE_USE_MOCK_DATA || "").toLowerCase() === "true";
 
 const getApiBase = (): string => {
+  // In development, use environment variable or localhost fallback
   if (import.meta.env.DEV) {
-    return ''; // Vite proxy handles this in dev
+    const devBase = import.meta.env.VITE_API_BASE_URL;
+    if (devBase) {
+      console.log('📡 DEV mode: Using VITE_API_BASE_URL =', devBase);
+      return devBase.replace(/\/+$/, '');
+    }
+    console.log('📡 DEV mode: Using localhost:5000 fallback');
+    return 'http://localhost:5000'; // Local development fallback
   }
-  const base = import.meta.env.VITE_API_BASE_URL;
-  if (!base) {
-    console.warn('VITE_API_BASE_URL is not set — falling back to localhost:5000');
-    return 'http://localhost:5000';
+
+  // In production, MUST use the environment variable
+  const prodBase = import.meta.env.VITE_API_BASE_URL;
+  if (!prodBase) {
+    console.error('❌ VITE_API_BASE_URL is not set in production!');
+    throw new Error('API base URL is not configured for production');
   }
-  return base.replace(/\/+$/, '');
+  console.log('📡 PROD mode: Using VITE_API_BASE_URL =', prodBase);
+  return prodBase.replace(/\/+$/, '');
 };
 
 const buildUrl = (endpoint: string): string => {
@@ -29,7 +39,7 @@ const apiFetch = async <T>(
 ): Promise<T> => {
   const url = buildUrl(endpoint);
 
-  // --- THE FIX: Grab the token from localStorage ---
+  // Grab the token from localStorage
   const token = localStorage.getItem("admin_token");
 
   try {
@@ -37,7 +47,7 @@ const apiFetch = async <T>(
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        // --- THE FIX: Attach the Bearer token ---
+        // Attach the Bearer token if it exists
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...options.headers,
       },
