@@ -32,17 +32,10 @@ if (!fs.existsSync(uploadsDir)) {
 
 // 1. CORS Configuration
 app.use(cors({
-  origin: [
-    "http://localhost:8080",
-    "http://192.168.100.8:8080",
-    "http://localhost:5173",
-    'https://speakeremuriadavid.netlify.app',
-    'https://emuriadavid.netlify.app',  // ← ADD THIS
-    process.env.FRONTEND_URL
-  ].filter(Boolean),
+  origin: "*",  // Temporarily allow all origins for testing
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  credentials: false
 }));
 
 app.use(express.json({ limit: '50mb' }));
