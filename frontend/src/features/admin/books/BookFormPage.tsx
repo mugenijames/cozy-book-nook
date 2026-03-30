@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, X, ImagePlus } from "lucide-react";
-import { createBook, updateBook, getBook } from "@/services/api";
+import { createBook, updateBook, getBook, getApiBase } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const bookSchema = z.object({
@@ -110,6 +110,9 @@ export default function BookFormPage() {
     formData.append("cover", file);
 
     try {
+      // Get the API base URL (works for both local and production)
+      const apiBase = getApiBase();
+      
       // Create headers - only add auth if not bypassing
       const headers: HeadersInit = {};
       
@@ -120,7 +123,7 @@ export default function BookFormPage() {
         console.log("⚠️ Uploading without auth (bypass enabled)");
       }
 
-      const response = await fetch("http://localhost:5000/api/upload-cover", {
+      const response = await fetch(`${apiBase}/api/upload-cover`, {
         method: "POST",
         headers,
         body: formData,
@@ -178,7 +181,9 @@ export default function BookFormPage() {
       return imagePath;
     }
     
-    return `http://localhost:5000${imagePath}`;
+    // Use the API base URL instead of hardcoded localhost
+    const apiBase = getApiBase();
+    return `${apiBase}${imagePath}`;
   };
 
   const onSubmit = async (data: BookFormData) => {
@@ -337,7 +342,7 @@ export default function BookFormPage() {
                     {uploadingImage && (
                       <div className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <p className="text-xs text-muted-foreground">Uploading to server...</p>
+                        <p className="text-xs text-muted-foreground">Uploading to Cloudinary...</p>
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground">
