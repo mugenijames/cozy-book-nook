@@ -37,6 +37,7 @@ app.use(cors({
     "http://192.168.100.8:8080",
     "http://localhost:5173",
     'https://speakeremuriadavid.netlify.app',
+    'https://emuriadavid.netlify.app',  // ← ADD THIS
     process.env.FRONTEND_URL
   ].filter(Boolean),
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
