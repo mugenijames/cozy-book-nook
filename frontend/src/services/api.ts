@@ -6,7 +6,7 @@ import { mockBooks } from "@/data/mockBooks";
 // To enable mock mode: set `VITE_USE_MOCK_DATA=true` in `frontend/.env.local`.
 const USE_MOCK_DATA = String(import.meta.env.VITE_USE_MOCK_DATA || "").toLowerCase() === "true";
 
-const getApiBase = (): string => {
+export const getApiBase = (): string => {
   // In development, use environment variable or localhost fallback
   if (import.meta.env.DEV) {
     const devBase = import.meta.env.VITE_API_BASE_URL;
