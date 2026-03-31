@@ -6,52 +6,76 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // backend/src/routes/upload.routes.ts
 const express_1 = require("express");
 const multer_1 = __importDefault(require("multer"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
+const cloudinary_1 = require("cloudinary");
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const router = (0, express_1.Router)();
-// Configure multer for file uploads
-const storage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path_1.default.join(__dirname, '../../uploads');
-        // Create uploads directory if it doesn't exist
-        if (!fs_1.default.existsSync(uploadDir)) {
-            fs_1.default.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
-    }
+// Configure cloudinary
+cloudinary_1.v2.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-const upload = (0, multer_1.default)({
+// Configure multer for memory storage
+const storage = multer_1.default.memoryStorage();
+// File filter for images
+const imageFilter = (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(file.originalname.split('.').pop()?.toLowerCase() || '');
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (mimetype && extname) {
+        return cb(null, true);
+    }
+    else {
+        cb(new Error('Only image files are allowed'));
+    }
+};
+// File filter for PDFs
+const pdfFilter = (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+        return cb(null, true);
+    }
+    else {
+        cb(new Error('Only PDF files are allowed'));
+    }
+};
+const uploadImage = (0, multer_1.default)({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|webp/;
-        const extname = allowedTypes.test(path_1.default.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        if (mimetype && extname) {
-            return cb(null, true);
-        }
-        else {
-            cb(new Error('Only image files are allowed'));
-        }
-    }
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    fileFilter: imageFilter
 });
-// Upload cover image - uses isAdmin middleware which bypasses in development
-router.post('/upload-cover', authMiddleware_1.isAdmin, upload.single('cover'), (req, res) => {
+const uploadPdf = (0, multer_1.default)({
+    storage,
+    limits: { fileSize: 20 * 1024 * 1024 }, // 20MB for PDFs
+    fileFilter: pdfFilter
+});
+// Upload cover image to Cloudinary
+router.post('/upload-cover', authMiddleware_1.isAdmin, uploadImage.single('cover'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        // Return the URL path to the uploaded file
-        const fileUrl = `/uploads/${req.file.filename}`;
-        console.log('✅ File uploaded:', fileUrl);
+        console.log(`📤 Uploading cover: ${req.file.originalname} (${req.file.size} bytes)`);
+        const uploadPromise = new Promise((resolve, reject) => {
+            const uploadStream = cloudinary_1.v2.uploader.upload_stream({
+                folder: 'cozy-book-nook/covers',
+                resource_type: 'auto',
+                quality: 'auto',
+                transformation: [
+                    { width: 500, height: 750, crop: 'fill' }
+                ]
+            }, (error, result) => {
+                if (error)
+                    reject(error);
+                else
+                    resolve(result);
+            });
+            uploadStream.end(req.file.buffer);
+        });
+        const result = await uploadPromise;
+        console.log('✅ Cover uploaded:', result.secure_url);
         res.json({
-            url: fileUrl,
-            filename: req.file.filename,
+            url: result.secure_url,
+            filename: result.public_id,
             message: 'Upload successful'
         });
     }
@@ -59,5 +83,45 @@ router.post('/upload-cover', authMiddleware_1.isAdmin, upload.single('cover'), (
         console.error('Upload error:', error);
         res.status(500).json({ error: 'Upload failed' });
     }
+});
+// Upload PDF to Cloudinary
+router.post('/upload-pdf', authMiddleware_1.isAdmin, uploadPdf.single('pdf'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No PDF file uploaded' });
+        }
+        console.log(`📤 Uploading PDF: ${req.file.originalname} (${req.file.size} bytes)`);
+        const uploadPromise = new Promise((resolve, reject) => {
+            const uploadStream = cloudinary_1.v2.uploader.upload_stream({
+                folder: 'cozy-book-nook/pdfs',
+                resource_type: 'auto', // Cloudinary will detect it as PDF
+                format: 'pdf',
+            }, (error, result) => {
+                if (error)
+                    reject(error);
+                else
+                    resolve(result);
+            });
+            uploadStream.end(req.file.buffer);
+        });
+        const result = await uploadPromise;
+        console.log('✅ PDF uploaded:', result.secure_url);
+        res.json({
+            url: result.secure_url,
+            filename: result.public_id,
+            message: 'PDF upload successful'
+        });
+    }
+    catch (error) {
+        console.error('PDF upload error:', error);
+        res.status(500).json({ error: 'PDF upload failed' });
+    }
+});
+// Test endpoint
+router.get('/upload-test', (req, res) => {
+    res.json({
+        message: 'Upload routes are working!',
+        cloudinaryConfigured: !!process.env.CLOUDINARY_CLOUD_NAME
+    });
 });
 exports.default = router;

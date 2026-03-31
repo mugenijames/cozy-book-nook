@@ -8,7 +8,7 @@ const MPESA_CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY;
 const MPESA_CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET;
 const MPESA_PASSKEY = process.env.MPESA_PASSKEY;
 const MPESA_SHORTCODE = process.env.MPESA_SHORTCODE;
-const MPESA_ENV = process.env.MPESA_ENV || "sandbox"; // sandbox or production
+const MPESA_ENV = process.env.MPESA_ENV || "sandbox";
 
 const getMpesaAuthToken = async () => {
   const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString('base64');
@@ -27,13 +27,20 @@ const getMpesaAuthToken = async () => {
   return response.data.access_token;
 };
 
-// Initiate M-Pesa STK Push
 export const initiateMpesaPayment = async (req: Request, res: Response) => {
   try {
     const { phoneNumber, amount, bookId, email } = req.body;
     
     if (!phoneNumber || !amount || !bookId || !email) {
       return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    const book = await prisma.book.findUnique({
+      where: { id: bookId },
+    });
+    
+    if (!book) {
+      return res.status(404).json({ error: "Book not found" });
     }
     
     const token = await getMpesaAuthToken();
@@ -55,7 +62,7 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
         PhoneNumber: phoneNumber,
         CallBackURL: `${process.env.API_PUBLIC_URL}/api/payments/mpesa/callback`,
         AccountReference: `BOOK-${bookId}`,
-        TransactionDesc: `Purchase: ${bookId}`,
+        TransactionDesc: `Purchase: ${book.title}`,
       },
       {
         headers: {
@@ -64,11 +71,11 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
       }
     );
     
-    // Store pending payment
     await prisma.pendingPayment.create({
       data: {
         checkoutRequestID: response.data.CheckoutRequestID,
         bookId,
+        bookTitle: book.title,
         email,
         phoneNumber,
         amount,
@@ -86,7 +93,6 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
   }
 };
 
-// M-Pesa Callback URL
 export const mpesaCallback = async (req: Request, res: Response) => {
   try {
     const { Body } = req.body;
@@ -104,11 +110,13 @@ export const mpesaCallback = async (req: Request, res: Response) => {
     }
     
     if (resultCode === 0) {
-      // Payment successful
-      const { metadata } = stkCallback.CallbackMetadata.Item;
-      const mpesaReceiptNumber = metadata.find((item: any) => item.Name === "MpesaReceiptNumber")?.Value;
+      const { CallbackMetadata } = stkCallback;
+      let mpesaReceiptNumber = "";
+      if (CallbackMetadata && CallbackMetadata.Item) {
+        const receiptItem = CallbackMetadata.Item.find((item: any) => item.Name === "MpesaReceiptNumber");
+        if (receiptItem) mpesaReceiptNumber = receiptItem.Value;
+      }
       
-      // Create order
       await prisma.order.create({
         data: {
           bookId: pendingPayment.bookId,
@@ -121,7 +129,6 @@ export const mpesaCallback = async (req: Request, res: Response) => {
         },
       });
       
-      // Update pending payment
       await prisma.pendingPayment.update({
         where: { id: pendingPayment.id },
         data: {
@@ -132,7 +139,6 @@ export const mpesaCallback = async (req: Request, res: Response) => {
       
       console.log(`✅ M-Pesa payment successful: ${checkoutRequestID}`);
     } else {
-      // Payment failed
       await prisma.pendingPayment.update({
         where: { id: pendingPayment.id },
         data: {
@@ -151,7 +157,6 @@ export const mpesaCallback = async (req: Request, res: Response) => {
   }
 };
 
-// Check payment status
 export const checkPaymentStatus = async (req: Request, res: Response) => {
   try {
     const { checkoutRequestID } = req.params;

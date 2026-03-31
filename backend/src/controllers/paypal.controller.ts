@@ -5,7 +5,7 @@ import { prisma } from "../lib/prisma";
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
 const PAYPAL_SECRET = process.env.PAYPAL_SECRET;
-const PAYPAL_ENV = process.env.PAYPAL_ENV || "sandbox"; // sandbox or live
+const PAYPAL_ENV = process.env.PAYPAL_ENV || "sandbox";
 
 const getPayPalToken = async () => {
   const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`).toString('base64');
@@ -26,7 +26,6 @@ const getPayPalToken = async () => {
   return response.data.access_token;
 };
 
-// Create PayPal Order
 export const createPayPalOrder = async (req: Request, res: Response) => {
   try {
     const { bookId, amount, email } = req.body;
@@ -75,18 +74,17 @@ export const createPayPalOrder = async (req: Request, res: Response) => {
       }
     );
     
-    // Store pending order
     await prisma.pendingPayment.create({
       data: {
         paypalOrderId: response.data.id,
         bookId,
+        bookTitle: book.title,
         email,
         amount,
         status: 'pending',
       },
     });
     
-    // Find approval URL
     const approvalUrl = response.data.links.find((link: any) => link.rel === "approve")?.href;
     
     res.json({
@@ -99,11 +97,9 @@ export const createPayPalOrder = async (req: Request, res: Response) => {
   }
 };
 
-// Capture PayPal Order
 export const capturePayPalOrder = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
-    const { payerId } = req.query;
     
     const token = await getPayPalToken();
     
@@ -125,7 +121,6 @@ export const capturePayPalOrder = async (req: Request, res: Response) => {
     });
     
     if (pendingPayment) {
-      // Create order
       await prisma.order.create({
         data: {
           bookId: pendingPayment.bookId,
@@ -138,7 +133,6 @@ export const capturePayPalOrder = async (req: Request, res: Response) => {
         },
       });
       
-      // Update pending payment
       await prisma.pendingPayment.update({
         where: { id: pendingPayment.id },
         data: {

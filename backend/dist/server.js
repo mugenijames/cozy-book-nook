@@ -14,6 +14,7 @@ const checkout_routes_1 = __importDefault(require("./routes/checkout.routes"));
 const upload_routes_1 = __importDefault(require("./routes/upload.routes"));
 const invitation_routes_1 = __importDefault(require("./routes/invitation.routes"));
 const order_routes_1 = __importDefault(require("./routes/order.routes"));
+const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -37,6 +38,7 @@ app.use((0, cors_1.default)({
         "http://192.168.100.8:8080",
         "http://localhost:5173",
         'https://speakeremuriadavid.netlify.app',
+        'https://emuriadavid.netlify.app', // Your production Netlify URL
         process.env.FRONTEND_URL
     ].filter(Boolean),
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -60,6 +62,7 @@ app.use('/api/checkout', checkout_routes_1.default);
 app.use('/api', upload_routes_1.default);
 app.use('/api/invite', invitation_routes_1.default);
 app.use("/api/orders", order_routes_1.default);
+app.use('/api/payments', payment_routes_1.default);
 // 5. Health check endpoint
 app.get('/health', (req, res) => {
     res.json({

@@ -1,30 +1,80 @@
+// prisma/schema.prisma
 generator client {
-  provider      = "prisma-client-js"
+  provider = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model Book {
-  id            String   @id @default(uuid())
-  slug          String?  @unique
+  id            String    @id @default(uuid())
+  slug          String    @unique
   title         String
   author        String
   description   String?
   genre         String?
   coverImage    String?
+  pdfUrl        String?
   publishedYear Int?
   pages         Int?
-  rating        Float    @default(0.0)
+  rating        Float     @default(0.0)
   priceCents    Int?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  orders        Order[]
+  pendingPayments PendingPayment[]
 
   @@index([title])
   @@index([author])
   @@map("books")
+}
+
+model Order {
+  id              String    @id @default(uuid())
+  bookId          String
+  bookTitle       String
+  paymentMethod   String
+  transactionCode String    @unique
+  email           String
+  amountCents     Int
+  status          String    @default("approved")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  book            Book?     @relation(fields: [bookId], references: [id])
+
+  @@index([email])
+  @@index([status])
+  @@index([transactionCode])
+  @@map("orders")
+}
+
+model PendingPayment {
+  id                  String    @id @default(uuid())
+  checkoutRequestID   String?   @unique
+  paypalOrderId       String?   @unique
+  bookId              String
+  bookTitle           String
+  email               String
+  phoneNumber         String?
+  amount              Float
+  status              String    @default("pending")
+  mpesaReceiptNumber  String?
+  paypalCaptureId     String?
+  errorMessage        String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  book                Book?     @relation(fields: [bookId], references: [id])
+
+  @@index([email])
+  @@index([status])
+  @@index([checkoutRequestID])
+  @@index([paypalOrderId])
+  @@map("pending_payments")
 }
