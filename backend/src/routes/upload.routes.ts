@@ -13,7 +13,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Use memory storage instead of disk storage
+// Configure multer for memory storage
 const storage = multer.memoryStorage();
 
 const upload = multer({ 
@@ -27,7 +27,7 @@ const upload = multer({
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
     }
   }
 });
@@ -38,18 +38,27 @@ router.post('/upload-cover', isAdmin, upload.single('cover'), async (req, res) =
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    console.log(`📤 Uploading file: ${req.file.originalname} (${req.file.size} bytes)`);
     
-    // Upload to Cloudinary using a promise
+    // Upload to Cloudinary
     const uploadPromise = new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'cozy-book-nook/covers',
           resource_type: 'auto',
           quality: 'auto',
+          transformation: [
+            { width: 500, height: 750, crop: 'fill' }
+          ]
         },
         (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            reject(error);
+          } else {
+            resolve(result);
+          }
         }
       );
       
@@ -63,12 +72,25 @@ router.post('/upload-cover', isAdmin, upload.single('cover'), async (req, res) =
     res.json({ 
       url: result.secure_url,
       filename: result.public_id,
+      format: result.format,
+      size: result.bytes,
       message: 'Upload successful' 
     });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ error: 'Upload failed' });
+    res.status(500).json({ 
+      error: 'Upload failed', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
   }
+});
+
+// Optional: Add a test endpoint to verify the route is working
+router.get('/upload-test', (req, res) => {
+  res.json({ 
+    message: 'Upload route is working!',
+    cloudinaryConfigured: !!process.env.CLOUDINARY_CLOUD_NAME
+  });
 });
 
 export default router;
