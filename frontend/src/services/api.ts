@@ -1,6 +1,7 @@
 // src/services/api.ts
 import { mockBooks } from "@/data/mockBooks";
 
+
 // Mock mode is optional. Default is OFF so dev uses real backend when available.
 // To enable mock mode: set `VITE_USE_MOCK_DATA=true` in `frontend/.env.local`.
 const USE_MOCK_DATA = String(import.meta.env.VITE_USE_MOCK_DATA || "").toLowerCase() === "true";
