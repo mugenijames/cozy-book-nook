@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, X, ImagePlus } from "lucide-react";
+import { Loader2, X, ImagePlus, FileText, Download } from "lucide-react";
 import { createBook, updateBook, getBook, getApiBase } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -20,6 +20,7 @@ const bookSchema = z.object({
   description: z.string().optional(),
   genre: z.string().optional(),
   coverImage: z.string().optional(),
+  pdfUrl: z.string().optional(),
   publishedYear: z.number().int().optional(),
   pages: z.number().int().positive().optional(),
   rating: z.number().min(0).max(5).optional(),
@@ -37,7 +38,9 @@ export default function BookFormPage() {
 
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [pdfFileName, setPdfFileName] = useState<string>("");
 
   // Set bypass auth flag for testing
   const BYPASS_AUTH = true; // Set to false when backend auth is ready
@@ -58,6 +61,7 @@ export default function BookFormPage() {
       description: "",
       genre: "",
       coverImage: "",
+      pdfUrl: "",
       publishedYear: undefined,
       pages: undefined,
       rating: 0,
@@ -77,6 +81,9 @@ export default function BookFormPage() {
           form.reset({ ...book, listPrice });
           if (book.coverImage) {
             setCoverPreview(book.coverImage);
+          }
+          if (book.pdfUrl) {
+            setPdfFileName("PDF uploaded");
           }
         } catch (err) {
           toast.error("Failed to load book details");
@@ -162,12 +169,81 @@ export default function BookFormPage() {
     }
   };
 
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (file.type !== "application/pdf") {
+      toast.error("Only PDF files are allowed");
+      e.target.value = "";
+      return;
+    }
+
+    // Validate file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("PDF size should be less than 20MB");
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingPdf(true);
+    setPdfFileName(file.name);
+    const formData = new FormData();
+    formData.append("pdf", file);
+
+    try {
+      const apiBase = getApiBase();
+      
+      const headers: HeadersInit = {};
+      
+      if (!BYPASS_AUTH && token) {
+        headers["Authorization"] = `Bearer ${token}`;
+        console.log("🔐 Uploading PDF with auth token");
+      } else {
+        console.log("⚠️ Uploading PDF without auth (bypass enabled)");
+      }
+
+      const response = await fetch(`${apiBase}/api/upload-pdf`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("PDF Upload successful:", data);
+      
+      // Update the form state with the PDF URL
+      form.setValue("pdfUrl", data.url);
+      
+      toast.success("PDF uploaded successfully!");
+    } catch (err: any) {
+      console.error("PDF Upload error:", err);
+      toast.error(err.message || "Failed to upload PDF");
+      setPdfFileName("");
+      e.target.value = "";
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
+
   const removeCoverImage = () => {
     if (coverPreview?.startsWith("blob:")) {
       URL.revokeObjectURL(coverPreview);
     }
     setCoverPreview(null);
     form.setValue("coverImage", "");
+  };
+
+  const removePdf = () => {
+    form.setValue("pdfUrl", "");
+    setPdfFileName("");
+    toast.info("PDF removed");
   };
 
   const getImageUrl = (imagePath: string | null) => {
@@ -189,6 +265,11 @@ export default function BookFormPage() {
   const onSubmit = async (data: BookFormData) => {
     if (uploadingImage) {
       toast.error("Please wait for image upload to complete");
+      return;
+    }
+    
+    if (uploadingPdf) {
+      toast.error("Please wait for PDF upload to complete");
       return;
     }
 
@@ -247,7 +328,7 @@ export default function BookFormPage() {
         )}
         <p className="text-muted-foreground mt-1">
           {isEdit 
-            ? "Update book information and cover image" 
+            ? "Update book information, cover image, and PDF" 
             : "Fill in the details to add a new book to your collection"}
         </p>
       </div>
@@ -353,6 +434,63 @@ export default function BookFormPage() {
               </div>
             </div>
 
+            {/* PDF Upload Section */}
+            <div className="grid gap-4 border-t pt-6">
+              <Label>PDF File (for downloadable content)</Label>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handlePdfUpload}
+                    disabled={uploadingPdf || loading}
+                    className="cursor-pointer"
+                  />
+                </div>
+                
+                {form.watch("pdfUrl") && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(form.watch("pdfUrl") || undefined, '_blank')}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      View PDF
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={removePdf}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              
+              {uploadingPdf && (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <p className="text-xs text-muted-foreground">Uploading PDF to Cloudinary...</p>
+                </div>
+              )}
+              
+              {pdfFileName && !uploadingPdf && form.watch("pdfUrl") && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <FileText className="h-4 w-4" />
+                  {pdfFileName}
+                </div>
+              )}
+              
+              <p className="text-xs text-muted-foreground">
+                Upload the book PDF (max 20MB). Customers will get access to download after purchase.
+              </p>
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
               <Textarea 
@@ -432,13 +570,13 @@ export default function BookFormPage() {
                 type="button" 
                 variant="ghost" 
                 onClick={() => navigate("/admin/books")}
-                disabled={loading || uploadingImage}
+                disabled={loading || uploadingImage || uploadingPdf}
               >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
-                disabled={loading || uploadingImage}
+                disabled={loading || uploadingImage || uploadingPdf}
                 className="min-w-[120px]"
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

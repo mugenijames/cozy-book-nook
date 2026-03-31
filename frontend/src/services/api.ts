@@ -1,7 +1,6 @@
 // src/services/api.ts
 import { mockBooks } from "@/data/mockBooks";
 
-
 // Mock mode is optional. Default is OFF so dev uses real backend when available.
 // To enable mock mode: set `VITE_USE_MOCK_DATA=true` in `frontend/.env.local`.
 const USE_MOCK_DATA = String(import.meta.env.VITE_USE_MOCK_DATA || "").toLowerCase() === "true";
@@ -87,6 +86,7 @@ export interface Book {
   description?: string | null;
   genre?: string | null;
   coverImage?: string | null;
+  pdfUrl?: string | null;
   publishedYear?: number | null;
   pages?: number | null;
   rating: number;
@@ -96,9 +96,35 @@ export interface Book {
   updatedAt: string;
 }
 
+export interface Order {
+  id: string;
+  bookId: string;
+  bookTitle: string;
+  paymentMethod: string;
+  transactionCode: string;
+  email: string;
+  amountCents: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  book?: Book;
+}
+
+export interface PurchaseStatus {
+  purchased: boolean;
+  orderId?: string;
+  purchasedAt?: string;
+}
+
+export interface DownloadResponse {
+  pdfUrl: string;
+  title: string;
+}
+
 export type BookInput = Omit<Book, 'id' | 'createdAt' | 'updatedAt'> & {
   rating?: number;
   priceCents?: number | null;
+  pdfUrl?: string | null;
 };
 
 export type BookUpdateInput = Partial<BookInput>;
@@ -187,6 +213,10 @@ export const deleteBook = (id: string): Promise<{ message: string }> => {
   });
 };
 
+// ──────────────────────────────────────────────
+// Checkout & Payment Functions
+// ──────────────────────────────────────────────
+
 export type CheckoutStatus = { enabled: boolean };
 
 export const getCheckoutStatus = (): Promise<CheckoutStatus> => {
@@ -207,10 +237,178 @@ export const createCheckoutSession = (bookId: string): Promise<{ url: string }> 
   });
 };
 
+// ──────────────────────────────────────────────
+// Purchase & Download Functions
+// ──────────────────────────────────────────────
+
+/**
+ * Check if a user has purchased a specific book
+ * @param bookId - The ID of the book
+ * @param email - The user's email address
+ */
+export const checkPurchaseStatus = async (bookId: string, email: string): Promise<PurchaseStatus> => {
+  if (USE_MOCK_DATA) {
+    // Mock: Check localStorage for purchased books
+    const purchasedBooks = JSON.parse(localStorage.getItem("purchased_books") || "[]");
+    const purchased = purchasedBooks.some((book: any) => book.id === bookId);
+    return { purchased };
+  }
+  
+  const apiBase = getApiBase();
+  const response = await fetch(`${apiBase}/api/checkout/purchase/${bookId}?email=${encodeURIComponent(email)}`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to check purchase status');
+  }
+  
+  return response.json();
+};
+
+/**
+ * Get download URL for a purchased book
+ * @param bookId - The ID of the book
+ * @param email - The user's email address
+ */
+export const getDownloadUrl = async (bookId: string, email: string): Promise<DownloadResponse> => {
+  if (USE_MOCK_DATA) {
+    // Mock: Return a placeholder URL
+    console.warn("⚠️ Mock mode: Returning placeholder PDF URL");
+    return {
+      pdfUrl: "https://example.com/sample.pdf",
+      title: "Sample Book",
+    };
+  }
+  
+  const apiBase = getApiBase();
+  const response = await fetch(`${apiBase}/api/checkout/download/${bookId}?email=${encodeURIComponent(email)}`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get download URL');
+  }
+  
+  return response.json();
+};
+
+/**
+ * Get all purchases for a user
+ * @param email - The user's email address
+ */
+export const getUserPurchases = async (email: string): Promise<Order[]> => {
+  if (USE_MOCK_DATA) {
+    // Mock: Return sample purchases
+    console.warn("⚠️ Mock mode: Returning sample purchases");
+    return [];
+  }
+  
+  const apiBase = getApiBase();
+  const response = await fetch(`${apiBase}/api/checkout/my-purchases?email=${encodeURIComponent(email)}`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to fetch purchases');
+  }
+  
+  return response.json();
+};
+
+/**
+ * Approve a manual payment (admin only)
+ * @param data - Payment details
+ */
+export const approveManualPayment = async (data: {
+  bookId: string;
+  email: string;
+  transactionCode: string;
+  paymentMethod: string;
+  amountCents?: number;
+}): Promise<{ success: boolean; orderId: string; message: string }> => {
+  const token = localStorage.getItem("admin_token");
+  
+  if (!token) {
+    throw new Error("Admin authentication required");
+  }
+  
+  const apiBase = getApiBase();
+  const response = await fetch(`${apiBase}/api/checkout/approve-manual`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to approve payment');
+  }
+  
+  return response.json();
+};
+
+/**
+ * Helper to download a book PDF
+ * @param bookId - The ID of the book
+ * @param email - The user's email address
+ */
+export const downloadBook = async (bookId: string, email: string): Promise<void> => {
+  try {
+    const { pdfUrl, title } = await getDownloadUrl(bookId, email);
+    
+    // Open PDF in new tab or trigger download
+    window.open(pdfUrl, '_blank');
+    
+    // Track download in localStorage for UI updates
+    const downloadedBooks = JSON.parse(localStorage.getItem("downloaded_books") || "[]");
+    if (!downloadedBooks.includes(bookId)) {
+      localStorage.setItem("downloaded_books", JSON.stringify([...downloadedBooks, bookId]));
+    }
+    
+    console.log(`✅ Download started for ${title}`);
+  } catch (error) {
+    console.error('Download error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Helper to mark a book as purchased in localStorage (for UI state)
+ * @param bookId - The ID of the book
+ */
+export const markBookAsPurchased = (bookId: string): void => {
+  const purchasedBooks = JSON.parse(localStorage.getItem("purchased_books") || "[]");
+  if (!purchasedBooks.some((book: any) => book.id === bookId)) {
+    localStorage.setItem(
+      "purchased_books", 
+      JSON.stringify([...purchasedBooks, { id: bookId, purchasedAt: new Date().toISOString() }])
+    );
+  }
+};
+
+/**
+ * Check if a book is purchased (from localStorage)
+ * @param bookId - The ID of the book
+ */
+export const isBookPurchasedLocally = (bookId: string): boolean => {
+  const purchasedBooks = JSON.parse(localStorage.getItem("purchased_books") || "[]");
+  return purchasedBooks.some((book: any) => book.id === bookId);
+};
+
 export default {
   getBooks,
   getBook,
   createBook,
   updateBook,
   deleteBook,
+  getCheckoutStatus,
+  createCheckoutSession,
+  checkPurchaseStatus,
+  getDownloadUrl,
+  getUserPurchases,
+  approveManualPayment,
+  downloadBook,
+  markBookAsPurchased,
+  isBookPurchasedLocally,
 };

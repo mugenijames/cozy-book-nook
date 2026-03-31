@@ -1,8 +1,12 @@
 // src/components/PaymentModal.tsx
 import { useState } from "react";
-import { X, Smartphone, CreditCard, Building2, CheckCircle, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Smartphone, CreditCard, Building2 } from "lucide-react";
 import { toast } from "sonner";
+import { createCheckoutSession, approveManualPayment, markBookAsPurchased } from "@/services/api";
 
 interface PaymentModalProps {
   book: {
@@ -17,221 +21,296 @@ interface PaymentModalProps {
 
 type PaymentMethod = "mpesa" | "paypal" | "bank";
 
-const TEST_DETAILS = {
-  mpesa: {
-    paybill: "123456",
-    account: "TESTBOOKS",
-    name: "David Emuria Books",
-  },
-  paypal: {
-    email: "test@davidemuria.com",
-    link: "https://paypal.me/testdavidemuria",
-  },
-  bank: {
-    bank: "Test Bank Kenya",
-    account: "1234567890",
-    name: "David Emuria",
-    branch: "Nairobi Branch",
-  },
-};
-
 export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModalProps) {
-  const [method, setMethod] = useState<PaymentMethod>("mpesa");
-  const [txCode, setTxCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa");
   const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [transactionCode, setTransactionCode] = useState("");
 
-  const price = (book.priceCents / 100).toFixed(2);
-
-  async function handleSubmit() {
-    if (!txCode.trim()) {
-      toast.error("Please enter your transaction code.");
+  const handleMpesaPayment = async () => {
+    if (!email) {
+      toast.error("Please enter your email address");
       return;
     }
-    if (!email.trim()) {
-      toast.error("Please enter your email so we can notify you.");
+    if (!phoneNumber) {
+      toast.error("Please enter your M-Pesa phone number");
       return;
     }
-    setSubmitting(true);
+
+    setLoading(true);
     try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      // Call your backend M-Pesa STK Push endpoint
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/payments/mpesa/stkpush`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
+          phoneNumber,
+          amount: book.priceCents / 100,
           bookId: book.id,
-          bookTitle: book.title,
-          paymentMethod: method,
-          transactionCode: txCode.trim(),
-          email: email.trim(),
-          amountCents: book.priceCents,
+          email,
         }),
       });
-      if (!res.ok) throw new Error("Failed to submit order.");
-      setSubmitted(true);
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'M-Pesa payment failed');
+      }
+
+      toast.success("Check your phone for M-Pesa prompt");
       onPaymentSubmitted();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Could not submit. Try again.";
-      toast.error(msg);
+      
+      // Poll for payment status
+      pollPaymentStatus(data.checkoutRequestID);
+      
+    } catch (error: any) {
+      toast.error(error.message || "Failed to initiate M-Pesa payment");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
-  }
+  };
+
+  const pollPaymentStatus = async (checkoutRequestID: string) => {
+    const maxAttempts = 30; // 30 seconds
+    let attempts = 0;
+    
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/payments/mpesa/status/${checkoutRequestID}`);
+        const data = await response.json();
+        
+        if (data.status === 'completed') {
+          clearInterval(interval);
+          markBookAsPurchased(book.id);
+          toast.success("Payment successful! Your book is now available for download.");
+          onClose();
+        } else if (data.status === 'failed' || attempts >= maxAttempts) {
+          clearInterval(interval);
+          toast.error(data.error || "Payment failed or timed out");
+        }
+      } catch (error) {
+        console.error('Error polling payment status:', error);
+      }
+    }, 1000);
+  };
+
+  const handlePayPalPayment = async () => {
+    if (!email) {
+      toast.error("Please enter your email address");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create PayPal order
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/payments/paypal/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookId: book.id,
+          amount: book.priceCents / 100,
+          email,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'PayPal payment failed');
+      }
+
+      // Redirect to PayPal
+      window.location.href = data.approvalUrl;
+      
+    } catch (error: any) {
+      toast.error(error.message || "Failed to initiate PayPal payment");
+      setLoading(false);
+    }
+  };
+
+  const handleBankTransfer = async () => {
+    if (!email) {
+      toast.error("Please enter your email address");
+      return;
+    }
+    if (!transactionCode) {
+      toast.error("Please enter the transaction code");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await approveManualPayment({
+        bookId: book.id,
+        email,
+        transactionCode,
+        paymentMethod: "bank_transfer",
+        amountCents: book.priceCents,
+      });
+      
+      markBookAsPurchased(book.id);
+      toast.success("Payment approved! You can now download the book.");
+      onPaymentSubmitted();
+      onClose();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit payment");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (paymentMethod === "mpesa") {
+      handleMpesaPayment();
+    } else if (paymentMethod === "paypal") {
+      handlePayPalPayment();
+    } else {
+      handleBankTransfer();
+    }
+  };
+
+  const price = (book.priceCents / 100).toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'KES',
+  });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#E8DDD4] p-5">
-          <div>
-            <h2 className="font-heading text-lg font-bold text-[#2E1208]">Complete your purchase</h2>
-            <p className="text-sm text-[#5C4436]">{book.title} — ${price}</p>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Complete Your Purchase</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <div className="text-center">
+            <p className="font-semibold">{book.title}</p>
+            <p className="text-2xl font-bold text-[#C17B4F]">{price}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              We'll send your download link to this email
+            </p>
+          </div>
+
+          {paymentMethod === "mpesa" && (
+            <div className="space-y-2">
+              <Label htmlFor="phone">M-Pesa Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="254712345678"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter your M-Pesa registered phone number (e.g., 254712345678)
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Select Payment Method</Label>
+            <div className="grid grid-cols-3 gap-3">
+              <Button
+                type="button"
+                variant={paymentMethod === "mpesa" ? "default" : "outline"}
+                onClick={() => setPaymentMethod("mpesa")}
+                className="flex flex-col items-center py-4 h-auto"
+              >
+                <Smartphone className="h-6 w-6 mb-2" />
+                <span className="text-sm">M-Pesa</span>
+              </Button>
+              
+              <Button
+                type="button"
+                variant={paymentMethod === "paypal" ? "default" : "outline"}
+                onClick={() => setPaymentMethod("paypal")}
+                className="flex flex-col items-center py-4 h-auto"
+              >
+                <CreditCard className="h-6 w-6 mb-2" />
+                <span className="text-sm">PayPal</span>
+              </Button>
+              
+              <Button
+                type="button"
+                variant={paymentMethod === "bank" ? "default" : "outline"}
+                onClick={() => setPaymentMethod("bank")}
+                className="flex flex-col items-center py-4 h-auto"
+              >
+                <Building2 className="h-6 w-6 mb-2" />
+                <span className="text-sm">Bank</span>
+              </Button>
+            </div>
+          </div>
+
+          {paymentMethod === "bank" && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="font-semibold mb-2">Bank Transfer Details:</p>
+                <p className="text-sm">Bank: Equity Bank</p>
+                <p className="text-sm">Account Name: Cozy Book Nook</p>
+                <p className="text-sm">Account Number: 1234567890</p>
+                <p className="text-sm">Branch: Nairobi</p>
+                <p className="text-sm mt-2">Swift Code: EQBLKENA</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="transaction">Transaction Reference</Label>
+                <Input
+                  id="transaction"
+                  placeholder="Enter M-Pesa or bank transaction code"
+                  value={transactionCode}
+                  onChange={(e) => setTransactionCode(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  After making the payment, enter the transaction reference above
+                </p>
+              </div>
+            </div>
+          )}
+
+          {paymentMethod === "paypal" && (
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="text-sm">
+                You'll be redirected to PayPal to complete your payment securely.
+                You can pay with PayPal balance, credit card, or debit card.
+              </p>
+            </div>
+          )}
+
+          <Button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full bg-[#C17B4F] hover:bg-[#A55E36]"
           >
-            <X className="h-5 w-5" />
-          </button>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading 
+              ? "Processing..." 
+              : paymentMethod === "mpesa" 
+                ? `Pay ${price} with M-Pesa`
+                : paymentMethod === "paypal"
+                ? `Pay ${price} with PayPal`
+                : `Confirm Bank Transfer`
+            }
+          </Button>
         </div>
-
-        {submitted ? (
-          <div className="flex flex-col items-center gap-4 p-8 text-center">
-            <CheckCircle className="h-14 w-14 text-green-500" />
-            <h3 className="text-xl font-bold text-[#2E1208]">Payment submitted!</h3>
-            <p className="text-[#5C4436]">
-              We'll verify your payment and notify you at <strong>{email}</strong> once approved.
-              The download button will unlock after verification.
-            </p>
-            <Button
-              onClick={onClose}
-              className="rounded-full bg-[#C17B4F] px-8 text-white hover:bg-[#A55E36]"
-            >
-              Close
-            </Button>
-          </div>
-        ) : (
-          <div className="p-5 space-y-5">
-            {/* Method selector */}
-            <div>
-              <p className="mb-2 text-sm font-semibold text-[#2E1208]">Choose payment method</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(["mpesa", "paypal", "bank"] as PaymentMethod[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMethod(m)}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-xs font-semibold transition ${
-                      method === m
-                        ? "border-[#C17B4F] bg-[#C17B4F]/10 text-[#C17B4F]"
-                        : "border-[#E8DDD4] text-[#5C4436] hover:border-[#C17B4F]/50"
-                    }`}
-                  >
-                    {m === "mpesa" && <Smartphone className="h-5 w-5" />}
-                    {m === "paypal" && <CreditCard className="h-5 w-5" />}
-                    {m === "bank" && <Building2 className="h-5 w-5" />}
-                    {m === "mpesa" ? "M-Pesa" : m === "paypal" ? "PayPal" : "Bank"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Payment instructions */}
-            <div className="rounded-xl bg-[#F9F6EF] p-4 text-sm text-[#2E1208] space-y-1.5">
-              {method === "mpesa" && (
-                <>
-                  <p className="font-semibold text-[#C17B4F]">M-Pesa Instructions</p>
-                  <p>1. Go to M-Pesa &rarr; Lipa na M-Pesa &rarr; Pay Bill</p>
-                  <p>2. Business No: <strong>{TEST_DETAILS.mpesa.paybill}</strong></p>
-                  <p>3. Account No: <strong>{TEST_DETAILS.mpesa.account}</strong></p>
-                  <p>4. Amount: <strong>KES {Math.round(book.priceCents * 0.13)}</strong> (approx)</p>
-                  <p>5. Enter your M-Pesa PIN and confirm</p>
-                  <p className="text-xs text-[#5C4436] pt-1">You'll receive an SMS with a transaction code (e.g. ABC123XYZ)</p>
-                </>
-              )}
-              {method === "paypal" && (
-                <>
-                  <p className="font-semibold text-[#C17B4F]">PayPal Instructions</p>
-                  <p>1. Send <strong>${price} USD</strong> to:</p>
-                  <p className="font-mono bg-white rounded px-2 py-1 text-xs">{TEST_DETAILS.paypal.email}</p>
-                  <p>2. Or use the link:</p>
-                  <a
-                    href={TEST_DETAILS.paypal.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#C17B4F] underline text-xs break-all"
-                  >
-                    {TEST_DETAILS.paypal.link}
-                  </a>
-                  <p className="text-xs text-[#5C4436] pt-1">Copy the PayPal transaction ID from your confirmation email</p>
-                </>
-              )}
-              {method === "bank" && (
-                <>
-                  <p className="font-semibold text-[#C17B4F]">Bank Transfer Instructions</p>
-                  <p>Bank: <strong>{TEST_DETAILS.bank.bank}</strong></p>
-                  <p>Account Name: <strong>{TEST_DETAILS.bank.name}</strong></p>
-                  <p>Account No: <strong>{TEST_DETAILS.bank.account}</strong></p>
-                  <p>Branch: <strong>{TEST_DETAILS.bank.branch}</strong></p>
-                  <p>Amount: <strong>${price}</strong></p>
-                  <p className="text-xs text-[#5C4436] pt-1">Use your name as the payment reference and save the receipt</p>
-                </>
-              )}
-            </div>
-
-            {/* Transaction code input */}
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-[#2E1208]">
-                  Transaction / Reference Code
-                </label>
-                <input
-                  type="text"
-                  value={txCode}
-                  onChange={(e) => setTxCode(e.target.value)}
-                  placeholder={
-                    method === "mpesa"
-                      ? "e.g. ABC123XYZ"
-                      : method === "paypal"
-                      ? "e.g. 1AB23456CD789"
-                      : "e.g. REF-2026-001"
-                  }
-                  className="w-full rounded-lg border border-[#E8DDD4] px-3 py-2.5 text-sm outline-none focus:border-[#C17B4F] focus:ring-1 focus:ring-[#C17B4F]"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-[#2E1208]">
-                  Your Email (for notification)
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full rounded-lg border border-[#E8DDD4] px-3 py-2.5 text-sm outline-none focus:border-[#C17B4F] focus:ring-1 focus:ring-[#C17B4F]"
-                />
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="w-full rounded-full bg-[#C17B4F] py-6 text-base font-semibold text-white hover:bg-[#A55E36] disabled:opacity-60"
-            >
-              {submitting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>
-              ) : (
-                "I have paid — submit for verification"
-              )}
-            </Button>
-            <p className="text-center text-xs text-[#5C4436]">
-              Your download will unlock once we verify your payment. Usually within a few hours.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

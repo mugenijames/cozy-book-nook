@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button";
 import { resolveBookCoverUrl } from "@/lib/resolveBookCover";
 import { bookPurchaseHref, bookPurchaseLabel } from "@/config/purchase";
 import { formatPrice } from "@/lib/formatPrice";
-import { getBooks } from "@/services/api";
+import { getBooks, downloadBookPdf } from "@/services/api";
 import { PaymentModal } from "@/components/PaymentModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Book {
   id: string;
@@ -21,6 +22,7 @@ interface Book {
   slug?: string | null;
   description?: string;
   coverImage?: string;
+  pdfUrl?: string | null;
   genre?: string;
   publishedYear?: number;
   pages?: number;
@@ -28,7 +30,12 @@ interface Book {
   priceCents?: number | null;
 }
 
-function getPurchasedBooks(): string[] {
+interface PurchasedBook {
+  id: string;
+  purchasedAt: string;
+}
+
+function getPurchasedBooks(): PurchasedBook[] {
   try {
     return JSON.parse(localStorage.getItem("purchased_books") || "[]");
   } catch {
@@ -36,18 +43,28 @@ function getPurchasedBooks(): string[] {
   }
 }
 
+function isBookPurchased(bookId: string): boolean {
+  const purchased = getPurchasedBooks();
+  return purchased.some(book => book.id === bookId);
+}
+
 function markBookPurchased(id: string) {
   const existing = getPurchasedBooks();
-  if (!existing.includes(id)) {
-    localStorage.setItem("purchased_books", JSON.stringify([...existing, id]));
+  if (!existing.some(book => book.id === id)) {
+    localStorage.setItem(
+      "purchased_books", 
+      JSON.stringify([...existing, { id, purchasedAt: new Date().toISOString() }])
+    );
   }
 }
 
 const BookDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { token } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [book, setBook] = useState<Book | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -58,7 +75,10 @@ const BookDetail = () => {
     const status = searchParams.get("checkout");
     if (status === "success") {
       toast.success("Payment received — thank you! Your download is ready below.");
-      if (book) { markBookPurchased(book.id); setPurchased(true); }
+      if (book) {
+        markBookPurchased(book.id);
+        setPurchased(true);
+      }
       searchParams.delete("checkout");
       setSearchParams(searchParams, { replace: true });
     } else if (status === "cancel") {
@@ -87,6 +107,7 @@ const BookDetail = () => {
           slug: foundBook.slug ?? undefined,
           description: foundBook.description ?? undefined,
           coverImage: foundBook.coverImage ?? undefined,
+          pdfUrl: foundBook.pdfUrl ?? undefined,
           genre: foundBook.genre ?? undefined,
           publishedYear: foundBook.publishedYear ?? undefined,
           pages: foundBook.pages ?? undefined,
@@ -94,7 +115,7 @@ const BookDetail = () => {
           priceCents: foundBook.priceCents ?? undefined,
         };
         setBook(mapped);
-        setPurchased(getPurchasedBooks().includes(String(foundBook.id)));
+        setPurchased(isBookPurchased(String(foundBook.id)));
       } else {
         setError("Book not found");
       }
@@ -106,19 +127,63 @@ const BookDetail = () => {
     }
   };
 
-  const price = book?.priceCents != null ? Number(book.priceCents) : null;
-  const isFree = price == null || price === 0;
+  const handleDownload = async () => {
+    if (!book) return;
 
-  function handleDownloadClick() {
-    if (purchased || isFree) {
-      toast.info("Digital download coming soon! Contact us to get your copy.", { duration: 5000 });
+    // Check if book has PDF
+    if (!book.pdfUrl) {
+      toast.error("PDF not available for this book yet");
       return;
     }
-    setShowPayment(true);
+
+    setDownloading(true);
+    try {
+      // If book is free or purchased, allow download
+      if (isFree || purchased) {
+        // Open PDF directly if we have the URL
+        if (book.pdfUrl) {
+          window.open(book.pdfUrl, '_blank');
+          toast.success(`Downloading ${book.title}`);
+        }
+      } else {
+        // For paid books, verify with backend
+        const { pdfUrl, title } = await downloadBookPdf(book.id);
+        window.open(pdfUrl, '_blank');
+        toast.success(`Downloading ${title}`);
+      }
+    } catch (error: any) {
+      console.error('Download error:', error);
+      
+      if (error.message?.includes('purchase') || error.message?.includes('403')) {
+        toast.error("Please purchase this book first to download");
+        setShowPayment(true);
+      } else {
+        toast.error(error.message || "Failed to download PDF");
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const price = book?.priceCents != null ? Number(book.priceCents) : null;
+  const isFree = price == null || price === 0;
+  const hasPdf = !!book?.pdfUrl;
+
+  function handleBuyClick() {
+    if (isFree) {
+      handleDownload();
+    } else {
+      setShowPayment(true);
+    }
   }
 
   function handlePaymentSubmitted() {
     toast.success("Payment submitted! We'll verify and unlock your download shortly.");
+    // Refetch purchase status after payment
+    if (book) {
+      markBookPurchased(book.id);
+      setPurchased(true);
+    }
   }
 
   if (loading) {
@@ -163,8 +228,16 @@ const BookDetail = () => {
       <div className="min-h-screen bg-[#F9F6EF] py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="mb-6 flex flex-wrap gap-3">
-            <Link to="/"><Button variant="ghost" className="gap-2 text-[#2E1208] hover:text-[#C17B4F]"><ArrowLeft className="h-4 w-4" />Home</Button></Link>
-            <Link to="/books"><Button variant="ghost" className="gap-2 text-[#2E1208] hover:text-[#C17B4F]">All books</Button></Link>
+            <Link to="/">
+              <Button variant="ghost" className="gap-2 text-[#2E1208] hover:text-[#C17B4F]">
+                <ArrowLeft className="h-4 w-4" />Home
+              </Button>
+            </Link>
+            <Link to="/books">
+              <Button variant="ghost" className="gap-2 text-[#2E1208] hover:text-[#C17B4F]">
+                All books
+              </Button>
+            </Link>
           </div>
 
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
@@ -188,12 +261,21 @@ const BookDetail = () => {
               {/* Info */}
               <div className="space-y-6">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-bold text-[#2E1208] mb-2 font-heading">{book.title}</h1>
+                  <h1 className="text-3xl md:text-4xl font-bold text-[#2E1208] mb-2 font-heading">
+                    {book.title}
+                  </h1>
                   <p className="text-xl text-gray-600 flex items-center gap-2">
                     <User className="h-5 w-5 text-[#C17B4F]" />by {book.author}
                   </p>
                   {price != null && price > 0 && (
-                    <p className="mt-3 text-2xl font-semibold text-[#2E1208]">{formatPrice(price)}</p>
+                    <p className="mt-3 text-2xl font-semibold text-[#2E1208]">
+                      {formatPrice(price)}
+                    </p>
+                  )}
+                  {isFree && (
+                    <p className="mt-3 text-lg text-green-600 font-semibold">
+                      Free Download
+                    </p>
                   )}
                 </div>
 
@@ -223,6 +305,12 @@ const BookDetail = () => {
                       {book.genre}
                     </div>
                   )}
+                  {hasPdf && (
+                    <div className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full text-sm font-medium flex items-center gap-1">
+                      <Download className="h-3 w-3" />
+                      PDF Available
+                    </div>
+                  )}
                 </div>
 
                 {/* Description */}
@@ -248,29 +336,65 @@ const BookDetail = () => {
                 <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:flex-wrap">
                   <Button
                     type="button"
-                    onClick={handleDownloadClick}
-                    className="bg-green-600 hover:bg-green-700 text-white px-8 py-6 text-lg rounded-full shadow-md gap-2 font-semibold"
+                    onClick={handleBuyClick}
+                    disabled={downloading || (!hasPdf && !isFree)}
+                    className={`
+                      px-8 py-6 text-lg rounded-full shadow-md gap-2 font-semibold
+                      ${(purchased || isFree) 
+                        ? 'bg-green-600 hover:bg-green-700 text-white' 
+                        : 'bg-[#C17B4F] hover:bg-[#A55E36] text-white'
+                      }
+                    `}
                   >
-                    <Download className="h-5 w-5" aria-hidden />
-                    {purchased || isFree ? "Download book" : "Buy & Download"}
+                    {downloading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Download className="h-5 w-5" />
+                    )}
+                    {purchased 
+                      ? "Download Now" 
+                      : isFree 
+                        ? "Download Free" 
+                        : "Buy & Download"
+                    }
                   </Button>
 
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="border-[#C9B8A8] text-[#2E1208] px-8 py-6 text-lg rounded-full gap-2"
-                  >
-                    <a href={inquireHref} {...(inquireExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-                      <ShoppingBag className="h-5 w-5" aria-hidden />
-                      {bookPurchaseLabel()}
-                    </a>
-                  </Button>
+                  {!isFree && !purchased && (
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="border-[#C9B8A8] text-[#2E1208] px-8 py-6 text-lg rounded-full gap-2"
+                    >
+                      <a href={inquireHref} {...(inquireExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+                        <ShoppingBag className="h-5 w-5" aria-hidden />
+                        {bookPurchaseLabel()}
+                      </a>
+                    </Button>
+                  )}
                 </div>
 
-                {!purchased && !isFree && (
+                {!hasPdf && (
+                  <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+                    ⚠️ PDF not yet available for this book. Check back soon!
+                  </p>
+                )}
+
+                {!purchased && !isFree && hasPdf && (
                   <p className="text-sm text-[#5C4436]">
                     Click <strong>Buy & Download</strong> to pay via M-Pesa, PayPal, or bank transfer.
                     Your download unlocks after we verify your payment.
+                  </p>
+                )}
+
+                {purchased && hasPdf && (
+                  <p className="text-sm text-green-600 bg-green-50 p-3 rounded-lg">
+                    ✓ You have purchased this book. Click Download Now to get your PDF copy.
+                  </p>
+                )}
+
+                {isFree && hasPdf && (
+                  <p className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
+                    📚 This book is free! Click Download Free to get your PDF copy.
                   </p>
                 )}
               </div>
