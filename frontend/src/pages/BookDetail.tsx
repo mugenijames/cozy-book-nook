@@ -1,17 +1,24 @@
 // src/pages/BookDetail.tsx
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Star, Calendar, User, BookOpen, ArrowLeft,
-  Loader2, ShoppingBag, Download, ChevronDown, ChevronUp,
+import { 
+  Star, 
+  Calendar, 
+  User, 
+  Book, 
+  ArrowLeft,
+  Loader2, 
+  ShoppingBag, 
+  Download, 
+  ChevronDown, 
+  ChevronUp 
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { resolveBookCoverUrl } from "@/lib/resolveBookCover";
 import { bookPurchaseHref, bookPurchaseLabel } from "@/config/purchase";
 import { formatPrice } from "@/lib/formatPrice";
-import { getBooks, downloadBookPdf } from "@/services/api";
+import { getBooks, downloadBookPdf, markBookAsPurchased, isBookPurchasedLocally } from "@/services/api";
 import { PaymentModal } from "@/components/PaymentModal";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -28,34 +35,6 @@ interface Book {
   pages?: number;
   rating?: number;
   priceCents?: number | null;
-}
-
-interface PurchasedBook {
-  id: string;
-  purchasedAt: string;
-}
-
-function getPurchasedBooks(): PurchasedBook[] {
-  try {
-    return JSON.parse(localStorage.getItem("purchased_books") || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function isBookPurchased(bookId: string): boolean {
-  const purchased = getPurchasedBooks();
-  return purchased.some(book => book.id === bookId);
-}
-
-function markBookPurchased(id: string) {
-  const existing = getPurchasedBooks();
-  if (!existing.some(book => book.id === id)) {
-    localStorage.setItem(
-      "purchased_books", 
-      JSON.stringify([...existing, { id, purchasedAt: new Date().toISOString() }])
-    );
-  }
 }
 
 const BookDetail = () => {
@@ -76,7 +55,7 @@ const BookDetail = () => {
     if (status === "success") {
       toast.success("Payment received — thank you! Your download is ready below.");
       if (book) {
-        markBookPurchased(book.id);
+        markBookAsPurchased(book.id);
         setPurchased(true);
       }
       searchParams.delete("checkout");
@@ -115,7 +94,7 @@ const BookDetail = () => {
           priceCents: foundBook.priceCents ?? undefined,
         };
         setBook(mapped);
-        setPurchased(isBookPurchased(String(foundBook.id)));
+        setPurchased(isBookPurchasedLocally(String(foundBook.id)));
       } else {
         setError("Book not found");
       }
@@ -179,9 +158,8 @@ const BookDetail = () => {
 
   function handlePaymentSubmitted() {
     toast.success("Payment submitted! We'll verify and unlock your download shortly.");
-    // Refetch purchase status after payment
     if (book) {
-      markBookPurchased(book.id);
+      markBookAsPurchased(book.id);
       setPurchased(true);
     }
   }
@@ -198,7 +176,7 @@ const BookDetail = () => {
     return (
       <div className="min-h-screen bg-[#F9F6EF] flex items-center justify-center">
         <div className="text-center">
-          <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <Book className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-[#2E1208] mb-4">{error || "Book not found"}</h1>
           <p className="text-gray-600 mb-6">The book you're looking for doesn't exist or has been removed.</p>
           <Link to="/"><Button className="bg-[#C17B4F] hover:bg-[#A55E36] text-white">Back to Home</Button></Link>
@@ -253,7 +231,7 @@ const BookDetail = () => {
                   />
                 ) : (
                   <div className="w-full max-w-md aspect-[2/3] bg-gradient-to-br from-[#F9F6EF] to-[#E8E0D5] rounded-2xl flex items-center justify-center">
-                    <BookOpen className="h-20 w-20 text-[#C17B4F]" />
+                    <Book className="h-20 w-20 text-[#C17B4F]" />
                   </div>
                 )}
               </div>
@@ -296,7 +274,7 @@ const BookDetail = () => {
                   )}
                   {book.pages != null && (
                     <div className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-full">
-                      <BookOpen className="h-4 w-4 text-gray-500" />
+                      <Book className="h-4 w-4 text-gray-500" />
                       <span className="text-gray-700">{book.pages} pages</span>
                     </div>
                   )}

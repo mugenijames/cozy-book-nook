@@ -1,7 +1,7 @@
 // src/pages/MyPurchases.tsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Download, Calendar, User } from "lucide-react";
+import { Book, Download, Calendar, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -14,7 +14,6 @@ export default function MyPurchases() {
   const [email, setEmail] = useState("");
 
   useEffect(() => {
-    // Get email from localStorage or prompt user
     const savedEmail = localStorage.getItem("checkout_email");
     if (savedEmail) {
       setEmail(savedEmail);
@@ -71,7 +70,7 @@ export default function MyPurchases() {
                   className="w-full px-3 py-2 border rounded-lg"
                   required
                 />
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full bg-[#C17B4F] hover:bg-[#A55E36]">
                   View My Books
                 </Button>
               </form>
@@ -85,7 +84,7 @@ export default function MyPurchases() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F9F6EF] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C17B4F]"></div>
+        <Loader2 className="h-12 w-12 animate-spin text-[#C17B4F]" />
       </div>
     );
   }
@@ -99,13 +98,13 @@ export default function MyPurchases() {
         {purchases.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <Book className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">No purchases yet</h2>
               <p className="text-gray-600 mb-4">
                 You haven't purchased any books yet. Browse our collection to get started.
               </p>
               <Link to="/books">
-                <Button>Browse Books</Button>
+                <Button className="bg-[#C17B4F] hover:bg-[#A55E36]">Browse Books</Button>
               </Link>
             </CardContent>
           </Card>
@@ -122,10 +121,13 @@ export default function MyPurchases() {
                           src={resolveBookCoverUrl(purchase.book.coverImage)}
                           alt={purchase.bookTitle}
                           className="w-full h-full object-cover rounded-lg"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://via.placeholder.com/96x128?text=No+Cover";
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-[#F9F6EF] to-[#E8E0D5] rounded-lg flex items-center justify-center">
-                          <BookOpen className="h-8 w-8 text-[#C17B4F]" />
+                          <Book className="h-8 w-8 text-[#C17B4F]" />
                         </div>
                       )}
                     </div>

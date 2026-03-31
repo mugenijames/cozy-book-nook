@@ -1,6 +1,7 @@
 // src/services/api.ts
 import { mockBooks } from "@/data/mockBooks";
 
+
 // Mock mode is optional. Default is OFF so dev uses real backend when available.
 // To enable mock mode: set `VITE_USE_MOCK_DATA=true` in `frontend/.env.local`.
 const USE_MOCK_DATA = String(import.meta.env.VITE_USE_MOCK_DATA || "").toLowerCase() === "true";
@@ -242,6 +243,80 @@ export const createCheckoutSession = (bookId: string): Promise<{ url: string }> 
 // ──────────────────────────────────────────────
 
 /**
+ * Get download URL for a purchased book using backend verification
+ * This should be used when the user is logged in
+ */
+export const downloadBookPdf = async (bookId: string): Promise<DownloadResponse> => {
+  if (USE_MOCK_DATA) {
+    console.warn("⚠️ Mock mode: Returning placeholder PDF URL");
+    return {
+      pdfUrl: "https://example.com/sample.pdf",
+      title: "Sample Book",
+    };
+  }
+  
+  const token = localStorage.getItem("admin_token");
+  const apiBase = getApiBase();
+  
+  const response = await fetch(`${apiBase}/api/books/${bookId}/download`, {
+    headers: {
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get download URL');
+  }
+  
+  return response.json();
+};
+
+/**
+ * Download book using email verification (for guest users)
+ */
+export const downloadBookByEmail = async (bookId: string, email: string): Promise<DownloadResponse> => {
+  if (USE_MOCK_DATA) {
+    console.warn("⚠️ Mock mode: Returning placeholder PDF URL");
+    return {
+      pdfUrl: "https://example.com/sample.pdf",
+      title: "Sample Book",
+    };
+  }
+  
+  const apiBase = getApiBase();
+  const response = await fetch(`${apiBase}/api/checkout/download/${bookId}?email=${encodeURIComponent(email)}`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get download URL');
+  }
+  
+  return response.json();
+};
+
+/**
+ * Download a book (opens PDF in new tab)
+ */
+export const downloadBook = async (bookId: string, email: string): Promise<void> => {
+  try {
+    const { pdfUrl, title } = await downloadBookByEmail(bookId, email);
+    window.open(pdfUrl, '_blank');
+    
+    // Track download
+    const downloadedBooks = JSON.parse(localStorage.getItem("downloaded_books") || "[]");
+    if (!downloadedBooks.includes(bookId)) {
+      localStorage.setItem("downloaded_books", JSON.stringify([...downloadedBooks, bookId]));
+    }
+    
+    console.log(`✅ Download started for ${title}`);
+  } catch (error) {
+    console.error('Download error:', error);
+    throw error;
+  }
+};
+
+/**
  * Check if a user has purchased a specific book
  * @param bookId - The ID of the book
  * @param email - The user's email address
@@ -260,32 +335,6 @@ export const checkPurchaseStatus = async (bookId: string, email: string): Promis
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to check purchase status');
-  }
-  
-  return response.json();
-};
-
-/**
- * Get download URL for a purchased book
- * @param bookId - The ID of the book
- * @param email - The user's email address
- */
-export const getDownloadUrl = async (bookId: string, email: string): Promise<DownloadResponse> => {
-  if (USE_MOCK_DATA) {
-    // Mock: Return a placeholder URL
-    console.warn("⚠️ Mock mode: Returning placeholder PDF URL");
-    return {
-      pdfUrl: "https://example.com/sample.pdf",
-      title: "Sample Book",
-    };
-  }
-  
-  const apiBase = getApiBase();
-  const response = await fetch(`${apiBase}/api/checkout/download/${bookId}?email=${encodeURIComponent(email)}`);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get download URL');
   }
   
   return response.json();
@@ -349,31 +398,6 @@ export const approveManualPayment = async (data: {
 };
 
 /**
- * Helper to download a book PDF
- * @param bookId - The ID of the book
- * @param email - The user's email address
- */
-export const downloadBook = async (bookId: string, email: string): Promise<void> => {
-  try {
-    const { pdfUrl, title } = await getDownloadUrl(bookId, email);
-    
-    // Open PDF in new tab or trigger download
-    window.open(pdfUrl, '_blank');
-    
-    // Track download in localStorage for UI updates
-    const downloadedBooks = JSON.parse(localStorage.getItem("downloaded_books") || "[]");
-    if (!downloadedBooks.includes(bookId)) {
-      localStorage.setItem("downloaded_books", JSON.stringify([...downloadedBooks, bookId]));
-    }
-    
-    console.log(`✅ Download started for ${title}`);
-  } catch (error) {
-    console.error('Download error:', error);
-    throw error;
-  }
-};
-
-/**
  * Helper to mark a book as purchased in localStorage (for UI state)
  * @param bookId - The ID of the book
  */
@@ -405,7 +429,7 @@ export default {
   getCheckoutStatus,
   createCheckoutSession,
   checkPurchaseStatus,
-  getDownloadUrl,
+  getDownloadUrl: downloadBookPdf,
   getUserPurchases,
   approveManualPayment,
   downloadBook,
