@@ -20,7 +20,6 @@ import { bookPurchaseHref, bookPurchaseLabel } from "@/config/purchase";
 import { formatPrice } from "@/lib/formatPrice";
 import { getBooks, downloadBookPdf, markBookAsPurchased, isBookPurchasedLocally } from "@/services/api";
 import { PaymentModal } from "@/components/PaymentModal";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface Book {
   id: string;
@@ -40,7 +39,6 @@ interface Book {
 const BookDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { token } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -117,18 +115,24 @@ const BookDetail = () => {
 
     setDownloading(true);
     try {
-      // If book is free or purchased, allow download
+      // If book is free or purchased, download directly
       if (isFree || purchased) {
         // Open PDF directly if we have the URL
         if (book.pdfUrl) {
           window.open(book.pdfUrl, '_blank');
           toast.success(`Downloading ${book.title}`);
+        } else {
+          toast.error("PDF URL not found");
         }
       } else {
         // For paid books, verify with backend
         const { pdfUrl, title } = await downloadBookPdf(book.id);
-        window.open(pdfUrl, '_blank');
-        toast.success(`Downloading ${title}`);
+        if (pdfUrl) {
+          window.open(pdfUrl, '_blank');
+          toast.success(`Downloading ${title}`);
+        } else {
+          toast.error("PDF URL not found");
+        }
       }
     } catch (error: any) {
       console.error('Download error:', error);
@@ -149,11 +153,26 @@ const BookDetail = () => {
   const hasPdf = !!book?.pdfUrl;
 
   function handleBuyClick() {
+    // Check if book has PDF available
+    if (!hasPdf) {
+      toast.error("PDF not available for this book yet");
+      return;
+    }
+    
+    // If free, download directly
     if (isFree) {
       handleDownload();
-    } else {
-      setShowPayment(true);
+      return;
     }
+    
+    // If purchased, download directly
+    if (purchased) {
+      handleDownload();
+      return;
+    }
+    
+    // Otherwise, show payment modal
+    setShowPayment(true);
   }
 
   function handlePaymentSubmitted() {
@@ -315,13 +334,14 @@ const BookDetail = () => {
                   <Button
                     type="button"
                     onClick={handleBuyClick}
-                    disabled={downloading || (!hasPdf && !isFree)}
+                    disabled={downloading}
                     className={`
                       px-8 py-6 text-lg rounded-full shadow-md gap-2 font-semibold
                       ${(purchased || isFree) 
                         ? 'bg-green-600 hover:bg-green-700 text-white' 
                         : 'bg-[#C17B4F] hover:bg-[#A55E36] text-white'
                       }
+                      ${(!hasPdf && !isFree) ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
                   >
                     {downloading ? (
@@ -351,27 +371,28 @@ const BookDetail = () => {
                   )}
                 </div>
 
+                {/* Info Messages */}
                 {!hasPdf && (
-                  <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+                  <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg mt-4">
                     ⚠️ PDF not yet available for this book. Check back soon!
                   </p>
                 )}
 
                 {!purchased && !isFree && hasPdf && (
-                  <p className="text-sm text-[#5C4436]">
+                  <p className="text-sm text-[#5C4436] mt-4">
                     Click <strong>Buy & Download</strong> to pay via M-Pesa, PayPal, or bank transfer.
                     Your download unlocks after we verify your payment.
                   </p>
                 )}
 
                 {purchased && hasPdf && (
-                  <p className="text-sm text-green-600 bg-green-50 p-3 rounded-lg">
+                  <p className="text-sm text-green-600 bg-green-50 p-3 rounded-lg mt-4">
                     ✓ You have purchased this book. Click Download Now to get your PDF copy.
                   </p>
                 )}
 
                 {isFree && hasPdf && (
-                  <p className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg">
+                  <p className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg mt-4">
                     📚 This book is free! Click Download Free to get your PDF copy.
                   </p>
                 )}
