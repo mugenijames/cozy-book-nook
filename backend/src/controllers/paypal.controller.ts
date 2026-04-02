@@ -121,6 +121,7 @@ export const capturePayPalOrder = async (req: Request, res: Response) => {
     });
     
     if (pendingPayment) {
+      // Auto-approve payment
       await prisma.order.create({
         data: {
           bookId: pendingPayment.bookId,
@@ -129,7 +130,7 @@ export const capturePayPalOrder = async (req: Request, res: Response) => {
           transactionCode: response.data.id,
           email: pendingPayment.email,
           amountCents: Math.round(pendingPayment.amount * 100),
-          status: 'approved',
+          status: 'approved', // Auto-approved
         },
       });
       
@@ -140,6 +141,8 @@ export const capturePayPalOrder = async (req: Request, res: Response) => {
           paypalCaptureId: response.data.id,
         },
       });
+      
+      console.log(`✅ PayPal payment auto-approved: ${orderId}`);
     }
     
     res.json(response.data);

@@ -4,9 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Smartphone, CreditCard, Building2 } from "lucide-react";
+import { Loader2, Smartphone, CreditCard } from "lucide-react";
 import { toast } from "sonner";
-import { createCheckoutSession, approveManualPayment, markBookAsPurchased } from "@/services/api";
+import { createCheckoutSession, markBookAsPurchased } from "@/services/api";
 
 interface PaymentModalProps {
   book: {
@@ -19,14 +19,13 @@ interface PaymentModalProps {
   onPaymentSubmitted: () => void;
 }
 
-type PaymentMethod = "mpesa" | "paypal" | "bank";
+type PaymentMethod = "mpesa" | "paypal";
 
 export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModalProps) {
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [transactionCode, setTransactionCode] = useState("");
 
   const handleMpesaPayment = async () => {
     if (!email) {
@@ -40,7 +39,6 @@ export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModal
 
     setLoading(true);
     try {
-      // Call your backend M-Pesa STK Push endpoint
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/payments/mpesa/stkpush`, {
         method: 'POST',
         headers: {
@@ -61,20 +59,18 @@ export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModal
       }
 
       toast.success("Check your phone for M-Pesa prompt");
-      onPaymentSubmitted();
       
       // Poll for payment status
       pollPaymentStatus(data.checkoutRequestID);
       
     } catch (error: any) {
       toast.error(error.message || "Failed to initiate M-Pesa payment");
-    } finally {
       setLoading(false);
     }
   };
 
   const pollPaymentStatus = async (checkoutRequestID: string) => {
-    const maxAttempts = 30; // 30 seconds
+    const maxAttempts = 60; // 60 seconds
     let attempts = 0;
     
     const interval = setInterval(async () => {
@@ -87,10 +83,12 @@ export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModal
           clearInterval(interval);
           markBookAsPurchased(book.id);
           toast.success("Payment successful! Your book is now available for download.");
+          onPaymentSubmitted();
           onClose();
         } else if (data.status === 'failed' || attempts >= maxAttempts) {
           clearInterval(interval);
           toast.error(data.error || "Payment failed or timed out");
+          setLoading(false);
         }
       } catch (error) {
         console.error('Error polling payment status:', error);
@@ -106,7 +104,6 @@ export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModal
 
     setLoading(true);
     try {
-      // Create PayPal order
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/payments/paypal/create-order`, {
         method: 'POST',
         headers: {
@@ -125,6 +122,9 @@ export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModal
         throw new Error(data.error || 'PayPal payment failed');
       }
 
+      // Store email for later
+      localStorage.setItem("checkout_email", email);
+      
       // Redirect to PayPal
       window.location.href = data.approvalUrl;
       
@@ -134,44 +134,11 @@ export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModal
     }
   };
 
-  const handleBankTransfer = async () => {
-    if (!email) {
-      toast.error("Please enter your email address");
-      return;
-    }
-    if (!transactionCode) {
-      toast.error("Please enter the transaction code");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await approveManualPayment({
-        bookId: book.id,
-        email,
-        transactionCode,
-        paymentMethod: "bank_transfer",
-        amountCents: book.priceCents,
-      });
-      
-      markBookAsPurchased(book.id);
-      toast.success("Payment approved! You can now download the book.");
-      onPaymentSubmitted();
-      onClose();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit payment");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = () => {
     if (paymentMethod === "mpesa") {
       handleMpesaPayment();
-    } else if (paymentMethod === "paypal") {
-      handlePayPalPayment();
     } else {
-      handleBankTransfer();
+      handlePayPalPayment();
     }
   };
 
@@ -226,7 +193,7 @@ export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModal
 
           <div className="space-y-2">
             <Label>Select Payment Method</Label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Button
                 type="button"
                 variant={paymentMethod === "mpesa" ? "default" : "outline"}
@@ -246,53 +213,8 @@ export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModal
                 <CreditCard className="h-6 w-6 mb-2" />
                 <span className="text-sm">PayPal</span>
               </Button>
-              
-              <Button
-                type="button"
-                variant={paymentMethod === "bank" ? "default" : "outline"}
-                onClick={() => setPaymentMethod("bank")}
-                className="flex flex-col items-center py-4 h-auto"
-              >
-                <Building2 className="h-6 w-6 mb-2" />
-                <span className="text-sm">Bank</span>
-              </Button>
             </div>
           </div>
-
-          {paymentMethod === "bank" && (
-            <div className="space-y-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="font-semibold mb-2">Bank Transfer Details:</p>
-                <p className="text-sm">Bank: Equity Bank</p>
-                <p className="text-sm">Account Name: Cozy Book Nook</p>
-                <p className="text-sm">Account Number: 1234567890</p>
-                <p className="text-sm">Branch: Nairobi</p>
-                <p className="text-sm mt-2">Swift Code: EQBLKENA</p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="transaction">Transaction Reference</Label>
-                <Input
-                  id="transaction"
-                  placeholder="Enter M-Pesa or bank transaction code"
-                  value={transactionCode}
-                  onChange={(e) => setTransactionCode(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  After making the payment, enter the transaction reference above
-                </p>
-              </div>
-            </div>
-          )}
-
-          {paymentMethod === "paypal" && (
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <p className="text-sm">
-                You'll be redirected to PayPal to complete your payment securely.
-                You can pay with PayPal balance, credit card, or debit card.
-              </p>
-            </div>
-          )}
 
           <Button
             onClick={handleSubmit}
@@ -302,13 +224,13 @@ export function PaymentModal({ book, onClose, onPaymentSubmitted }: PaymentModal
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {loading 
               ? "Processing..." 
-              : paymentMethod === "mpesa" 
-                ? `Pay ${price} with M-Pesa`
-                : paymentMethod === "paypal"
-                ? `Pay ${price} with PayPal`
-                : `Confirm Bank Transfer`
+              : `Pay ${price} with ${paymentMethod === "mpesa" ? "M-Pesa" : "PayPal"}`
             }
           </Button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            Payment is instant and automatically verified. You'll be able to download immediately after payment.
+          </p>
         </div>
       </DialogContent>
     </Dialog>
