@@ -1,6 +1,6 @@
 // backend/src/controllers/payment.controller.ts
 import { Request, Response } from "express";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { prisma } from "../lib/prisma";
 
 // M-Pesa Configuration
@@ -10,10 +10,39 @@ const MPESA_PASSKEY = process.env.MPESA_PASSKEY;
 const MPESA_SHORTCODE = process.env.MPESA_SHORTCODE;
 const MPESA_ENV = process.env.MPESA_ENV || "sandbox";
 
-const getMpesaAuthToken = async () => {
+// Types for M-Pesa API responses
+interface MpesaTokenResponse {
+  access_token: string;
+  expires_in: number;
+}
+
+interface MpesaStkPushResponse {
+  CheckoutRequestID: string;
+  ResponseCode: string;
+  ResponseDescription: string;
+  CustomerMessage: string;
+}
+
+interface MpesaCallbackRequest {
+  Body: {
+    stkCallback: {
+      CheckoutRequestID: string;
+      ResultCode: number;
+      ResultDesc: string;
+      CallbackMetadata?: {
+        Item: Array<{
+          Name: string;
+          Value: string;
+        }>;
+      };
+    };
+  };
+}
+
+const getMpesaAuthToken = async (): Promise<string> => {
   const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString('base64');
   
-  const response = await axios.get(
+  const response: AxiosResponse<MpesaTokenResponse> = await axios.get(
     MPESA_ENV === 'sandbox' 
       ? 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
       : 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
@@ -47,7 +76,7 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
     const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, -3);
     const password = Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${timestamp}`).toString('base64');
     
-    const response = await axios.post(
+    const response: AxiosResponse<MpesaStkPushResponse> = await axios.post(
       MPESA_ENV === 'sandbox'
         ? 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
         : 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
@@ -96,8 +125,8 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
 
 export const mpesaCallback = async (req: Request, res: Response) => {
   try {
-    const { Body } = req.body;
-    const { stkCallback } = Body;
+    const callbackData = req.body as MpesaCallbackRequest;
+    const { stkCallback } = callbackData.Body;
     
     const checkoutRequestID = stkCallback.CheckoutRequestID;
     const resultCode = stkCallback.ResultCode;
@@ -112,10 +141,11 @@ export const mpesaCallback = async (req: Request, res: Response) => {
     
     if (resultCode === 0) {
       // Payment successful - auto approve
-      const { CallbackMetadata } = stkCallback;
       let mpesaReceiptNumber = "";
-      if (CallbackMetadata && CallbackMetadata.Item) {
-        const receiptItem = CallbackMetadata.Item.find((item: any) => item.Name === "MpesaReceiptNumber");
+      if (stkCallback.CallbackMetadata?.Item) {
+        const receiptItem = stkCallback.CallbackMetadata.Item.find(
+          (item) => item.Name === "MpesaReceiptNumber"
+        );
         if (receiptItem) mpesaReceiptNumber = receiptItem.Value;
       }
       

@@ -1,14 +1,21 @@
 // backend/src/routes/order.routes.ts
-import { Router } from "express";
-import { createOrder, getOrders, updateOrderStatus, checkOrderStatus, getOrderById } from "../controllers/order.controller";
-import { isAdmin } from "../middleware/authMiddleware";
+import { Router } from 'express';
+import {
+  getOrders,
+  getOrderById,
+  getOrdersByEmail,
+  updateOrderStatus,
+} from '../controllers/order.controller';
+import { isAdmin } from '../middleware/authMiddleware';
 
 const router = Router();
 
-router.post("/", createOrder);                          // Public — user submits order
-router.get("/", isAdmin, getOrders);                   // Admin — view all orders
-router.put("/:id", isAdmin, updateOrderStatus);        // Admin — approve/reject
-router.get("/check", checkOrderStatus);                // Public — check if approved
-router.get('/:id', getOrderById);
+// Public routes
+router.get('/by-email', getOrdersByEmail);
+
+// Admin only routes
+router.get('/', isAdmin, getOrders);
+router.get('/:id', isAdmin, getOrderById);
+router.put('/:id/status', isAdmin, updateOrderStatus);
 
 export default router;

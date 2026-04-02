@@ -1,16 +1,30 @@
 // backend/src/controllers/paypal.controller.ts
 import { Request, Response } from "express";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { prisma } from "../lib/prisma";
 
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
 const PAYPAL_SECRET = process.env.PAYPAL_SECRET;
 const PAYPAL_ENV = process.env.PAYPAL_ENV || "sandbox";
 
-const getPayPalToken = async () => {
+interface PayPalTokenResponse {
+  access_token: string;
+}
+
+interface PayPalOrderResponse {
+  id: string;
+  links: Array<{ rel: string; href: string }>;
+}
+
+interface PayPalCaptureResponse {
+  id: string;
+  status: string;
+}
+
+const getPayPalToken = async (): Promise<string> => {
   const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`).toString('base64');
   
-  const response = await axios.post(
+  const response: AxiosResponse<PayPalTokenResponse> = await axios.post(
     PAYPAL_ENV === 'sandbox'
       ? 'https://api-m.sandbox.paypal.com/v1/oauth2/token'
       : 'https://api-m.paypal.com/v1/oauth2/token',
@@ -44,7 +58,7 @@ export const createPayPalOrder = async (req: Request, res: Response) => {
     
     const token = await getPayPalToken();
     
-    const response = await axios.post(
+    const response: AxiosResponse<PayPalOrderResponse> = await axios.post(
       PAYPAL_ENV === 'sandbox'
         ? 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
         : 'https://api-m.paypal.com/v2/checkout/orders',
@@ -85,7 +99,7 @@ export const createPayPalOrder = async (req: Request, res: Response) => {
       },
     });
     
-    const approvalUrl = response.data.links.find((link: any) => link.rel === "approve")?.href;
+    const approvalUrl = response.data.links.find((link) => link.rel === "approve")?.href;
     
     res.json({
       orderId: response.data.id,
@@ -103,7 +117,7 @@ export const capturePayPalOrder = async (req: Request, res: Response) => {
     
     const token = await getPayPalToken();
     
-    const response = await axios.post(
+    const response: AxiosResponse<PayPalCaptureResponse> = await axios.post(
       PAYPAL_ENV === 'sandbox'
         ? `https://api-m.sandbox.paypal.com/v2/checkout/orders/${orderId}/capture`
         : `https://api-m.paypal.com/v2/checkout/orders/${orderId}/capture`,
@@ -121,7 +135,6 @@ export const capturePayPalOrder = async (req: Request, res: Response) => {
     });
     
     if (pendingPayment) {
-      // Auto-approve payment
       await prisma.order.create({
         data: {
           bookId: pendingPayment.bookId,
@@ -130,7 +143,7 @@ export const capturePayPalOrder = async (req: Request, res: Response) => {
           transactionCode: response.data.id,
           email: pendingPayment.email,
           amountCents: Math.round(pendingPayment.amount * 100),
-          status: 'approved', // Auto-approved
+          status: 'approved',
         },
       });
       
