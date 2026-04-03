@@ -1,3 +1,4 @@
+//src/components/Footer.tsx
 import { BookOpen, Facebook, Instagram, Twitter } from "lucide-react";
 
 const Footer = () => {

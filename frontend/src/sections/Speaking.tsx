@@ -1,3 +1,4 @@
+//src/sections/Speaking.tsx
 import { useState } from "react";
 import {
   Dialog,
@@ -101,11 +102,11 @@ const Speaking = () => {
   };
 
   return (
-    <section id="speaking" className="py-24 bg-[#2E1208] text-white text-center">
+    <section id="speaking" className="py-24 bg-white text-black text-center">
       <div className="max-w-4xl mx-auto px-4">
         <h2 className="text-3xl md:text-4xl font-bold mb-6">Speaking & Consulting</h2>
 
-        <p className="max-w-3xl mx-auto mb-10 text-gray-300 text-lg leading-relaxed">
+        <p className="max-w-3xl mx-auto mb-10 text-gray-500 text-lg leading-relaxed">
           David is available for conferences, leadership trainings, youth empowerment programs,
           church events, corporate workshops, and more.
         </p>
@@ -126,13 +127,13 @@ const Speaking = () => {
                 className="mx-auto h-1 w-12 rounded-full bg-[#D4A017]"
                 aria-hidden
               />
-              <DialogTitle className="font-heading text-2xl font-semibold tracking-tight text-[#2E1208] md:text-[1.65rem]">
+              <DialogTitle className="font-heading text-2xl font-semibold tracking-tight text-[#2E1208] md:text-[1.65rem] text-center">
                 Invite David to Speak
               </DialogTitle>
-              <DialogDescription className="mx-auto max-w-md text-[0.9375rem] leading-relaxed text-[#5C4436]">
+              {/* <DialogDescription className="mx-auto max-w-md text-[0.9375rem] leading-relaxed text-[#5C4436]">
                 Share a few details about your event. David will review and respond within 2-3 business days.
                 You'll receive a confirmation email immediately.
-              </DialogDescription>
+              </DialogDescription> */}
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
