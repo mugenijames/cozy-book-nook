@@ -22,16 +22,14 @@ export const getOrders = async (req: Request, res: Response) => {
 export const getOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const idValue = Array.isArray(id) ? id[0] : id;
     
-    // Handle id being string or string array
-    const orderId = Array.isArray(id) ? id[0] : (id as string);
-
-    if (!orderId) {
+    if (!idValue) {
       return res.status(400).json({ error: 'Order ID is required' });
     }
-
+    
     const order = await prisma.order.findUnique({
-      where: { id: orderId },
+      where: { id: idValue },
       include: {
         book: true,
       },
@@ -50,7 +48,6 @@ export const getOrderById = async (req: Request, res: Response) => {
 
 export const getOrdersByEmail = async (req: Request, res: Response) => {
   try {
-    // Handle email being string or string array
     const emailValue = req.query.email;
     const email = Array.isArray(emailValue) ? emailValue[0] : (emailValue as string);
     
@@ -80,22 +77,16 @@ export const getOrdersByEmail = async (req: Request, res: Response) => {
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    // Handle id being string or string array
-    const orderId = Array.isArray(id) ? id[0] : (id as string);
-
-    if (!orderId) {
-      return res.status(400).json({ error: 'Order ID is required' });
-    }
-
     const { status } = req.body;
     
-    if (!status) {
-      return res.status(400).json({ error: 'Status is required' });
+    const idValue = Array.isArray(id) ? id[0] : id;
+    
+    if (!idValue) {
+      return res.status(400).json({ error: 'Order ID is required' });
     }
     
     const order = await prisma.order.update({
-      where: { id: orderId },
+      where: { id: idValue },
       data: { status },
     });
     

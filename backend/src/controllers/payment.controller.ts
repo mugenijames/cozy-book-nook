@@ -10,7 +10,6 @@ const MPESA_PASSKEY = process.env.MPESA_PASSKEY;
 const MPESA_SHORTCODE = process.env.MPESA_SHORTCODE;
 const MPESA_ENV = process.env.MPESA_ENV || "sandbox";
 
-// Types for M-Pesa API responses
 interface MpesaTokenResponse {
   access_token: string;
   expires_in: number;
@@ -65,7 +64,7 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
     }
     
     const book = await prisma.book.findUnique({
-      where: { id: bookId },
+      where: { id: bookId as string },
     });
     
     if (!book) {
@@ -100,15 +99,14 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
       }
     );
     
-    // Store pending payment
     await prisma.pendingPayment.create({
       data: {
         checkoutRequestID: response.data.CheckoutRequestID,
-        bookId,
+        bookId: book.id,
         bookTitle: book.title,
-        email,
-        phoneNumber,
-        amount,
+        email: email as string,
+        phoneNumber: phoneNumber as string,
+        amount: typeof amount === 'number' ? amount : parseFloat(amount),
         status: 'pending',
       },
     });
@@ -140,7 +138,6 @@ export const mpesaCallback = async (req: Request, res: Response) => {
     }
     
     if (resultCode === 0) {
-      // Payment successful - auto approve
       let mpesaReceiptNumber = "";
       if (stkCallback.CallbackMetadata?.Item) {
         const receiptItem = stkCallback.CallbackMetadata.Item.find(
@@ -149,7 +146,6 @@ export const mpesaCallback = async (req: Request, res: Response) => {
         if (receiptItem) mpesaReceiptNumber = receiptItem.Value;
       }
       
-      // Create order with auto-approval
       await prisma.order.create({
         data: {
           bookId: pendingPayment.bookId,
@@ -158,7 +154,7 @@ export const mpesaCallback = async (req: Request, res: Response) => {
           transactionCode: mpesaReceiptNumber || checkoutRequestID,
           email: pendingPayment.email,
           amountCents: Math.round(pendingPayment.amount * 100),
-          status: 'approved', // Auto-approved
+          status: 'approved',
         },
       });
       
@@ -172,7 +168,6 @@ export const mpesaCallback = async (req: Request, res: Response) => {
       
       console.log(`✅ M-Pesa payment successful and auto-approved: ${checkoutRequestID}`);
     } else {
-      // Payment failed
       await prisma.pendingPayment.update({
         where: { id: pendingPayment.id },
         data: {
@@ -195,7 +190,6 @@ export const checkPaymentStatus = async (req: Request, res: Response) => {
   try {
     const { checkoutRequestID } = req.params;
     
-    // Handle checkoutRequestID being string or string array
     const requestID = Array.isArray(checkoutRequestID) 
       ? checkoutRequestID[0] 
       : (checkoutRequestID as string);
