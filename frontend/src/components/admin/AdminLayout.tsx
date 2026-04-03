@@ -4,6 +4,7 @@ import { LayoutDashboard, BookOpen, PlusCircle, LogOut } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+// REMOVE the Footer import from here
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
