@@ -54,7 +54,7 @@ const Footer = () => {
                 <Twitter className="h-5 w-5 text-[#D4A017] hover:text-white transition-colors" />
               </a>
               <a
-                href="https://instagram.com/davidemuria"
+                href="https://www.instagram.com/davidemuriaerus?igsh=eHZ4N3RiMndsMHpo"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-[#D4A017]/20 hover:bg-[#D4A017] p-2 rounded-full transition-all duration-300 hover:scale-110"
@@ -63,7 +63,7 @@ const Footer = () => {
                 <Instagram className="h-5 w-5 text-[#D4A017] hover:text-white transition-colors" />
               </a>
               <a
-                href="https://youtube.com/@davidemuria"
+                href="https://youtube.com/@davidemuria1129?si=ZDs2Xe1m94k4oNNt"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-[#D4A017]/20 hover:bg-[#D4A017] p-2 rounded-full transition-all duration-300 hover:scale-110"
@@ -72,7 +72,7 @@ const Footer = () => {
                 <Youtube className="h-5 w-5 text-[#D4A017] hover:text-white transition-colors" />
               </a>
               <a
-                href="https://linkedin.com/in/davidemuria"
+                href="https://www.linkedin.com/in/david-emuria-90bba4297?utm_source=share_via&utm_content=profile&utm_medium=member_android"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-[#D4A017]/20 hover:bg-[#D4A017] p-2 rounded-full transition-all duration-300 hover:scale-110"
