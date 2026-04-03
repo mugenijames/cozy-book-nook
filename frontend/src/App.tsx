@@ -22,6 +22,8 @@ import AdminRoute from "@/components/admin/ProtectedRoute";
 
 // Shadcn UI component
 import { Button } from "@/components/ui/button";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 // 2. Create the QueryClient instance outside the component
 const queryClient = new QueryClient({
@@ -43,7 +45,8 @@ function App() {
         <Route path="/books" element={<BooksCatalogPage />} />
         <Route path="/book/:slug" element={<BookDetail />} />
         <Route path="/programs/:slug" element={<ProgramActivityPage />} />
-
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         {/* Move Login OUTSIDE the protected routes so it's accessible */}
         <Route path="/admin/login" element={<LoginPage />} />
 

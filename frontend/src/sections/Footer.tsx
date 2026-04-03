@@ -148,14 +148,14 @@ const Footer = () => {
             <ul className="space-y-3">
               <li className="flex items-start gap-3">
                 <Mail className="h-5 w-5 text-[#D4A017] mt-0.5" />
-                <a href="mailto:david@davidemuria.com" className="text-gray-300 hover:text-[#D4A017] transition-colors text-sm">
-                  davidemuria9780@gmail.com 
+                <a href="mailto:davidemuria9780@gmail.com" className="text-gray-300 hover:text-[#D4A017] transition-colors text-sm">
+                  davidemuria9780@gmail.com
                 </a>
               </li>
               <li className="flex items-start gap-3">
                 <Phone className="h-5 w-5 text-[#D4A017] mt-0.5" />
-                <a href="tel:+254700000000" className="text-gray-300 hover:text-[#D4A017] transition-colors text-sm">
-                  +254705138594
+                <a href="tel:+254705138594" className="text-gray-300 hover:text-[#D4A017] transition-colors text-sm">
+                  +254 705 138 594
                 </a>
               </li>
               <li className="flex items-start gap-3">
@@ -168,36 +168,46 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom Bar - Copyright on Left, Bridgelink on Right */}
+        {/* Bottom Bar */}
         <div className="border-t border-[#D4A017]/30 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           {/* Copyright - Left Side */}
           <p className="text-gray-400 text-sm order-2 md:order-1">
             &copy; {new Date().getFullYear()} David Emuria. All rights reserved.
           </p>
           
-          {/* Back to Top Button - Center on Mobile, Right on Desktop */}
+          {/* Legal Links - Center */}
+          <div className="flex gap-4 order-3 md:order-2">
+            <Link to="/privacy" className="text-gray-400 hover:text-[#D4A017] transition-colors text-xs">
+              Privacy Policy
+            </Link>
+            <Link to="/terms" className="text-gray-400 hover:text-[#D4A017] transition-colors text-xs">
+              Terms & Conditions
+            </Link>
+          </div>
+          
+          {/* Back to Top Button - Right */}
           <button
             onClick={scrollToTop}
-            className="bg-[#D4A017]/20 hover:bg-[#D4A017] p-2 rounded-full transition-all duration-300 group order-1 md:order-2"
+            className="bg-[#D4A017]/20 hover:bg-[#D4A017] p-2 rounded-full transition-all duration-300 group order-1 md:order-3"
             aria-label="Back to top"
           >
             <ArrowUp className="h-5 w-5 text-[#D4A017] group-hover:text-white transition-colors" />
           </button>
-          
-          {/* Bridgelink Digital - Right Side */}
-          <div className="order-3">
-            <p className="text-gray-500 text-xs">
-              Powered by{' '}
-              <a 
-                href="https://bridgelink.co.ke" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-[#D4A017] hover:text-[#b58900] transition-colors font-medium"
-              >
-                Bridgelink Digital
-              </a>
-            </p>
-          </div>
+        </div>
+        
+        {/* Bridgelink Digital Attribution */}
+        <div className="mt-6 pt-4 text-center">
+          <p className="text-gray-500 text-xs">
+            Powered by{' '}
+            <a 
+              href="https://bridgelink.co.ke" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[#D4A017] hover:text-[#b58900] transition-colors font-medium"
+            >
+              Bridgelink Digital
+            </a>
+          </p>
         </div>
       </div>
     </footer>
