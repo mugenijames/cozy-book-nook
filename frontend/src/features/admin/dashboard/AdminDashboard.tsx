@@ -63,7 +63,7 @@ export default function AdminDashboard() {
               Overview
             </p>
             <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-[#2E1208] md:text-4xl">
-              Welcome back, Admin
+              Welcome back
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-relaxed text-[#5C4436] md:text-lg">
               Manage your catalog, add new titles, and keep the public site up to date—all from here.
@@ -340,7 +340,7 @@ export default function AdminDashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-[#C17B4F]" />
-            <span className="text-sm text-[#5C4436]">Cozy Book Nook Admin Portal</span>
+            <span className="text-sm text-[#5C4436]">Emuria Admin Admin Portal</span>
           </div>
           <div className="flex gap-6 text-sm text-[#5C4436]">
             <a href="/" className="hover:text-[#C17B4F] transition-colors">Home</a>
@@ -349,7 +349,7 @@ export default function AdminDashboard() {
             <a href="/privacy" className="hover:text-[#C17B4F] transition-colors">Privacy</a>
           </div>
           <div className="flex items-center gap-1 text-xs text-[#8B7355]">
-            <span>&copy; {new Date().getFullYear()} Cozy Book Nook</span>
+            <span>&copy; {new Date().getFullYear()} David Emuria</span>
             <Heart className="h-3 w-3 mx-1 text-[#C17B4F]" />
             <span>All rights reserved</span>
           </div>
