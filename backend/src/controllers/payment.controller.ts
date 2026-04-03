@@ -1,6 +1,6 @@
 // backend/src/controllers/payment.controller.ts
 import { Request, Response } from "express";
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import { prisma } from "../lib/prisma";
 
 // M-Pesa Configuration
@@ -42,7 +42,7 @@ interface MpesaCallbackRequest {
 const getMpesaAuthToken = async (): Promise<string> => {
   const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString('base64');
   
-  const response: AxiosResponse<MpesaTokenResponse> = await axios.get(
+  const response = await axios.get<MpesaTokenResponse>(
     MPESA_ENV === 'sandbox' 
       ? 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
       : 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
@@ -76,7 +76,7 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
     const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, -3);
     const password = Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${timestamp}`).toString('base64');
     
-    const response: AxiosResponse<MpesaStkPushResponse> = await axios.post(
+    const response = await axios.post<MpesaStkPushResponse>(
       MPESA_ENV === 'sandbox'
         ? 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
         : 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
@@ -195,8 +195,17 @@ export const checkPaymentStatus = async (req: Request, res: Response) => {
   try {
     const { checkoutRequestID } = req.params;
     
+    // Handle checkoutRequestID being string or string array
+    const requestID = Array.isArray(checkoutRequestID) 
+      ? checkoutRequestID[0] 
+      : (checkoutRequestID as string);
+
+    if (!requestID) {
+      return res.status(400).json({ error: "Checkout Request ID is required" });
+    }
+    
     const payment = await prisma.pendingPayment.findUnique({
-      where: { checkoutRequestID },
+      where: { checkoutRequestID: requestID },
     });
     
     if (!payment) {

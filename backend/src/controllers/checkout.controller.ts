@@ -158,12 +158,13 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
           console.error('Missing bookId or bookTitle in session metadata');
           break;
         }
-
+        
+        const bookIdValue = Array.isArray(bookId) ? bookId[0] : bookId;
         const transactionCode = `STRIPE_${session.id}_${Date.now()}`;
         
         await prisma.order.create({
           data: {
-            bookId: bookId,
+            bookId: bookIdValue,
             bookTitle: bookTitle,
             paymentMethod: 'stripe',
             transactionCode: transactionCode,
@@ -173,7 +174,7 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
           },
         });
 
-        console.log(`✅ Order created for book ${bookId}`);
+        console.log(`✅ Order created for book ${bookIdValue}`);
         break;
       }
 
@@ -191,16 +192,23 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
 export const checkPurchaseStatus = async (req: Request, res: Response) => {
   try {
     const { bookId } = req.params;
-    const { email } = req.query;
+    
+    const bookIdValue = Array.isArray(bookId) ? bookId[0] : bookId;
+    const emailValue = req.query.email;
+    const email = Array.isArray(emailValue) ? emailValue[0] : (emailValue as string);
     
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
     
+    if (!bookIdValue) {
+      return res.status(400).json({ error: 'Book ID is required' });
+    }
+    
     const order = await prisma.order.findFirst({
       where: {
-        bookId: bookId,
-        email: email as string,
+        bookId: bookIdValue,
+        email: email,
         status: 'approved',
       },
       select: {
@@ -223,7 +231,8 @@ export const checkPurchaseStatus = async (req: Request, res: Response) => {
 
 export const getUserPurchases = async (req: Request, res: Response) => {
   try {
-    const { email } = req.query;
+    const emailValue = req.query.email;
+    const email = Array.isArray(emailValue) ? emailValue[0] : (emailValue as string);
     
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
@@ -231,7 +240,7 @@ export const getUserPurchases = async (req: Request, res: Response) => {
     
     const orders = await prisma.order.findMany({
       where: {
-        email: email as string,
+        email: email,
         status: 'approved',
       },
       orderBy: {
@@ -270,16 +279,23 @@ export const getUserPurchases = async (req: Request, res: Response) => {
 export const getDownloadUrl = async (req: Request, res: Response) => {
   try {
     const { bookId } = req.params;
-    const { email } = req.query;
+    
+    const bookIdValue = Array.isArray(bookId) ? bookId[0] : bookId;
+    const emailValue = req.query.email;
+    const email = Array.isArray(emailValue) ? emailValue[0] : (emailValue as string);
     
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
     
+    if (!bookIdValue) {
+      return res.status(400).json({ error: 'Book ID is required' });
+    }
+    
     const order = await prisma.order.findFirst({
       where: {
-        bookId: bookId,
-        email: email as string,
+        bookId: bookIdValue,
+        email: email,
         status: 'approved',
       },
     });
@@ -289,7 +305,7 @@ export const getDownloadUrl = async (req: Request, res: Response) => {
     }
     
     const book = await prisma.book.findUnique({
-      where: { id: bookId },
+      where: { id: bookIdValue },
       select: { pdfUrl: true, title: true },
     });
     
@@ -311,12 +327,16 @@ export const approveManualPayment = async (req: Request, res: Response) => {
   try {
     const { bookId, email, transactionCode, paymentMethod, amountCents } = req.body;
     
-    if (!bookId || !email || !transactionCode) {
+    const bookIdValue = Array.isArray(bookId) ? bookId[0] : bookId;
+    const emailValue = Array.isArray(email) ? email[0] : email;
+    const transactionCodeValue = Array.isArray(transactionCode) ? transactionCode[0] : transactionCode;
+    
+    if (!bookIdValue || !emailValue || !transactionCodeValue) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
     const book = await prisma.book.findUnique({
-      where: { id: bookId },
+      where: { id: bookIdValue },
     });
     
     if (!book) {
@@ -324,7 +344,7 @@ export const approveManualPayment = async (req: Request, res: Response) => {
     }
     
     const existingOrder = await prisma.order.findUnique({
-      where: { transactionCode },
+      where: { transactionCode: transactionCodeValue },
     });
     
     if (existingOrder) {
@@ -333,11 +353,11 @@ export const approveManualPayment = async (req: Request, res: Response) => {
     
     const order = await prisma.order.create({
       data: {
-        bookId,
+        bookId: bookIdValue,
         bookTitle: book.title,
         paymentMethod: paymentMethod || 'manual',
-        transactionCode,
-        email,
+        transactionCode: transactionCodeValue,
+        email: emailValue,
         amountCents: amountCents || book.priceCents || 0,
         status: 'approved',
       },

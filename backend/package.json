@@ -2,13 +2,13 @@
   "name": "backend",
   "version": "1.0.0",
   "engines": {
-    "node": "20.18.0"
+    "node": ">=18.0.0"
   },
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn src/server.ts",
-    "postinstall": "chmod +x node_modules/.bin/prisma && npx prisma generate"
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",

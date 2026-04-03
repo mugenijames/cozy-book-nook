@@ -2,7 +2,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 
-
 export const getOrders = async (req: Request, res: Response) => {
   try {
     const orders = await prisma.order.findMany({
@@ -23,8 +22,16 @@ export const getOrders = async (req: Request, res: Response) => {
 export const getOrderById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Handle id being string or string array
+    const orderId = Array.isArray(id) ? id[0] : (id as string);
+
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
     const order = await prisma.order.findUnique({
-      where: { id },
+      where: { id: orderId },
       include: {
         book: true,
       },
@@ -43,7 +50,9 @@ export const getOrderById = async (req: Request, res: Response) => {
 
 export const getOrdersByEmail = async (req: Request, res: Response) => {
   try {
-    const { email } = req.query;
+    // Handle email being string or string array
+    const emailValue = req.query.email;
+    const email = Array.isArray(emailValue) ? emailValue[0] : (emailValue as string);
     
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
@@ -51,7 +60,7 @@ export const getOrdersByEmail = async (req: Request, res: Response) => {
     
     const orders = await prisma.order.findMany({
       where: {
-        email: email as string,
+        email: email,
       },
       include: {
         book: true,
@@ -71,10 +80,22 @@ export const getOrdersByEmail = async (req: Request, res: Response) => {
 export const updateOrderStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Handle id being string or string array
+    const orderId = Array.isArray(id) ? id[0] : (id as string);
+
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
     const { status } = req.body;
     
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+    
     const order = await prisma.order.update({
-      where: { id },
+      where: { id: orderId },
       data: { status },
     });
     
