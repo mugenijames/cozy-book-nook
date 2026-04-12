@@ -63,7 +63,7 @@ const Footer = () => {
                 <Instagram className="h-5 w-5 text-[#D4A017] hover:text-white transition-colors" />
               </a>
               <a
-                href="https://youtube.com/@davidemuria1129?si=ZDs2Xe1m94k4oNNt"
+                href="https://www.youtube.com/@davidemuria1129"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-[#D4A017]/20 hover:bg-[#D4A017] p-2 rounded-full transition-all duration-300 hover:scale-110"
