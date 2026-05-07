@@ -48,7 +48,7 @@
   }
 
   body {
-    @apply bg-[#F9F6EF] text-[#2E1208] font-body antialiased;
+    @apply bg-[#F7F4EF] text-[#2E1208] font-body antialiased;
   }
 
   /* Custom Scrollbar */

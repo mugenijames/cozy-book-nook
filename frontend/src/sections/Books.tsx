@@ -5,7 +5,7 @@ import { getBooks } from "@/services/api";
 import { BookShowcaseCard } from "@/components/BookShowcaseCard";
 
 /** How many books to highlight on the home page before “View all”. */
-const HOME_BOOKS_PREVIEW = 8;
+const HOME_BOOKS_PREVIEW = 4;
 
 const Books = () => {
   const { data: books = [], isLoading, isError, refetch } = useQuery({

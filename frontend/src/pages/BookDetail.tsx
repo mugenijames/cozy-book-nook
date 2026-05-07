@@ -11,10 +11,19 @@ import {
   ShoppingBag, 
   Download, 
   ChevronDown, 
-  ChevronUp 
+  ChevronUp,
+  Eye,
+  FileText,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { resolveBookCoverUrl } from "@/lib/resolveBookCover";
 import { bookPurchaseHref, bookPurchaseLabel } from "@/config/purchase";
 import { formatPrice } from "@/lib/formatPrice";
@@ -47,6 +56,7 @@ const BookDetail = () => {
   const [descExpanded, setDescExpanded] = useState(false);
   const [purchased, setPurchased] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
 
   useEffect(() => {
     const status = searchParams.get("checkout");
@@ -107,7 +117,6 @@ const BookDetail = () => {
   const handleDownload = async () => {
     if (!book) return;
 
-    // Check if book has PDF
     if (!book.pdfUrl) {
       toast.error("PDF not available for this book yet");
       return;
@@ -115,9 +124,7 @@ const BookDetail = () => {
 
     setDownloading(true);
     try {
-      // If book is free or purchased, download directly
       if (isFree || purchased) {
-        // Open PDF directly if we have the URL
         if (book.pdfUrl) {
           window.open(book.pdfUrl, '_blank');
           toast.success(`Downloading ${book.title}`);
@@ -125,7 +132,6 @@ const BookDetail = () => {
           toast.error("PDF URL not found");
         }
       } else {
-        // For paid books, verify with backend
         const { pdfUrl, title } = await downloadBookPdf(book.id);
         if (pdfUrl) {
           window.open(pdfUrl, '_blank');
@@ -148,30 +154,34 @@ const BookDetail = () => {
     }
   };
 
+  const handlePreviewPdf = () => {
+    if (book?.pdfUrl) {
+      setShowPdfPreview(true);
+    } else {
+      toast.error("PDF preview not available");
+    }
+  };
+
   const price = book?.priceCents != null ? Number(book.priceCents) : null;
   const isFree = price == null || price === 0;
   const hasPdf = !!book?.pdfUrl;
 
   function handleBuyClick() {
-    // Check if book has PDF available
     if (!hasPdf) {
       toast.error("PDF not available for this book yet");
       return;
     }
     
-    // If free, download directly
     if (isFree) {
       handleDownload();
       return;
     }
     
-    // If purchased, download directly
     if (purchased) {
       handleDownload();
       return;
     }
     
-    // Otherwise, show payment modal
     setShowPayment(true);
   }
 
@@ -214,6 +224,42 @@ const BookDetail = () => {
 
   return (
     <>
+      {/* PDF Preview Modal */}
+      <Dialog open={showPdfPreview} onOpenChange={setShowPdfPreview}>
+        <DialogContent className="max-w-4xl w-[90vw] h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-[#C17B4F]" />
+                {book.title} - Preview
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowPdfPreview(false)}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 h-full min-h-0">
+            {book.pdfUrl ? (
+              <iframe
+                src={`${book.pdfUrl}#toolbar=0&navpanes=0`}
+                className="w-full h-full rounded-lg"
+                title={`${book.title} PDF Preview`}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-500">PDF preview not available</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Modal */}
       {showPayment && book && price != null && (
         <PaymentModal
           book={{ id: book.id, title: book.title, priceCents: price, slug: book.slug }}
@@ -239,15 +285,17 @@ const BookDetail = () => {
 
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="grid md:grid-cols-2 gap-8 p-8 md:p-12">
-              {/* Cover */}
+              {/* Cover - Full visibility */}
               <div className="flex items-center justify-center">
                 {book.coverImage ? (
-                  <img
-                    src={resolveBookCoverUrl(book.coverImage) || ""}
-                    alt={book.title}
-                    className="rounded-2xl shadow-xl w-full max-w-md h-auto object-cover"
-                    onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
-                  />
+                  <div className="relative group">
+                    <img
+                      src={resolveBookCoverUrl(book.coverImage) || ""}
+                      alt={book.title}
+                      className="rounded-2xl shadow-xl w-full max-w-md h-auto object-contain max-h-[500px]"
+                      onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
+                    />
+                  </div>
                 ) : (
                   <div className="w-full max-w-md aspect-[2/3] bg-gradient-to-br from-[#F9F6EF] to-[#E8E0D5] rounded-2xl flex items-center justify-center">
                     <Book className="h-20 w-20 text-[#C17B4F]" />
@@ -331,6 +379,18 @@ const BookDetail = () => {
 
                 {/* Actions */}
                 <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:flex-wrap">
+                  {hasPdf && (
+                    <Button
+                      type="button"
+                      onClick={handlePreviewPdf}
+                      variant="outline"
+                      className="border-[#C9B8A8] text-[#2E1208] px-6 py-6 text-lg rounded-full gap-2"
+                    >
+                      <Eye className="h-5 w-5" />
+                      Preview PDF
+                    </Button>
+                  )}
+                  
                   <Button
                     type="button"
                     onClick={handleBuyClick}

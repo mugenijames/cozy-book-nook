@@ -29,11 +29,8 @@ if (!fs.existsSync(uploadsDir)) {
 const allowedOrigins = [
   "http://localhost:8080",
   "http://192.168.100.8:8080",
-  "http://localhost:5173",
   "http://localhost:3000",
-  'https://speakeremuriadavid.netlify.app',
   'https://emuriadavid.netlify.app',
-  'https://cozybooknook.netlify.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
