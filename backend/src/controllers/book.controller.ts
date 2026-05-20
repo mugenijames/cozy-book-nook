@@ -62,7 +62,18 @@ const getBook = async (req: Request, res: Response) => {
 
 const createBook = async (req: Request, res: Response) => {
   try {
-    const { title, description, coverImage, author, genre, publishedYear, pages, rating, priceCents } = req.body;
+    const { 
+      title, 
+      description, 
+      coverImage, 
+      author, 
+      genre, 
+      publishedYear, 
+      pages, 
+      rating, 
+      priceCents,
+      pdfUrl  // ← Add this
+    } = req.body;
 
     if (!title || !author) {
       return res.status(400).json({ error: "Title and author are required" });
@@ -90,6 +101,7 @@ const createBook = async (req: Request, res: Response) => {
         rating: rating ? Number(rating) : 0,
         slug: slug,
         priceCents: resolvedPrice,
+        pdfUrl: pdfUrl ? String(pdfUrl) : null,  // ← Add this
       },
     });
 
@@ -103,7 +115,19 @@ const createBook = async (req: Request, res: Response) => {
 const updateBook = async (req: Request, res: Response) => {
   try {
     const id = getSingleParam(req.params.id);
-    const { title, description, coverImage, author, genre, publishedYear, pages, rating, slug, priceCents } = req.body;
+    const { 
+      title, 
+      description, 
+      coverImage, 
+      author, 
+      genre, 
+      publishedYear, 
+      pages, 
+      rating, 
+      slug, 
+      priceCents,
+      pdfUrl  // ← Add this
+    } = req.body;
 
     const updateData: any = {};
 
@@ -115,6 +139,7 @@ const updateBook = async (req: Request, res: Response) => {
     if (publishedYear !== undefined) updateData.publishedYear = Number(publishedYear);
     if (pages !== undefined) updateData.pages = Number(pages);
     if (rating !== undefined) updateData.rating = Number(rating);
+    if (pdfUrl !== undefined) updateData.pdfUrl = String(pdfUrl);  // ← Add this
 
     if (priceCents !== undefined) {
       if (priceCents === null || priceCents === "") {
