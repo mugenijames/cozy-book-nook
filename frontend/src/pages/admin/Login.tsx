@@ -4,16 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, BookOpen } from "lucide-react";
-import Footer from "@/sections/Footer"; // Import the shared Footer
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import Footer from "@/sections/Footer";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -21,13 +22,10 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     
-    // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Simulate validation
     if (email === "admin@example.com" && password === "admin123") {
       const dummyToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBleGFtcGxlLmNvbSIsInJvbGUiOiJBRE1JTiIsImlhdCI6MTY5OTk5OTk5OSwiZXhwIjo5OTk5OTk5OTk5fQ.dummy_signature";
-      
       login(dummyToken);
       toast.success("Welcome back, Admin!");
       navigate("/admin");
@@ -38,37 +36,38 @@ export default function LoginPage() {
     setLoading(false);
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#F9F6EF] via-[#F5EDE3] to-[#E8E0D5]">
-      {/* Header with Logo */}
-      <div className="flex justify-center pt-12 pb-8">
-        <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-br from-[#C17B4F] to-[#A55E36] p-3 rounded-2xl shadow-lg">
-            <BookOpen className="h-10 w-10 text-white" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-[#2E1208]">Cozy Book Nook</h1>
-            <p className="text-sm text-[#5C4436]">Admin Portal</p>
-          </div>
+      {/* Logo centered at top */}
+      <div className="flex justify-center pt-12 pb-6">
+        <div className="bg-gradient-to-br from-[#C17B4F] to-[#A55E36] p-3 rounded-2xl shadow-lg">
+          <img 
+            src="/logo.png" 
+            alt="David Emuria Logo" 
+            className="h-16 w-16 object-cover rounded-xl"
+          />
         </div>
+      </div>
+
+      {/* Brand name centered below logo */}
+      <div className="text-center mb-4">
+        <h1 className="text-2xl font-bold text-[#2E1208]">DAVID EMURIA</h1>
       </div>
 
       {/* Login Card */}
       <div className="flex-1 flex items-center justify-center px-4 pb-12">
         <Card className="w-full max-w-md shadow-xl border-0 bg-white/90 backdrop-blur-sm">
           <CardHeader className="space-y-2 text-center pb-6">
-            <div className="mx-auto w-12 h-12 bg-[#C17B4F]/10 rounded-full flex items-center justify-center mb-2">
-              <BookOpen className="h-6 w-6 text-[#C17B4F]" />
-            </div>
             <CardTitle className="text-2xl font-bold text-[#2E1208]">Admin Login</CardTitle>
-            <CardDescription className="text-[#5C4436]">
-              Enter your credentials to access the admin panel
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-[#2E1208] font-medium">Email Address</Label>
+                <Label htmlFor="email" className="text-[#2E1208] font-medium">Email Address / Username</Label>
                 <Input 
                   id="email"
                   type="email" 
@@ -77,25 +76,41 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)} 
                   required 
                   disabled={loading}
-                  className="border-[#D4C5B5] focus:border-[#C17B4F] focus:ring-[#C17B4F]/20"
+                  className="border-[#D4C5B5] focus:border-[#C17B4F] focus:ring-[#C17B4F]/20 h-11"
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-[#2E1208] font-medium">Password</Label>
-                <Input 
-                  id="password"
-                  type="password" 
-                  placeholder="••••••••" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  required 
-                  disabled={loading}
-                  className="border-[#D4C5B5] focus:border-[#C17B4F] focus:ring-[#C17B4F]/20"
-                />
+                <div className="relative">
+                  <Input 
+                    id="password"
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    required 
+                    disabled={loading}
+                    className="border-[#D4C5B5] focus:border-[#C17B4F] focus:ring-[#C17B4F]/20 h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#8B7355] hover:text-[#C17B4F] transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
               </div>
+
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-[#C17B4F] to-[#A55E36] hover:from-[#A55E36] hover:to-[#8B4513] text-white shadow-md transition-all duration-300" 
+                className="w-full bg-gradient-to-r from-[#C17B4F] to-[#A55E36] hover:from-[#A55E36] hover:to-[#8B4513] text-white shadow-md transition-all duration-300 h-11" 
                 disabled={loading}
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -111,7 +126,7 @@ export default function LoginPage() {
         </Card>
       </div>
 
-      {/* Shared Footer - Same as public pages */}
+      {/* Shared Footer */}
       <Footer />
     </div>
   );
