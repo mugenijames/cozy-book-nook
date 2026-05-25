@@ -1,8 +1,10 @@
 import { Routes, Route, Navigate, Link } from "react-router-dom";
-// 1. Import React Query components
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import "./App.css";
+
+// Import Layout
+import Layout from "@/components/Layout";  // ← ADD THIS
 
 // Public pages
 import Home from "./pages/Home";
@@ -25,44 +27,41 @@ import { Button } from "@/components/ui/button";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 
-// 2. Create the QueryClient instance outside the component
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1, // Only retry failed requests once
-      refetchOnWindowFocus: false, // Don't refetch every time you switch tabs
+      retry: 1,
+      refetchOnWindowFocus: false,
     },
   },
 });
 
 function App() {
   return (
-    // 3. Wrap everything in the Provider
     <QueryClientProvider client={queryClient}>
       <Routes>
-        {/* ==================== Public routes ==================== */}
-        <Route path="/" element={<Home />} />
-        <Route path="/books" element={<BooksCatalogPage />} />
-        <Route path="/book/:slug" element={<BookDetail />} />
-        <Route path="/programs/:slug" element={<ProgramActivityPage />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-        {/* Move Login OUTSIDE the protected routes so it's accessible */}
+        {/* ==================== Public routes with Layout (Header + Footer) ==================== */}
+        <Route element={<Layout />}>  {/* ← ADD THIS WRAPPER */}
+          <Route path="/" element={<Home />} />
+          <Route path="/books" element={<BooksCatalogPage />} />
+          <Route path="/book/:slug" element={<BookDetail />} />
+          <Route path="/programs/:slug" element={<ProgramActivityPage />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+        </Route>  {/* ← CLOSE THE WRAPPER */}
+
+        {/* Admin Login - no header/footer */}
         <Route path="/admin/login" element={<LoginPage />} />
 
-        {/* ==================== Protected Admin routes ==================== */}
+        {/* Protected Admin routes */}
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminLayout />}>
-            {/* Dashboard – shown at /admin */}
             <Route index element={<AdminDashboard />} />
-
-            {/* Books section – nested under /admin/books */}
             <Route path="books">
               <Route index element={<BookListPage />} />
               <Route path="new" element={<BookFormPage />} />
               <Route path=":id/edit" element={<BookFormPage />} />
             </Route>
-
             <Route path="*" element={
               <div className="flex min-h-screen items-center justify-center p-4">
                 <div className="text-center space-y-6">
@@ -81,7 +80,6 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      {/* 4. Add Devtools (visible only in development) */}
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
