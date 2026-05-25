@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, BookOpen, Heart } from "lucide-react";
+import { Loader2, BookOpen } from "lucide-react";
+import Footer from "@/sections/Footer"; // Import the shared Footer
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -110,28 +111,8 @@ export default function LoginPage() {
         </Card>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-[#D4C5B5] bg-white/50 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-[#C17B4F]" />
-              <span className="text-sm text-[#5C4436]">Cozy Book Nook Admin Portal</span>
-            </div>
-            <div className="flex gap-6 text-sm text-[#5C4436]">
-              <a href="/" className="hover:text-[#C17B4F] transition-colors">Home</a>
-              <a href="/books" className="hover:text-[#C17B4F] transition-colors">Bookstore</a>
-              <a href="/contact" className="hover:text-[#C17B4F] transition-colors">Contact</a>
-              <a href="/privacy" className="hover:text-[#C17B4F] transition-colors">Privacy</a>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-[#8B7355]">
-              <span>&copy; {new Date().getFullYear()} David Emuria</span>
-              <Heart className="h-3 w-3 mx-1 text-[#C17B4F]" />
-              <span>All rights reserved</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Shared Footer - Same as public pages */}
+      <Footer />
     </div>
   );
 }
