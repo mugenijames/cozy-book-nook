@@ -41,6 +41,11 @@
     
     /* Border Radius */
     --radius: 0.5rem;
+
+     .dark {
+    color-scheme: dark;
+  }
+  
   }
 
   * {
