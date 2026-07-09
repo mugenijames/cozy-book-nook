@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import Header from "@/sections/Header";
+// import Header from "@/sections/Header";
 import Footer from "@/sections/Footer";
 import { getProgramBySlug, PROGRAM_ACTIVITIES } from "@/data/programActivities";
 
@@ -13,7 +13,7 @@ export default function ProgramActivityPage() {
 
   return (
     <div className="min-h-screen bg-[#F9F6EF] text-[#2E1208]">
-      <Header />
+      {/* <Header /> */}
 
       <main className="pt-24 pb-16">
         <div className="container mx-auto max-w-5xl px-6">

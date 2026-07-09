@@ -1,28 +1,42 @@
-import { Navigate, Outlet } from "react-router-dom";
+// src/components/admin/ProtectedRoute.tsx
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 
-const ProtectedRoute = () => {
-  const { isAdmin, token, isLoading } = useAuth();
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
 
-  // Show loading spinner while checking authentication
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { isAdmin, token, isLoading, logout } = useAuth();
+
+  // Check token expiry on mount
+  useEffect(() => {
+    const checkTokenExpiry = () => {
+      const tokenExpiry = localStorage.getItem('token_expiry');
+      if (tokenExpiry && Date.now() > parseInt(tokenExpiry)) {
+        logout();
+      }
+    };
+    
+    checkTokenExpiry();
+    const interval = setInterval(checkTokenExpiry, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, [logout]);
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
       </div>
     );
   }
 
-  // Check if user is authenticated
   if (!isAdmin || !token) {
-    console.log("Access denied - redirecting to login");
-    // Fix: Redirect to /admin/login instead of /login
     return <Navigate to="/admin/login" replace />;
   }
 
-  // User is authenticated, render the protected content
-  return <Outlet />;
-};
-
-export default ProtectedRoute;
+  return <>{children}</>;
+}

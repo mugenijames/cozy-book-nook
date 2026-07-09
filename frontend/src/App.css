@@ -40,3 +40,6 @@
 .read-the-docs {
   color: #888;
 }
+aside[data-sidebar="true"]:not(:first-of-type) {
+  display: none !important;
+}
