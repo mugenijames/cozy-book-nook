@@ -56,32 +56,32 @@ const Speaking = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+
     if (!validateForm()) {
       toast.error("Please fill in all required fields correctly");
       return;
     }
-  
+
     setSubmitting(true);
-  
+
     try {
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-      
+
       // ✅ FIXED: Correct endpoint
       const response = await fetch(`${API_BASE}/api/invite`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
-  
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         throw new Error(data.error || "Failed to send invitation");
       }
-  
+
       toast.success("Invite sent successfully! You'll receive a confirmation email shortly.");
       setOpen(false);
       setFormData({
@@ -121,24 +121,55 @@ const Speaking = () => {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="max-h-[85vh] max-w-[calc(100vw-2rem)] sm:max-w-[600px] gap-0 overflow-hidden rounded-2xl border border-[#E8DDD4] bg-[#FDF8F3] p-0 shadow-2xl shadow-black/25 flex flex-col">
-            <DialogHeader className="flex-shrink-0 space-y-3 border-b border-[#E8DDD4] bg-gradient-to-b from-[#FAF3EB] to-[#FDF8F3] px-6 pb-5 pt-6 text-center">
-              <div
-                className="mx-auto h-1 w-12 rounded-full bg-[#D4A017]"
-                aria-hidden
-              />
-              <DialogTitle className="font-heading text-2xl font-semibold tracking-tight text-[#2E1208] md:text-[1.65rem] text-center">
+          <DialogContent
+            className="
+    max-h-[90vh]
+    max-w-[calc(100vw-2rem)]
+    sm:max-w-[650px]
+    overflow-hidden
+    rounded-3xl
+    border border-[#D4AF37]
+    bg-gradient-to-br
+    from-[#FFF9E1]
+    via-[#F5D97A]
+    to-[#C89B3C]
+    p-0
+    shadow-[0_20px_60px_rgba(212,175,55,0.35)]
+    flex
+    flex-col
+    backdrop-blur-xl
+  "
+          >
+            <DialogHeader
+              className="
+    flex-shrink-0
+    border-b
+    border-[#E4C76A]
+    bg-gradient-to-r
+    from-[#FFF8DD]
+    via-[#F7D56A]
+    to-[#D4AF37]
+    px-8
+    py-8
+    text-center
+  "
+            >
+              <DialogTitle className="text-2xl font-bold text-[#3D2817]">
                 Invite David to Speak
               </DialogTitle>
-              {/* <DialogDescription className="mx-auto max-w-md text-[0.9375rem] leading-relaxed text-[#5C4436]">
-                Share a few details about your event. David will review and respond within 2-3 business days.
-                You'll receive a confirmation email immediately.
-              </DialogDescription> */}
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
               {/* Scrollable Form Fields */}
-              <div className="flex-1 overflow-y-auto px-6 py-6">
+              <div
+                className="
+    flex-1
+    overflow-y-auto
+    bg-[#FFFDF8]
+    px-8
+    py-8
+  "
+              >
                 <div className="grid gap-5 md:grid-cols-2">
                   <div className="space-y-1.5 md:col-span-1">
                     <Label htmlFor="name" className="text-sm font-medium text-[#3D2817]">
@@ -212,6 +243,7 @@ const Speaking = () => {
                         Leadership Training Program
                       </option>
                       <option value="Philanthropy">Philanthropy</option>
+                      <option value="Other">Other</option>
                     </select>
                     {errors.program && (
                       <p className="text-sm text-red-700" role="alert">
@@ -269,7 +301,7 @@ const Speaking = () => {
                 </div>
               </div>
 
-              
+
               <DialogFooter className="flex-shrink-0 flex-col gap-3 border-t border-[#E8DDD4] bg-[#FDF8F3] px-6 py-5 sm:flex-row sm:justify-end sm:gap-3">
                 <Button
                   type="button"
@@ -291,7 +323,7 @@ const Speaking = () => {
           </DialogContent>
         </Dialog>
       </div>
-    </section>
+    </section >
   );
 };
 

@@ -77,7 +77,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold font-heading text-[#2E1208]">Dashboard</h1>
+        <h1 className="text-2xl font-bold font-heading text-[#2E1208]">UPDATES</h1>
         <p className="text-sm text-[#5C4436] mt-1">Live data from your database</p>
       </div>
 

@@ -65,8 +65,8 @@ app.use('/api/payments', paymentRoutes);
 
 // 5. Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     environment: process.env.NODE_ENV || 'development',
     auth_bypass: BYPASS_AUTH,
     timestamp: new Date().toISOString(),
@@ -99,7 +99,7 @@ app.get('/', (req, res) => {
 // 7. Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('❌ Global Error caught:', err);
-  res.status(err.status || 500).json({ 
+  res.status(err.status || 500).json({
     error: err.message || 'Internal Server Error',
     ...(isDevelopment && { stack: err.stack })
   });
@@ -119,7 +119,14 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`💰 Payments API: /api/payments`);
   console.log(`✅ Health check: /health`);
   console.log(`📁 Uploads served from: /uploads\n`);
-  
+  console.log("📧 Email Configuration");
+  console.log("SMTP Host:", process.env.SMTP_HOST);
+  console.log("SMTP User:", process.env.SMTP_USER);
+  console.log("Admin Email:", process.env.ADMIN_EMAIL);
+  console.log(
+    "SMTP Password:",
+    process.env.SMTP_PASS ? "Loaded ✅" : "Missing ❌"
+  );
   if (BYPASS_AUTH) {
     console.log('⚠️  DEVELOPMENT MODE: Authentication is BYPASSED');
   }

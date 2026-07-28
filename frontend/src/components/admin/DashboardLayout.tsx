@@ -74,7 +74,7 @@ export default function AdminLayout() {
               </button>
             )}
             <span className="font-heading font-semibold text-[#2E1208]">
-              David Emuria — Admin
+              David Emuria 
             </span>
           </div>
           <a
@@ -90,8 +90,7 @@ export default function AdminLayout() {
           <Outlet />
         </main>
 
-        {/* Footer — full width naturally since sidebar is in flow */}
-        <Footer />
+       
       </div>
     </div>
   );
