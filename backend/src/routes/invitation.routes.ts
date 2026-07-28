@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-router.post('/invite', async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const { name, email, phone, program, date, location, message } = req.body;
 
