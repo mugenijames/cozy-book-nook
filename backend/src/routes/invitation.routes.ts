@@ -114,7 +114,7 @@ router.post('/', async (req: Request, res: Response) => {
               </div>
             </div>
             <div class="footer">
-              <p>Invitation sent from davidemuria.com</p>
+              <p>Invitation sent from https://emuriadavid.netlify.app/</p>
             </div>
           </div>
         </body>
@@ -159,7 +159,7 @@ router.post('/', async (req: Request, res: Response) => {
                 ${location ? `<p><strong>📍 Location:</strong> ${location}</p>` : ''}
               </div>
               
-              <p>I will get back to you within <strong>2-3 business days</strong> to discuss availability and next steps.</p>
+              <p>I will get back to you within <strong>24 hours business working hours</strong> to discuss availability and next steps.</p>
               
               <p>In the meantime, feel free to explore my books at <a href="${process.env.FRONTEND_URL || 'https://emuria.netlify.app'}" style="color: #D4A017;">davidemuria.com</a></p>
               
