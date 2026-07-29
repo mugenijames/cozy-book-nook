@@ -102,7 +102,8 @@ router.post(
     try {
       if (!req.file) {
         return res.status(400).json({
-          error: "No PDF file uploaded",
+          success: false,
+          error: "No PDF uploaded",
         });
       }
 
@@ -115,16 +116,12 @@ router.post(
           {
             folder: "cozy-book-nook/pdfs",
 
-            // Upload PDF as an image resource so Cloudinary can generate previews
-            resource_type: "image",
+            // Upload as RAW (recommended for PDFs)
+            resource_type: "raw",
 
-            format: "pdf",
-
-            // Make the asset public
-            type: "upload",
-            overwrite: true,
             use_filename: true,
-            unique_filename: false,
+            unique_filename: true,
+            overwrite: true,
           },
           (error, result) => {
             if (error) return reject(error);
@@ -135,37 +132,42 @@ router.post(
         uploadStream.end(req.file!.buffer);
       });
 
-      console.log("\n================ CLOUDINARY RESULT ================");
-      console.dir(result, { depth: null });
-      console.log("===================================================\n");
+      console.log("✅ PDF Uploaded");
+      console.log(result.secure_url);
 
-      // Generate first-page preview image
-      const previewUrl = cloudinary.url(result.public_id + ".jpg", {
-        resource_type: "image",
+      /**
+       * Convert first page of PDF into a JPG preview.
+       *
+       * Cloudinary can transform RAW PDFs into images.
+       */
+      const previewImage = cloudinary.url(result.public_id, {
+        resource_type: "raw",
+        format: "jpg",
         page: 1,
         secure: true,
       });
 
-      console.log("📄 PDF URL:", result.secure_url);
-      console.log("🖼 Preview URL:", previewUrl);
+      console.log("🖼 Preview:", previewImage);
 
-      res.status(200).json({
+      return res.json({
         success: true,
-        url: result.secure_url,
-        previewUrl,
+
+        pdfUrl: result.secure_url,
+
+        pdfPreviewImage: previewImage,
+
         publicId: result.public_id,
-        resourceType: result.resource_type,
-        type: result.type,
-        filename: result.public_id,
+
+        filename: result.original_filename,
+
         message: "PDF uploaded successfully",
       });
-    } catch (error: any) {
-      console.error("❌ PDF Upload Error");
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
-        error: error.message || "PDF upload failed",
+        error: err.message,
       });
     }
   }
