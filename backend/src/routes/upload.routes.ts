@@ -94,49 +94,82 @@ router.post('/upload-cover', isAdmin, uploadImage.single('cover'), async (req, r
 });
 
 // Upload PDF to Cloudinary
-router.post('/upload-pdf', isAdmin, uploadPdf.single('pdf'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No PDF file uploaded' });
-    }
+router.post(
+  "/upload-pdf",
+  isAdmin,
+  uploadPdf.single("pdf"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          error: "No PDF file uploaded",
+        });
+      }
 
-    console.log(`📤 Uploading PDF: ${req.file.originalname} (${req.file.size} bytes)`);
-
-    const uploadPromise = new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: "cozy-book-nook/pdfs",
-          resource_type: "image",   // Important for PDFs that should be previewed
-          format: "pdf",
-          type: "upload",           // Public upload
-          access_mode: "public",    // Explicitly public
-          overwrite: true,
-          use_filename: true,
-          unique_filename: false,
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
+      console.log(
+        `📤 Uploading PDF: ${req.file.originalname} (${req.file.size} bytes)`
       );
 
-      uploadStream.end(req.file!.buffer);
-    });
+      const result: any = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: "cozy-book-nook/pdfs",
 
-    const result = await uploadPromise as any;
+            // Upload PDF as an image resource so Cloudinary can generate previews
+            resource_type: "image",
 
-    console.log('✅ PDF uploaded:', result.secure_url);
+            format: "pdf",
 
-    res.json({
-      url: result.secure_url,
-      filename: result.public_id,
-      message: 'PDF upload successful'
-    });
-  } catch (error) {
-    console.error('PDF upload error:', error);
-    res.status(500).json({ error: 'PDF upload failed' });
+            // Make the asset public
+            type: "upload",
+            overwrite: true,
+            use_filename: true,
+            unique_filename: false,
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
+
+        uploadStream.end(req.file!.buffer);
+      });
+
+      console.log("\n================ CLOUDINARY RESULT ================");
+      console.dir(result, { depth: null });
+      console.log("===================================================\n");
+
+      // Generate first-page preview image
+      const previewUrl = cloudinary.url(result.public_id + ".jpg", {
+        resource_type: "image",
+        page: 1,
+        secure: true,
+      });
+
+      console.log("📄 PDF URL:", result.secure_url);
+      console.log("🖼 Preview URL:", previewUrl);
+
+      res.status(200).json({
+        success: true,
+        url: result.secure_url,
+        previewUrl,
+        publicId: result.public_id,
+        resourceType: result.resource_type,
+        type: result.type,
+        filename: result.public_id,
+        message: "PDF uploaded successfully",
+      });
+    } catch (error: any) {
+      console.error("❌ PDF Upload Error");
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        error: error.message || "PDF upload failed",
+      });
+    }
   }
-});
+);
 
 // Test endpoint
 router.get('/upload-test', (req, res) => {
