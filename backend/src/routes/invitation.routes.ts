@@ -161,7 +161,7 @@ router.post('/', async (req: Request, res: Response) => {
               
               <p>I will get back to you within <strong>24 hours business working hours</strong> to discuss availability and next steps.</p>
               
-              <p>In the meantime, feel free to explore my books at <a href="${process.env.FRONTEND_URL || 'https://emuria.netlify.app'}" style="color: #D4A017;">davidemuria.com</a></p>
+              <p>In the meantime, feel free to explore my books at <a href="${process.env.FRONTEND_URL || 'https://emuria.netlify.app'}" style="color: #D4A017;">https://emuriadavid.netlify.app/</a></p>
               
               <hr style="margin: 30px 0; border-color: #e8ddd4;">
               

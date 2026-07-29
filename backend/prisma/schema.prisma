@@ -19,6 +19,7 @@ model Book {
   genre         String?
   coverImage    String?
   pdfUrl        String?
+  pdfPreviewImage  String?
   publishedYear Int?
   pages         Int?
   rating        Float     @default(0.0)

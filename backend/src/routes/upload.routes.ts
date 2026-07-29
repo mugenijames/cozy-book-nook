@@ -21,7 +21,7 @@ const imageFilter = (req: any, file: any, cb: any) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
   const extname = allowedTypes.test(file.originalname.split('.').pop()?.toLowerCase() || '');
   const mimetype = allowedTypes.test(file.mimetype);
-  
+
   if (mimetype && extname) {
     return cb(null, true);
   } else {
@@ -38,13 +38,13 @@ const pdfFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-const uploadImage = multer({ 
+const uploadImage = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: imageFilter
 });
 
-const uploadPdf = multer({ 
+const uploadPdf = multer({
   storage,
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB for PDFs
   fileFilter: pdfFilter
@@ -58,7 +58,7 @@ router.post('/upload-cover', isAdmin, uploadImage.single('cover'), async (req, r
     }
 
     console.log(`📤 Uploading cover: ${req.file.originalname} (${req.file.size} bytes)`);
-    
+
     const uploadPromise = new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -74,18 +74,18 @@ router.post('/upload-cover', isAdmin, uploadImage.single('cover'), async (req, r
           else resolve(result);
         }
       );
-      
+
       uploadStream.end(req.file!.buffer);
     });
 
     const result = await uploadPromise as any;
-    
+
     console.log('✅ Cover uploaded:', result.secure_url);
-    
-    res.json({ 
+
+    res.json({
       url: result.secure_url,
       filename: result.public_id,
-      message: 'Upload successful' 
+      message: 'Upload successful'
     });
   } catch (error) {
     console.error('Upload error:', error);
@@ -101,31 +101,36 @@ router.post('/upload-pdf', isAdmin, uploadPdf.single('pdf'), async (req, res) =>
     }
 
     console.log(`📤 Uploading PDF: ${req.file.originalname} (${req.file.size} bytes)`);
-    
+
     const uploadPromise = new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: 'cozy-book-nook/pdfs',
-          resource_type: 'auto', // Cloudinary will detect it as PDF
-          format: 'pdf',
+          folder: "cozy-book-nook/pdfs",
+          resource_type: "image",   // Important for PDFs that should be previewed
+          format: "pdf",
+          type: "upload",           // Public upload
+          access_mode: "public",    // Explicitly public
+          overwrite: true,
+          use_filename: true,
+          unique_filename: false,
         },
         (error, result) => {
           if (error) reject(error);
           else resolve(result);
         }
       );
-      
+
       uploadStream.end(req.file!.buffer);
     });
 
     const result = await uploadPromise as any;
-    
+
     console.log('✅ PDF uploaded:', result.secure_url);
-    
-    res.json({ 
+
+    res.json({
       url: result.secure_url,
       filename: result.public_id,
-      message: 'PDF upload successful' 
+      message: 'PDF upload successful'
     });
   } catch (error) {
     console.error('PDF upload error:', error);
@@ -135,7 +140,7 @@ router.post('/upload-pdf', isAdmin, uploadPdf.single('pdf'), async (req, res) =>
 
 // Test endpoint
 router.get('/upload-test', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Upload routes are working!',
     cloudinaryConfigured: !!process.env.CLOUDINARY_CLOUD_NAME
   });
