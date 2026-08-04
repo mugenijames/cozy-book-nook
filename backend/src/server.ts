@@ -13,7 +13,7 @@ import paymentRoutes from './routes/payment.routes';
 
 // Load environment variables
 dotenv.config();
-
+console.log("OpenAI Key Loaded:", !!process.env.OPENAI_API_KEY);
 const app = express();
 const isDevelopment = process.env.NODE_ENV === 'development';
 const BYPASS_AUTH = isDevelopment || process.env.BYPASS_AUTH === 'true';

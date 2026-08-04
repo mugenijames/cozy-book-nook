@@ -11,24 +11,36 @@ datasource db {
 }
 
 model Book {
-  id            String    @id @default(uuid())
-  slug          String    @unique
-  title         String
-  author        String
-  description   String?
-  genre         String?
-  coverImage    String?
-  pdfUrl        String?
+  id               String    @id @default(uuid())
+  slug             String    @unique
+  title            String
+  author           String
+  description      String?
+  summary          String?   @db.Text
+  genre            String?
+  coverImage       String?
+  pdfUrl           String?
   pdfPreviewImage  String?
-  publishedYear Int?
-  pages         Int?
-  rating        Float     @default(0.0)
-  priceCents    Int?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
 
-  orders        Order[]
-  pendingPayments PendingPayment[]
+  // ==========================
+  // AI Generated Information
+  // ==========================
+  aiSummary        String?   @db.Text
+  shortSummary     String?   @db.Text
+  keyThemes        Json?
+  keywords         Json?
+  targetAudience   String?
+  readingTime      String?
+
+  publishedYear    Int?
+  pages            Int?
+  rating           Float     @default(0.0)
+  priceCents       Int?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  orders           Order[]
+  pendingPayments  PendingPayment[]
 
   @@index([title])
   @@index([author])
