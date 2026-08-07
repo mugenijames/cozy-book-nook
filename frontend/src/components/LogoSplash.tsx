@@ -19,13 +19,13 @@ export default function LogoSplash() {
         <motion.div
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#F9F6EF]"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: 0.2, delay: 0.2 }}
             className="flex flex-col items-center justify-center text-center"
           >
             {/* Logo Animation */}
@@ -35,8 +35,8 @@ export default function LogoSplash() {
                 rotate: [0, 5, -5, 0],
               }}
               transition={{
-                duration: 1,
-                repeat: 1,
+                duration: 0.5,
+                repeat: 0.5,
                 ease: "easeInOut",
               }}
               className="mb-6"

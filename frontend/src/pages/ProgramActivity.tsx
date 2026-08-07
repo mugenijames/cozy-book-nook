@@ -1,6 +1,4 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-// import Header from "@/sections/Header";
-// import Footer from "@/sections/Footer";
 import { getProgramBySlug, PROGRAM_ACTIVITIES } from "@/data/programActivities";
 
 export default function ProgramActivityPage() {
