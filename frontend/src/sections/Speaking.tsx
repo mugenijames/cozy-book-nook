@@ -1,330 +1,1064 @@
-//src/sections/Speaking.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Mic2,
+  Users,
+  HeartHandshake,
+  X,
+  Send,
+  Loader2,
+  CheckCircle2,
+  CalendarDays,
+  MapPin,
+  UserRound,
+  Mail,
+  Phone,
+  MessageSquare,
+} from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 
-const Speaking = () => {
+type SpeakingRequest = {
+  name: string;
+  email: string;
+  phone?: string;
+  program?: string;
+  preferredDate?: string;
+  location?: string;
+  message?: string;
+};
+
+const SPEAKING_TOPICS = [
+  {
+    icon: HeartHandshake,
+    title: "Healing & Emotional Wellness",
+    description:
+      "Conversations that encourage healing, resilience, emotional growth, and healthy relationships.",
+  },
+  {
+    icon: Users,
+    title: "Leadership & Personal Development",
+    description:
+      "Practical insights that equip individuals and leaders to grow, lead effectively, and create impact.",
+  },
+  {
+    icon: Mic2,
+    title: "Purpose, Identity & Calling",
+    description:
+      "Helping people understand who they are, discover their purpose, and confidently pursue their calling.",
+  },
+];
+
+export default function Speaking() {
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [form, setForm] = useState<SpeakingRequest>({
     name: "",
     email: "",
     phone: "",
     program: "",
-    date: "",
+    preferredDate: "",
     location: "",
     message: "",
   });
-  const [errors, setErrors] = useState<Partial<typeof formData>>({});
-  const [submitting, setSubmitting] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  /**
+   * Allows Hero.tsx or any other component to open
+   * the speaking dialog without duplicating the form.
+   */
+  useEffect(() => {
+    const handleOpenSpeakingDialog = () => {
+      setSubmitted(false);
+      setOpen(true);
+    };
+
+    window.addEventListener(
+      "open-speaking-dialog",
+      handleOpenSpeakingDialog
+    );
+
+    return () => {
+      window.removeEventListener(
+        "open-speaking-dialog",
+        handleOpenSpeakingDialog
+      );
+    };
+  }, []);
+
+  const updateField = (
+    field: keyof SpeakingRequest,
+    value: string
   ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof typeof formData]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
-    }
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  const validateForm = () => {
-    const newErrors: Partial<typeof formData> = {};
+  const resetForm = () => {
+    setForm({
+      name: "",
+      email: "",
+      phone: "",
+      program: "",
+      preferredDate: "",
+      location: "",
+      message: "",
+    });
 
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.email.trim()) newErrors.email = "Email is required";
-    else if (!/\S+@\S+\.\S+/.test(formData.email))
-      newErrors.email = "Invalid email format";
-
-    if (!formData.program.trim()) newErrors.program = "Program is required";
-    if (!formData.date.trim()) newErrors.date = "Preferred date is required";
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setSubmitted(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const closeDialog = () => {
+    if (loading) return;
 
-    if (!validateForm()) {
-      toast.error("Please fill in all required fields correctly");
+    setOpen(false);
+
+    setTimeout(() => {
+      resetForm();
+    }, 300);
+  };
+
+  const submitRequest = async () => {
+    if (!form.name.trim()) {
+      alert("Please enter your name.");
       return;
     }
 
-    setSubmitting(true);
+    if (!form.email.trim()) {
+      alert("Please enter your email address.");
+      return;
+    }
+
+    if (!form.program?.trim()) {
+      alert("Please tell us what you are inviting David to speak about.");
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-
-      // ✅ FIXED: Correct endpoint
-      const response = await fetch(`${API_BASE}/api/invite`, {
+      const response = await fetch("/api/invite", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(form),
       });
-
-      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to send invitation");
+        throw new Error("Failed to submit speaking request");
       }
 
-      toast.success("Invite sent successfully! You'll receive a confirmation email shortly.");
-      setOpen(false);
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        program: "",
-        date: "",
-        location: "",
-        message: "",
-      });
-    } catch (error: any) {
-      console.error("Error sending invite:", error);
-      toast.error(error.message || "Failed to send invite. Please try again.");
+      setSubmitted(true);
+    } catch (error) {
+      console.error("Speaking request error:", error);
+
+      alert(
+        "We couldn't send your request right now. Please try again."
+      );
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <section id="speaking" className="py-24 bg-white text-black text-center">
-      <div className="max-w-4xl mx-auto px-4">
-        <h2 className="text-3xl md:text-4xl font-bold mb-6">Speaking & Consulting</h2>
+    <>
+      {/* =========================================================
+          SPEAKING SECTION
+      ========================================================== */}
 
-        <p className="max-w-3xl mx-auto mb-10 text-gray-500 text-lg leading-relaxed">
-          David is available for conferences, leadership trainings, youth empowerment programs,
-          church events, corporate workshops, and more.
-        </p>
-
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button
-              className="px-10 py-6 bg-[#D4A017] hover:bg-[#b58900] text-[#2E1208] font-semibold text-lg transition-colors shadow-md"
-              aria-label="Invite David to speak at your event"
-            >
-              Invite David
-            </Button>
-          </DialogTrigger>
-
-          <DialogContent
+      <section
+        id="speaking"
+        className="
+          relative
+          overflow-hidden
+          bg-[#F7F4EF]
+          py-16
+          sm:py-20
+          lg:py-24
+        "
+      >
+        {/* Decorative background */}
+        <div className="pointer-events-none absolute inset-0">
+          <div
             className="
-    max-h-[90vh]
-    max-w-[calc(100vw-2rem)]
-    sm:max-w-[650px]
-    overflow-hidden
-    rounded-3xl
-    border border-[#D4AF37]
-    bg-gradient-to-br
-    from-[#FFF9E1]
-    via-[#F5D97A]
-    to-[#C89B3C]
-    p-0
-    shadow-[0_20px_60px_rgba(212,175,55,0.35)]
-    flex
-    flex-col
-    backdrop-blur-xl
-  "
-          >
-            <DialogHeader
-              className="
-    flex-shrink-0
-    border-b
-    border-[#E4C76A]
-    bg-gradient-to-r
-    from-[#FFF8DD]
-    via-[#F7D56A]
-    to-[#D4AF37]
-    px-8
-    py-8
-    text-center
-  "
-            >
-              <DialogTitle className="text-2xl font-bold text-[#3D2817]">
-                Invite David to Speak
-              </DialogTitle>
-            </DialogHeader>
+              absolute
+              -right-32
+              -top-32
+              h-72
+              w-72
+              rounded-full
+              bg-[#C08A43]/10
+              blur-3xl
+            "
+          />
 
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-              {/* Scrollable Form Fields */}
+          <div
+            className="
+              absolute
+              -bottom-32
+              -left-32
+              h-72
+              w-72
+              rounded-full
+              bg-[#4A1F0E]/5
+              blur-3xl
+            "
+          />
+        </div>
+
+        <div
+          className="
+            relative
+            z-10
+            mx-auto
+            max-w-7xl
+            px-4
+            sm:px-6
+            lg:px-8
+          "
+        >
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="mx-auto max-w-3xl text-center"
+          >
+            <span
+              className="
+                text-sm
+                font-semibold
+                uppercase
+                tracking-[4px]
+                text-[#C08A43]
+              "
+            >
+              Speaking & Engagements
+            </span>
+
+            <h2
+              className="
+                mt-4
+                text-3xl
+                font-bold
+                leading-tight
+                text-[#3B2314]
+                sm:text-4xl
+                lg:text-5xl
+              "
+            >
+              Conversations That
+              <span className="block text-[#C08A43]">
+                Create Transformation.
+              </span>
+            </h2>
+
+            <p
+              className="
+                mx-auto
+                mt-5
+                max-w-2xl
+                text-sm
+                leading-7
+                text-gray-600
+                sm:text-base
+                sm:leading-8
+              "
+            >
+              Invite David Emuria to inspire, equip, and challenge
+              your audience through meaningful conversations around
+              healing, leadership, identity, purpose, and
+              transformation.
+            </p>
+          </motion.div>
+
+          {/* Speaking topics */}
+          <div
+            className="
+              mx-auto
+              mt-12
+              grid
+              max-w-6xl
+              gap-5
+              md:grid-cols-3
+            "
+          >
+            {SPEAKING_TOPICS.map((topic, index) => {
+              const Icon = topic.icon;
+
+              return (
+                <motion.div
+                  key={topic.title}
+                  initial={{
+                    opacity: 0,
+                    y: 30,
+                  }}
+                  whileInView={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  viewport={{ once: true }}
+                  transition={{
+                    duration: 0.6,
+                    delay: index * 0.12,
+                  }}
+                  className="
+                    rounded-2xl
+                    border
+                    border-[#E6DED5]
+                    bg-white
+                    p-6
+                    shadow-sm
+                    transition-all
+                    duration-300
+                    hover:-translate-y-1
+                    hover:shadow-xl
+                  "
+                >
+                  <div
+                    className="
+                      flex
+                      h-12
+                      w-12
+                      items-center
+                      justify-center
+                      rounded-xl
+                      bg-[#4A1F0E]
+                      text-[#D4A017]
+                    "
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+
+                  <h3
+                    className="
+                      mt-5
+                      text-lg
+                      font-bold
+                      text-[#3B2314]
+                    "
+                  >
+                    {topic.title}
+                  </h3>
+
+                  <p
+                    className="
+                      mt-3
+                      text-sm
+                      leading-6
+                      text-gray-600
+                    "
+                  >
+                    {topic.description}
+                  </p>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* CTA */}
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 20,
+            }}
+            whileInView={{
+              opacity: 1,
+              y: 0,
+            }}
+            viewport={{ once: true }}
+            transition={{
+              duration: 0.7,
+              delay: 0.2,
+            }}
+            className="mt-12 flex justify-center"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setSubmitted(false);
+                setOpen(true);
+              }}
+              className="
+                group
+                inline-flex
+                min-h-[52px]
+                w-full
+                max-w-xs
+                items-center
+                justify-center
+                gap-2
+                rounded-full
+                bg-[#4A1F0E]
+                px-7
+                py-3
+                text-sm
+                font-semibold
+                text-white
+                shadow-lg
+                transition-all
+                duration-300
+                hover:-translate-y-1
+                hover:bg-[#321509]
+                hover:shadow-xl
+                active:scale-[0.98]
+                sm:w-auto
+                sm:max-w-none
+              "
+            >
+              <Mic2 className="h-4 w-4" />
+
+              <span>Invite David to Speak</span>
+
+              <span
+                className="
+                  transition-transform
+                  duration-300
+                  group-hover:translate-x-1
+                "
+              >
+                →
+              </span>
+            </button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* =========================================================
+          SPEAKING BOOKING DIALOG
+      ========================================================== */}
+
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          if (!value) {
+            closeDialog();
+          } else {
+            setOpen(true);
+          }
+        }}
+      >
+        <DialogContent
+          className="
+            max-h-[92vh]
+            w-[calc(100%-1.5rem)]
+            max-w-2xl
+            overflow-y-auto
+            rounded-2xl
+            border-0
+            bg-[#FAF8F5]
+            p-0
+            shadow-2xl
+            sm:w-[calc(100%-3rem)]
+          "
+        >
+          {/* Top accent */}
+          <div className="h-1.5 w-full bg-[#C08A43]" />
+
+          <div className="p-5 sm:p-7 lg:p-8">
+            <DialogHeader className="text-left">
               <div
                 className="
-    flex-1
-    overflow-y-auto
-    bg-[#FFFDF8]
-    px-8
-    py-8
-  "
+                  mb-4
+                  flex
+                  h-12
+                  w-12
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-[#4A1F0E]
+                  text-[#D4A017]
+                "
               >
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div className="space-y-1.5 md:col-span-1">
-                    <Label htmlFor="name" className="text-sm font-medium text-[#3D2817]">
-                      Your Name <span className="text-[#9A5C2E]">*</span>
-                    </Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="h-11 rounded-lg border-[#D4C4B8] bg-white text-[#2E1208] shadow-sm placeholder:text-[#8A7B72] focus-visible:border-[#D4A017] focus-visible:ring-[#D4A017]/35"
-                      placeholder="John Doe"
-                    />
-                    {errors.name && (
-                      <p className="text-sm text-red-700" role="alert">
-                        {errors.name}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-1">
-                    <Label htmlFor="email" className="text-sm font-medium text-[#3D2817]">
-                      Email Address <span className="text-[#9A5C2E]">*</span>
-                    </Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="h-11 rounded-lg border-[#D4C4B8] bg-white text-[#2E1208] shadow-sm placeholder:text-[#8A7B72] focus-visible:border-[#D4A017] focus-visible:ring-[#D4A017]/35"
-                      placeholder="your.email@example.com"
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-red-700" role="alert">
-                        {errors.email}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <Label htmlFor="phone" className="text-sm font-medium text-[#3D2817]">
-                      Phone Number
-                    </Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="h-11 rounded-lg border-[#D4C4B8] bg-white text-[#2E1208] shadow-sm placeholder:text-[#8A7B72] focus-visible:border-[#D4A017] focus-visible:ring-[#D4A017]/35"
-                      placeholder="+254 7XX XXX XXX"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-1">
-                    <Label htmlFor="program" className="text-sm font-medium text-[#3D2817]">
-                      Program <span className="text-[#9A5C2E]">*</span>
-                    </Label>
-                    <select
-                      id="program"
-                      name="program"
-                      value={formData.program}
-                      onChange={handleChange}
-                      className="h-11 w-full rounded-lg border border-[#D4C4B8] bg-white px-3 text-[#2E1208] shadow-sm focus-visible:border-[#D4A017] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4A017]/35"
-                    >
-                      <option value="">Select a program</option>
-                      <option value="School Ministry">School Ministry</option>
-                      <option value="Church Outreaches">Church Outreaches</option>
-                      <option value="Leadership Training Program">
-                        Leadership Training Program
-                      </option>
-                      <option value="Philanthropy">Philanthropy</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {errors.program && (
-                      <p className="text-sm text-red-700" role="alert">
-                        {errors.program}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-1">
-                    <Label htmlFor="date" className="text-sm font-medium text-[#3D2817]">
-                      Preferred Date <span className="text-[#9A5C2E]">*</span>
-                    </Label>
-                    <Input
-                      id="date"
-                      name="date"
-                      type="date"
-                      value={formData.date}
-                      onChange={handleChange}
-                      className="h-11 rounded-lg border-[#D4C4B8] bg-white text-[#2E1208] shadow-sm focus-visible:border-[#D4A017] focus-visible:ring-[#D4A017]/35"
-                    />
-                    {errors.date && (
-                      <p className="text-sm text-red-700" role="alert">
-                        {errors.date}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <Label htmlFor="location" className="text-sm font-medium text-[#3D2817]">
-                      Event Location / City
-                    </Label>
-                    <Input
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      className="h-11 rounded-lg border-[#D4C4B8] bg-white text-[#2E1208] shadow-sm placeholder:text-[#8A7B72] focus-visible:border-[#D4A017] focus-visible:ring-[#D4A017]/35"
-                      placeholder="Nairobi, Kenya"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <Label htmlFor="message" className="text-sm font-medium text-[#3D2817]">
-                      Additional Message / Details
-                    </Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      value={formData.message}
-                      onChange={handleChange}
-                      className="min-h-[100px] resize-y rounded-lg border-[#D4C4B8] bg-white text-[#2E1208] shadow-sm placeholder:text-[#8A7B72] focus-visible:border-[#D4A017] focus-visible:ring-[#D4A017]/35"
-                      placeholder="Audience size, duration, theme, budget range—anything that helps."
-                    />
-                  </div>
-                </div>
+                <Mic2 className="h-5 w-5" />
               </div>
 
+              <DialogTitle
+                className="
+                  text-2xl
+                  font-bold
+                  text-[#3B2314]
+                  sm:text-3xl
+                "
+              >
+                Book David to Speak
+              </DialogTitle>
 
-              <DialogFooter className="flex-shrink-0 flex-col gap-3 border-t border-[#E8DDD4] bg-[#FDF8F3] px-6 py-5 sm:flex-row sm:justify-end sm:gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                  className="h-11 w-full rounded-lg border-[#C9B8A8] bg-white text-[#3D2817] hover:bg-[#FAF3EB] sm:w-auto sm:min-w-[7rem]"
+              <DialogDescription
+                className="
+                  mt-2
+                  max-w-xl
+                  text-sm
+                  leading-6
+                  text-gray-600
+                "
+              >
+                Tell us a little about your event and the kind of
+                conversation you would like David to bring to your
+                audience.
+              </DialogDescription>
+            </DialogHeader>
+
+            <AnimatePresence mode="wait">
+              {submitted ? (
+                <motion.div
+                  key="success"
+                  initial={{
+                    opacity: 0,
+                    scale: 0.96,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                  }}
+                  exit={{
+                    opacity: 0,
+                    scale: 0.96,
+                  }}
+                  className="
+                    py-10
+                    text-center
+                  "
                 >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="h-11 w-full rounded-lg bg-[#D4A017] font-semibold text-[#2E1208] shadow-md transition-colors hover:bg-[#b58900] disabled:opacity-60 sm:w-auto sm:min-w-[10rem]"
+                  <div
+                    className="
+                      mx-auto
+                      flex
+                      h-16
+                      w-16
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-[#E9F5EA]
+                      text-green-700
+                    "
+                  >
+                    <CheckCircle2 className="h-8 w-8" />
+                  </div>
+
+                  <h3
+                    className="
+                      mt-5
+                      text-2xl
+                      font-bold
+                      text-[#3B2314]
+                    "
+                  >
+                    Request Received
+                  </h3>
+
+                  <p
+                    className="
+                      mx-auto
+                      mt-3
+                      max-w-md
+                      text-sm
+                      leading-6
+                      text-gray-600
+                    "
+                  >
+                    Thank you for reaching out. Your speaking
+                    request has been submitted successfully.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={closeDialog}
+                    className="
+                      mt-7
+                      rounded-full
+                      bg-[#4A1F0E]
+                      px-7
+                      py-3
+                      text-sm
+                      font-semibold
+                      text-white
+                      transition
+                      hover:bg-[#321509]
+                    "
+                  >
+                    Done
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="form"
+                  initial={{
+                    opacity: 0,
+                    y: 10,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                  }}
+                  exit={{
+                    opacity: 0,
+                    y: -10,
+                  }}
+                  className="mt-7"
                 >
-                  {submitting ? "Sending…" : "Send Invite"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </section >
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    {/* Name */}
+                    <div className="sm:col-span-1">
+                      <label
+                        htmlFor="speaker-name"
+                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                      >
+                        Your Name *
+                      </label>
+
+                      <div className="relative">
+                        <UserRound
+                          className="
+                            absolute
+                            left-3
+                            top-1/2
+                            h-4
+                            w-4
+                            -translate-y-1/2
+                            text-gray-400
+                          "
+                        />
+
+                        <input
+                          id="speaker-name"
+                          type="text"
+                          value={form.name}
+                          onChange={(e) =>
+                            updateField("name", e.target.value)
+                          }
+                          placeholder="Your full name"
+                          className="
+                            h-11
+                            w-full
+                            rounded-xl
+                            border
+                            border-[#DED6CE]
+                            bg-white
+                            pl-10
+                            pr-4
+                            text-sm
+                            text-[#3B2314]
+                            outline-none
+                            transition
+                            placeholder:text-gray-400
+                            focus:border-[#C08A43]
+                            focus:ring-2
+                            focus:ring-[#C08A43]/20
+                          "
+                        />
+                      </div>
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label
+                        htmlFor="speaker-email"
+                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                      >
+                        Email Address *
+                      </label>
+
+                      <div className="relative">
+                        <Mail
+                          className="
+                            absolute
+                            left-3
+                            top-1/2
+                            h-4
+                            w-4
+                            -translate-y-1/2
+                            text-gray-400
+                          "
+                        />
+
+                        <input
+                          id="speaker-email"
+                          type="email"
+                          value={form.email}
+                          onChange={(e) =>
+                            updateField("email", e.target.value)
+                          }
+                          placeholder="you@example.com"
+                          className="
+                            h-11
+                            w-full
+                            rounded-xl
+                            border
+                            border-[#DED6CE]
+                            bg-white
+                            pl-10
+                            pr-4
+                            text-sm
+                            text-[#3B2314]
+                            outline-none
+                            transition
+                            placeholder:text-gray-400
+                            focus:border-[#C08A43]
+                            focus:ring-2
+                            focus:ring-[#C08A43]/20
+                          "
+                        />
+                      </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label
+                        htmlFor="speaker-phone"
+                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                      >
+                        Phone Number
+                      </label>
+
+                      <div className="relative">
+                        <Phone
+                          className="
+                            absolute
+                            left-3
+                            top-1/2
+                            h-4
+                            w-4
+                            -translate-y-1/2
+                            text-gray-400
+                          "
+                        />
+
+                        <input
+                          id="speaker-phone"
+                          type="tel"
+                          value={form.phone}
+                          onChange={(e) =>
+                            updateField("phone", e.target.value)
+                          }
+                          placeholder="+254..."
+                          className="
+                            h-11
+                            w-full
+                            rounded-xl
+                            border
+                            border-[#DED6CE]
+                            bg-white
+                            pl-10
+                            pr-4
+                            text-sm
+                            text-[#3B2314]
+                            outline-none
+                            transition
+                            placeholder:text-gray-400
+                            focus:border-[#C08A43]
+                            focus:ring-2
+                            focus:ring-[#C08A43]/20
+                          "
+                        />
+                      </div>
+                    </div>
+
+                    {/* Program */}
+                    <div>
+                      <label
+                        htmlFor="speaker-program"
+                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                      >
+                        Event / Program *
+                      </label>
+
+                      <div className="relative">
+                        <Mic2
+                          className="
+                            absolute
+                            left-3
+                            top-1/2
+                            h-4
+                            w-4
+                            -translate-y-1/2
+                            text-gray-400
+                          "
+                        />
+
+                        <input
+                          id="speaker-program"
+                          type="text"
+                          value={form.program}
+                          onChange={(e) =>
+                            updateField("program", e.target.value)
+                          }
+                          placeholder="e.g. Leadership Conference"
+                          className="
+                            h-11
+                            w-full
+                            rounded-xl
+                            border
+                            border-[#DED6CE]
+                            bg-white
+                            pl-10
+                            pr-4
+                            text-sm
+                            text-[#3B2314]
+                            outline-none
+                            transition
+                            placeholder:text-gray-400
+                            focus:border-[#C08A43]
+                            focus:ring-2
+                            focus:ring-[#C08A43]/20
+                          "
+                        />
+                      </div>
+                    </div>
+
+                    {/* Date */}
+                    <div>
+                      <label
+                        htmlFor="speaker-date"
+                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                      >
+                        Preferred Date
+                      </label>
+
+                      <div className="relative">
+                        <CalendarDays
+                          className="
+                            absolute
+                            left-3
+                            top-1/2
+                            h-4
+                            w-4
+                            -translate-y-1/2
+                            text-gray-400
+                          "
+                        />
+
+                        <input
+                          id="speaker-date"
+                          type="date"
+                          value={form.preferredDate}
+                          onChange={(e) =>
+                            updateField(
+                              "preferredDate",
+                              e.target.value
+                            )
+                          }
+                          className="
+                            h-11
+                            w-full
+                            rounded-xl
+                            border
+                            border-[#DED6CE]
+                            bg-white
+                            pl-10
+                            pr-4
+                            text-sm
+                            text-[#3B2314]
+                            outline-none
+                            transition
+                            focus:border-[#C08A43]
+                            focus:ring-2
+                            focus:ring-[#C08A43]/20
+                          "
+                        />
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div>
+                      <label
+                        htmlFor="speaker-location"
+                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                      >
+                        Event Location
+                      </label>
+
+                      <div className="relative">
+                        <MapPin
+                          className="
+                            absolute
+                            left-3
+                            top-1/2
+                            h-4
+                            w-4
+                            -translate-y-1/2
+                            text-gray-400
+                          "
+                        />
+
+                        <input
+                          id="speaker-location"
+                          type="text"
+                          value={form.location}
+                          onChange={(e) =>
+                            updateField("location", e.target.value)
+                          }
+                          placeholder="City / Venue"
+                          className="
+                            h-11
+                            w-full
+                            rounded-xl
+                            border
+                            border-[#DED6CE]
+                            bg-white
+                            pl-10
+                            pr-4
+                            text-sm
+                            text-[#3B2314]
+                            outline-none
+                            transition
+                            placeholder:text-gray-400
+                            focus:border-[#C08A43]
+                            focus:ring-2
+                            focus:ring-[#C08A43]/20
+                          "
+                        />
+                      </div>
+                    </div>
+
+                    {/* Message */}
+                    <div className="sm:col-span-2">
+                      <label
+                        htmlFor="speaker-message"
+                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                      >
+                        Tell Us More
+                      </label>
+
+                      <div className="relative">
+                        <MessageSquare
+                          className="
+                            absolute
+                            left-3
+                            top-3
+                            h-4
+                            w-4
+                            text-gray-400
+                          "
+                        />
+
+                        <textarea
+                          id="speaker-message"
+                          rows={4}
+                          value={form.message}
+                          onChange={(e) =>
+                            updateField("message", e.target.value)
+                          }
+                          placeholder="Tell us about your event, audience and what you would like David to speak about..."
+                          className="
+                            w-full
+                            resize-none
+                            rounded-xl
+                            border
+                            border-[#DED6CE]
+                            bg-white
+                            py-3
+                            pl-10
+                            pr-4
+                            text-sm
+                            leading-6
+                            text-[#3B2314]
+                            outline-none
+                            transition
+                            placeholder:text-gray-400
+                            focus:border-[#C08A43]
+                            focus:ring-2
+                            focus:ring-[#C08A43]/20
+                          "
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div
+                    className="
+                      mt-7
+                      flex
+                      flex-col-reverse
+                      gap-3
+                      border-t
+                      border-[#E6DED5]
+                      pt-6
+                      sm:flex-row
+                      sm:justify-end
+                    "
+                  >
+                    <button
+                      type="button"
+                      onClick={closeDialog}
+                      disabled={loading}
+                      className="
+                        inline-flex
+                        min-h-[46px]
+                        items-center
+                        justify-center
+                        rounded-full
+                        border
+                        border-[#D8CEC5]
+                        px-6
+                        text-sm
+                        font-semibold
+                        text-[#4A1F0E]
+                        transition
+                        hover:bg-white
+                        disabled:cursor-not-allowed
+                        disabled:opacity-50
+                      "
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={submitRequest}
+                      disabled={loading}
+                      className="
+                        inline-flex
+                        min-h-[46px]
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-full
+                        bg-[#4A1F0E]
+                        px-7
+                        text-sm
+                        font-semibold
+                        text-white
+                        shadow-md
+                        transition-all
+                        hover:-translate-y-0.5
+                        hover:bg-[#321509]
+                        hover:shadow-lg
+                        disabled:cursor-not-allowed
+                        disabled:opacity-60
+                      "
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          Send Booking Request
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
-};
-
-export default Speaking;
+}

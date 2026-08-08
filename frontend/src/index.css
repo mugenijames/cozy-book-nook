@@ -2,104 +2,160 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================
+   BASE / THEME
+========================================================= */
+
 @layer base {
   :root {
     /* Backgrounds & Surfaces */
-    --background: 39 30% 96%;     /* #F9F6EF */
-    --foreground: 24 40% 12%;     /* #2E1208 */
-    
+    --background: 39 30% 96%;
+    --foreground: 24 40% 12%;
+
     /* Primary Brand Colors */
-    --primary: 24 50% 53%;        /* #C17B4F */
+    --primary: 24 50% 53%;
     --primary-foreground: 0 0% 100%;
-    
+
     /* Secondary Colors */
-    --secondary: 24 40% 12%;      /* #2E1208 */
+    --secondary: 24 40% 12%;
     --secondary-foreground: 0 0% 100%;
-    
+
     /* UI Elements */
     --card: 0 0% 100%;
     --card-foreground: 24 40% 12%;
+
     --popover: 0 0% 100%;
     --popover-foreground: 24 40% 12%;
+
     --muted: 30 20% 92%;
     --muted-foreground: 24 20% 40%;
+
     --accent: 24 50% 53%;
     --accent-foreground: 0 0% 100%;
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+
     --border: 30 15% 85%;
     --input: 30 15% 85%;
     --ring: 24 50% 53%;
-    
+
     /* Custom Brand Colors */
-    --warm-cream: 39 30% 96%;     /* #F9F6EF */
-    --rich-burgundy: 24 40% 12%;  /* #2E1208 */
+    --warm-cream: 39 30% 96%;
+    --rich-burgundy: 24 40% 12%;
     --forest-green: 120 30% 25%;
-    --golden-amber: 24 50% 53%;   /* #C17B4F */
+    --golden-amber: 24 50% 53%;
     --soft-brown: 24 30% 40%;
     --paper-white: 0 0% 100%;
-    
+
     /* Border Radius */
     --radius: 0.5rem;
-
-     .dark {
-    color-scheme: dark;
-  }
-  
   }
 
   * {
     @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-size: 16px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-[#EEF2F7] text-[#2E1208] font-body antialiased;
+
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+
+    margin: 0;
+    padding: 0;
+
+    overflow-x: hidden;
   }
 
-  /* Custom Scrollbar */
+  #root {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+
+    margin: 0;
+    padding: 0;
+
+    overflow-x: hidden;
+  }
+
+  /* Prevent media from creating horizontal overflow */
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  img {
+    height: auto;
+  }
+
+  /* =========================================================
+     CUSTOM SCROLLBAR
+  ========================================================= */
+
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-[#E8DDD4];
+    background: #e8ddd4;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-[#C17B4F] rounded-full;
+    background: #c17b4f;
+    border-radius: 999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-[#A55E36];
+    background: #a55e36;
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #c17b4f #e8ddd4;
   }
 }
 
+/* =========================================================
+   COMPONENT STYLES
+========================================================= */
+
 @layer components {
   .container-custom {
-    @apply container mx-auto px-4 max-w-7xl;
+    @apply w-full mx-auto px-4 max-w-7xl;
   }
-  
+
   .heading-gradient {
     @apply bg-gradient-to-r from-[#2E1208] to-[#C17B4F] bg-clip-text text-transparent;
   }
-  
+
   .gold-border {
     @apply border border-[#C17B4F] shadow-sm;
   }
-  
+
   .card-hover {
     @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
   }
 }
 
-/* Limit image sizes */
-img {
-  max-width: 100%;
-  height: auto;
-}
+/* =========================================================
+   IMAGE STYLES
+========================================================= */
 
-/* Specific image constraints */
 .hero-image,
 .about-image {
   max-width: 100%;
@@ -107,7 +163,10 @@ img {
   object-fit: cover;
 }
 
-/* Responsive image sizes */
+/* =========================================================
+   RESPONSIVE ABOUT IMAGE
+========================================================= */
+
 @media (max-width: 768px) {
   .about-image {
     width: 200px;
@@ -129,10 +188,9 @@ img {
   }
 }
 
-/* Responsive Typography */
-html {
-  font-size: 16px;
-}
+/* =========================================================
+   RESPONSIVE TYPOGRAPHY
+========================================================= */
 
 @media (max-width: 640px) {
   html {
@@ -158,11 +216,17 @@ html {
   }
 }
 
-/* Responsive Container */
+/* =========================================================
+   RESPONSIVE CONTAINER
+========================================================= */
+
 .container-custom {
   width: 100%;
+  max-width: 1280px;
+
   margin-left: auto;
   margin-right: auto;
+
   padding-left: 1rem;
   padding-right: 1rem;
 }
@@ -191,7 +255,15 @@ html {
   }
 }
 
-/* Responsive Spacing */
+/* =========================================================
+   RESPONSIVE SECTION SPACING
+========================================================= */
+
+.section-padding {
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
 @media (max-width: 640px) {
   .section-padding {
     padding-top: 3rem;
@@ -213,14 +285,19 @@ html {
   }
 }
 
-/* Force hide duplicate admin layouts */
+/* =========================================================
+   ADMIN LAYOUT PROTECTION
+========================================================= */
+
 [data-admin-layout="true"]:not(:first-of-type) {
   display: none !important;
   visibility: hidden !important;
   position: absolute !important;
   pointer-events: none !important;
   opacity: 0 !important;
+
   width: 0 !important;
   height: 0 !important;
+
   overflow: hidden !important;
 }

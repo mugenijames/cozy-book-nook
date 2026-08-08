@@ -144,7 +144,9 @@ const About = () => {
                 sm:text-base
               "
             >
-              Discover His Story
+              <a href="/books" className="focus:outline-none">
+                Discover His Story
+              </a>
               <ArrowRight className="h-4 w-4" />
             </motion.a>
           </motion.div>
