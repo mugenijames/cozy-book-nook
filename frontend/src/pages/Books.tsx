@@ -1,212 +1,302 @@
-import { useState, useEffect } from "react";
+// frontend/src/pages/Books.tsx
+
 import { Link } from "react-router-dom";
-import { BookOpen, ExternalLink, ChevronRight, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ArrowRight,
+  BookOpen,
+  Loader2,
+} from "lucide-react";
+
 import { getBooks } from "@/services/api";
-import { resolveBookCoverUrl } from "@/lib/resolveBookCover";
-import { formatPrice } from "@/lib/formatPrice";
-import { bookPurchaseHref, bookPurchaseLabel } from "@/config/purchase";
+import Book3D from "@/components/Book3D";
+import LocalizedPrice from "@/components/LocalizedPrice";
 
-interface Book {
-  id: string;
-  title: string;
-  author: string;
-  slug?: string;
-  description?: string;
-  coverImage?: string;
-  priceCents?: number;
-}
-
-export default function BooksPage() {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const data = await getBooks();
-        setBooks(data);
-      } catch (error) {
-        console.error("Failed to load books:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBooks();
-  }, []);
-
-  const handleViewDetails = (book: Book) => {
-    setSelectedBook(book);
-    setOpen(true);
-  };
-
-  const getPriceDisplay = (priceCents?: number) => {
-    if (!priceCents || priceCents === 0) return "Free Download";
-    return `${formatPrice(priceCents)}`;
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C17B4F]" />
-      </div>
-    );
-  }
+const Books = () => {
+  const {
+    data: books = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["books", "catalog"],
+    queryFn: getBooks,
+  });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F9F6EF] to-[#E8E0D5] py-12 px-4">
-      <div className="container mx-auto max-w-7xl">
-        {/* Back to Home */}
-        <div className="mb-6">
-          <Link to="/">
-            <Button variant="ghost" className="gap-2 text-[#2E1208] hover:text-[#C17B4F]">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Home
-            </Button>
-          </Link>
-        </div>
+    <main
+      className="
+        min-h-screen
+        overflow-x-hidden
+        bg-[#EEF2F7]
+        py-14
+        sm:py-16
+        lg:py-20
+      "
+    >
+      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
 
-        {/* Page Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-[#2E1208] mb-4">
-            Books to Read & Own
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mx-auto mb-10 max-w-3xl text-center sm:mb-14"
+        >
+          <span
+            className="
+              text-xs
+              font-bold
+              uppercase
+              tracking-[0.25em]
+              text-[#D4A017]
+            "
+          >
+            THE LIBRARY
+          </span>
+
+          <h1
+            className="
+              mt-3
+              text-3xl
+              font-bold
+              tracking-tight
+              text-[#4A1F0E]
+              sm:text-4xl
+              md:text-5xl
+            "
+          >
+            Books to read & own
           </h1>
-          <p className="text-lg text-[#5C4436] max-w-2xl mx-auto">
-            Explore the collection — open any book for the full description, then order or inquire when you're ready.
+
+          <div className="mx-auto mt-5 h-1 w-14 rounded-full bg-[#D4A017]" />
+
+          <p
+            className="
+              mx-auto
+              mt-5
+              max-w-2xl
+              text-sm
+              leading-7
+              text-gray-600
+              sm:text-base
+            "
+          >
+            Explore David Emuria's collection of books on
+            purpose, healing, identity, leadership, faith and
+            personal transformation.
           </p>
-        </div>
+        </motion.div>
 
-        {/* Books Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {books.map((book) => (
-            <div
-              key={book.id}
-              className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col"
-            >
-              {/* Book Cover - Fully Visible */}
-              <div className="bg-gray-100 p-4 flex items-center justify-center">
-                {book.coverImage ? (
-                  <img
-                    src={resolveBookCoverUrl(book.coverImage) || ""}
-                    alt={book.title}
-                    className="w-full max-h-80 object-contain rounded-lg"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-64 flex items-center justify-center bg-[#F9F6EF] rounded-lg">
-                    <BookOpen className="h-16 w-16 text-[#C17B4F]" />
-                  </div>
-                )}
-              </div>
-
-              {/* Book Info */}
-              <div className="p-5 flex flex-col flex-1">
-                <h3 className="text-xl font-bold text-[#2E1208] mb-1 line-clamp-2">
-                  {book.title}
-                </h3>
-                <p className="text-sm text-[#5C4436] mb-3">by {book.author}</p>
-                <p className="text-[#C17B4F] font-semibold mb-4">
-                  {getPriceDisplay(book.priceCents)}
-                </p>
-                <Button
-                  onClick={() => handleViewDetails(book)}
-                  className="w-full bg-[#C17B4F] hover:bg-[#A55E36] text-white gap-2"
-                >
-                  View Details
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex min-h-[300px] items-center justify-center">
+            <div className="flex items-center gap-3 text-[#4A1F0E]">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="font-medium">
+                Loading books...
+              </span>
             </div>
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {books.length === 0 && (
-          <div className="text-center py-16">
-            <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No books available at the moment.</p>
           </div>
         )}
-      </div>
 
-      {/* Book Details Modal (matching your original design flow) */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
-          {selectedBook && (
+        {/* Error */}
+        {isError && !isLoading && (
+          <div className="mx-auto max-w-md rounded-3xl bg-white p-8 text-center shadow-sm">
+            <BookOpen className="mx-auto h-10 w-10 text-[#D4A017]" />
+
+            <h2 className="mt-4 text-xl font-bold text-[#4A1F0E]">
+              Couldn't load books
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-gray-600">
+              Check your connection or try again in a moment.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="
+                mt-5
+                rounded-full
+                bg-[#4A1F0E]
+                px-5
+                py-2.5
+                text-sm
+                font-semibold
+                text-white
+                transition
+                hover:bg-[#2E1208]
+              "
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Empty */}
+        {!isLoading &&
+          !isError &&
+          books.length === 0 && (
+            <div className="mx-auto max-w-xl rounded-3xl bg-white p-10 text-center shadow-sm">
+              <BookOpen className="mx-auto h-10 w-10 text-[#D4A017]" />
+
+              <h2 className="mt-5 text-2xl font-bold text-[#4A1F0E]">
+                Books coming soon
+              </h2>
+
+              <p className="mt-3 text-gray-600">
+                New titles will appear here once they're added.
+              </p>
+            </div>
+          )}
+
+        {/* Catalogue */}
+        {!isLoading &&
+          !isError &&
+          books.length > 0 && (
             <>
-              <DialogHeader>
-                <DialogTitle className="text-2xl text-[#2E1208]">
-                  {selectedBook.title}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="flex flex-col md:flex-row gap-6 py-4">
-                {/* Cover */}
-                <div className="md:w-1/3 flex justify-center">
-                  {selectedBook.coverImage ? (
-                    <img
-                      src={resolveBookCoverUrl(selectedBook.coverImage) || ""}
-                      alt={selectedBook.title}
-                      className="w-full max-h-64 object-contain rounded-lg shadow"
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <BookOpen className="h-12 w-12 text-[#C17B4F]" />
-                    </div>
-                  )}
-                </div>
-                {/* Details */}
-                <div className="md:w-2/3 space-y-4">
-                  <p className="text-[#5C4436]">
-                    <strong>Author:</strong> {selectedBook.author}
-                  </p>
-                  {selectedBook.pdfUrl && (
-                    <div>
-                      <strong className="text-[#2E1208]">Preview:</strong>
-                      <iframe
-                        src={`${selectedBook.pdfUrl}#toolbar=0&navpanes=0`}
-                        className="w-full h-48 mt-2 rounded border"
-                        title="PDF preview"
-                      />
-                    </div>
-                  )}
-                  <p className="text-lg font-semibold text-[#C17B4F]">
-                    {getPriceDisplay(selectedBook.priceCents)}
-                  </p>
-                  <div className="flex gap-3 pt-2">
-                    <Button
-                      asChild
-                      className="bg-[#C17B4F] hover:bg-[#A55E36] text-white"
+              <div
+                className="
+                  grid
+                  grid-cols-2
+                  gap-4
+                  sm:gap-6
+                  md:grid-cols-3
+                  lg:grid-cols-4
+                  xl:gap-7
+                "
+              >
+                {books.map((book, index) => (
+                  <motion.article
+                    key={book.id}
+                    initial={{
+                      opacity: 0,
+                      y: 25,
+                    }}
+                    whileInView={{
+                      opacity: 1,
+                      y: 0,
+                    }}
+                    viewport={{
+                      once: true,
+                      amount: 0.1,
+                    }}
+                    transition={{
+                      duration: 0.5,
+                      delay: Math.min(index * 0.05, 0.3),
+                    }}
+                    className="
+                      group
+                      overflow-hidden
+                      rounded-2xl
+                      border
+                      border-black/5
+                      bg-white
+                      shadow-sm
+                      transition-all
+                      duration-300
+                      hover:-translate-y-1
+                      hover:shadow-xl
+                    "
+                  >
+                    {/* Book */}
+                    <Link
+                      to={`/book/${book.slug || book.id}`}
+                      className="block px-2 pt-2 sm:px-3 sm:pt-3"
+                      aria-label={`View ${book.title}`}
                     >
-                      <a
-                        href={bookPurchaseHref(selectedBook.slug)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="gap-2"
+                      <Book3D
+                        coverImage={book.coverImage}
+                        title={book.title}
+                        size="small"
+                      />
+                    </Link>
+
+                    {/* Information */}
+                    <div className="p-3 sm:p-4">
+
+                      <Link
+                        to={`/book/${book.slug || book.id}`}
+                        className="
+                          line-clamp-2
+                          text-sm
+                          font-bold
+                          leading-snug
+                          text-[#2E1208]
+                          transition
+                          hover:text-[#C17B4F]
+                          sm:text-base
+                        "
                       >
-                        {bookPurchaseLabel()}
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </Button>
-                    <Button asChild variant="outline">
-                      <Link to={`/book/${selectedBook.slug || selectedBook.id}`}>
-                        Full Details
+                        {book.title}
                       </Link>
-                    </Button>
-                  </div>
-                </div>
+
+                      <p className="mt-1 line-clamp-1 text-xs text-[#C17B4F] sm:text-sm">
+                        {book.author}
+                      </p>
+
+                      {book.rating != null &&
+                        Number(book.rating) > 0 && (
+                          <div className="mt-2 flex items-center gap-1">
+                            <span className="text-[#D4A017]">
+                              ★
+                            </span>
+
+                            <span className="text-xs text-gray-500">
+                              {Number(book.rating).toFixed(1)}
+                            </span>
+                          </div>
+                        )}
+
+                      <div className="mt-3 flex items-center justify-between gap-2 border-t border-gray-100 pt-3">
+                        <LocalizedPrice
+                          priceCents={book.priceCents}
+                          className="text-xs font-bold text-[#4A1F0E] sm:text-sm"
+                        />
+
+                        <Link
+                          to={`/book/${book.slug || book.id}`}
+                          className="
+                            inline-flex
+                            shrink-0
+                            items-center
+                            gap-1
+                            rounded-full
+                            bg-[#4A1F0E]
+                            px-3
+                            py-1.5
+                            text-[11px]
+                            font-semibold
+                            text-white
+                            transition
+                            hover:bg-[#D4A017]
+                            sm:px-3.5
+                            sm:text-xs
+                          "
+                        >
+                          <BookOpen className="h-3 w-3" />
+                          View
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.article>
+                ))}
+              </div>
+
+              {/* Bottom message */}
+              <div className="mt-12 text-center">
+                <p className="text-xs text-gray-500 sm:text-sm">
+                  Showing {books.length}{" "}
+                  {books.length === 1 ? "title" : "titles"}
+                </p>
               </div>
             </>
           )}
-        </DialogContent>
-      </Dialog>
-    </div>
+      </div>
+    </main>
   );
-}
+};
+
+export default Books;
