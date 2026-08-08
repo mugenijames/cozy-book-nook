@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext.tsx";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  // Remove React.StrictMode entirely
   <BrowserRouter>
     <AuthProvider>
       <App />

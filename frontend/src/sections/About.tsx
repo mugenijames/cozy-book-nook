@@ -1,124 +1,200 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+// frontend/src/sections/About.tsx
+
+import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
 
 import davidImg from "@/assets/david.png";
 
-const images = [
-  {
-    src: davidImg,
-    alt: "David Emuria",
-  },
-];
-
-export default function About() {
-  const [currentIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {}, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
+const About = () => {
   return (
-    <section className="bg-[#FFF9F4] py-20">
-      <div className="container mx-auto px-6 lg:px-12">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
+    <section
+      id="about"
+      className="relative overflow-hidden bg-[#F7F7F5] py-20 sm:py-24 lg:py-32"
+    >
+      {/* Decorative background */}
+      <div className="pointer-events-none absolute left-0 top-0 h-72 w-72 rounded-full bg-[#D4A017]/10 blur-3xl" />
 
-          {/* IMAGE */}
-          <div className="flex justify-center order-1">
+      <div className="pointer-events-none absolute bottom-0 right-0 h-80 w-80 rounded-full bg-[#4A1F0E]/10 blur-3xl" />
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentIndex}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.6 }}
-                className="
-                  relative
-                  w-full
-                  max-w-md
-                  rounded-3xl
-                  overflow-hidden
-                  bg-white
-                  shadow-2xl
-                  p-5
-                "
-              >
-                {/* Decorative background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#F8EFE7] via-white to-[#F4E0CF] opacity-80" />
+      <div className="container relative z-10 mx-auto px-5 sm:px-6 lg:px-8">
 
-                {/* Decorative circle */}
-                <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-[#C17B4F]/20 blur-3xl" />
+        {/* Section intro */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.7 }}
+          className="mb-14 max-w-3xl lg:mb-20"
+        >
+          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.25em] text-[#D4A017]">
+            About David Emuria
+          </p>
 
-                <img
-                  src={images[currentIndex].src}
-                  alt={images[currentIndex].alt}
-                  className="
-                    relative
-                    z-10
-                    w-full
-                    h-auto
-                    max-h-[620px]
-                    object-contain
-                    transition-all
-                    duration-500
-                  "
-                />
-              </motion.div>
-            </AnimatePresence>
+          <h2 className="text-4xl font-bold leading-tight tracking-tight text-[#4A1F0E] sm:text-5xl lg:text-6xl">
+            A voice for purpose.
+            <span className="block text-[#D4A017]">
+              A catalyst for transformation.
+            </span>
+          </h2>
 
-          </div>
+          <div className="mt-6 h-1 w-20 rounded-full bg-[#D4A017]" />
+        </motion.div>
 
-          {/* TEXT */}
+        {/* Main content */}
+        <div className="grid items-center gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
+
+          {/* Portrait */}
           <motion.div
-            initial={{ opacity: 0, x: 40 }}
+            initial={{ opacity: 0, x: -40 }}
             whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: .7 }}
-            viewport={{ once: true }}
-            className="order-2"
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.8 }}
+            className="relative mx-auto w-full max-w-[430px]"
           >
-            <h2 className="text-4xl lg:text-5xl font-bold text-[#2E1208]">
-              About David Emuria
-            </h2>
+            {/* Decorative border */}
+            <div className="absolute -bottom-4 -left-4 h-full w-full rounded-[2rem] border border-[#D4A017]/40" />
 
-            <div className="mt-4 w-24 h-1 bg-[#C17B4F] rounded-full" />
+            <div className="relative overflow-hidden rounded-[2rem] bg-[#4A1F0E] shadow-2xl">
+              <img
+                src={davidImg}
+                alt="David Emuria"
+                className="
+                  block
+                  h-auto
+                  w-full
+                  object-contain
+                  transition-transform
+                  duration-700
+                  hover:scale-[1.02]
+                "
+              />
+            </div>
 
-            <p className="mt-8 text-lg leading-8 text-gray-700">
-              David Emuria is a passionate author, speaker, and philanthropist
-              dedicated to transforming lives through the power of storytelling
-              and practical wisdom.
-            </p>
-            
-            <p className="mt-6 text-lg leading-8 text-gray-700">
-              His work focuses on healing, identity, and purpose, helping
-              individuals and communities discover their true potential and
-              overcome life's challenges.
-            </p>
-
-            <p className="mt-6 text-lg leading-8 text-gray-700">
-              Through his books, programs, and speaking engagements, David has
-              impacted thousands of lives across schools, churches, and
-              community organizations, inspiring hope, leadership, and lasting
-              transformation.
-            </p>
-
-            <div className="mt-10 flex flex-wrap gap-4">
-
-              <div className="bg-white shadow-md rounded-xl px-6 py-4">
-                <h3 className="text-2xl font-bold text-[#C17B4F]">10+</h3>
-                <p className="text-gray-600 text-sm">Published Works</p>
+            {/* Identity card */}
+            <div className="absolute -bottom-7 left-5 right-5 rounded-2xl border border-white/60 bg-white/95 p-4 shadow-xl backdrop-blur-md sm:left-8 sm:right-8">
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-semibold uppercase tracking-wider text-[#4A1F0E] sm:text-sm">
+                <span>Author</span>
+                <span className="text-[#D4A017]">•</span>
+                <span>Speaker</span>
+                <span className="text-[#D4A017]">•</span>
+                <span>Consultant</span>
               </div>
-
-              <div className="bg-white shadow-md rounded-xl px-6 py-4">
-                <h3 className="text-2xl font-bold text-[#C17B4F]">1000+</h3>
-                <p className="text-gray-600 text-sm">Readers Impacted</p>
-              </div>
-
             </div>
           </motion.div>
 
+          {/* Content */}
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.8 }}
+            className="pt-8 lg:pt-0"
+          >
+            <p className="text-lg leading-8 text-gray-700 sm:text-xl">
+              David Emuria is an author, speaker, consultant, and social
+              transformation advocate committed to helping people discover
+              purpose, develop resilience, and live with intention.
+            </p>
+
+            <p className="mt-6 text-base leading-7 text-gray-600 sm:text-lg">
+              Through his books, conversations, and speaking engagements,
+              David explores the realities that shape people's lives —
+              identity, healing, relationships, leadership, faith, purpose,
+              and personal growth.
+            </p>
+
+            <p className="mt-6 text-base leading-7 text-gray-600 sm:text-lg">
+              His work is rooted in the conviction that transformation
+              begins within the individual. When people understand who they
+              are, recognize their potential, and embrace responsibility
+              for their lives, they become better equipped to influence
+              their families, communities, and the world around them.
+            </p>
+
+            {/* Philosophy */}
+            <div className="mt-8 border-l-4 border-[#D4A017] pl-5 sm:mt-10">
+              <p className="text-lg font-semibold leading-7 text-[#4A1F0E] sm:text-xl">
+                "Every life carries potential. The journey is to discover it,
+                develop it, and use it to make a difference."
+              </p>
+            </div>
+
+            {/* CTA */}
+            <motion.a
+              href="#books"
+              whileHover={{ x: 5 }}
+              transition={{ duration: 0.2 }}
+              className="
+                mt-9
+                inline-flex
+                items-center
+                gap-2
+                rounded-full
+                bg-[#4A1F0E]
+                px-7
+                py-3.5
+                text-sm
+                font-semibold
+                text-white
+                shadow-lg
+                transition-all
+                duration-300
+                hover:bg-[#2E1208]
+                hover:shadow-xl
+                sm:text-base
+              "
+            >
+              Discover His Story
+              <ArrowRight className="h-4 w-4" />
+            </motion.a>
+          </motion.div>
         </div>
+
+        {/* Bottom statement */}
+        <motion.div
+          initial={{ opacity: 0, y: 25 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+          className="mt-20 border-t border-gray-200 pt-8 lg:mt-28"
+        >
+          <div className="grid gap-6 sm:grid-cols-3 sm:gap-10">
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D4A017]">
+                His Work
+              </p>
+              <p className="mt-2 text-sm leading-6 text-gray-600">
+                Writing, speaking and practical conversations that inspire
+                personal growth.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D4A017]">
+                His Focus
+              </p>
+              <p className="mt-2 text-sm leading-6 text-gray-600">
+                Purpose, identity, leadership, healing and meaningful living.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#D4A017]">
+                His Mission
+              </p>
+              <p className="mt-2 text-sm leading-6 text-gray-600">
+                To equip people to become intentional, resilient and
+                transformative in their spheres of influence.
+              </p>
+            </div>
+
+          </div>
+        </motion.div>
+
       </div>
     </section>
   );
-}
+};
+
+export default About;
