@@ -198,30 +198,7 @@ const Testimonials = () => {
           transition={{ duration: 0.6 }}
           className="mt-14 text-center"
         >
-          <a
-            href="#speaking"
-            className="
-              inline-flex
-              items-center
-              gap-2
-              rounded-full
-              border
-              border-[#4A1F0E]
-              px-6
-              py-3
-              text-sm
-              font-semibold
-              text-[#4A1F0E]
-              transition-all
-              duration-300
-              hover:bg-[#4A1F0E]
-              hover:text-white
-              hover:shadow-lg
-            "
-          >
-            Invite David to Speak
-            <ArrowRight className="h-4 w-4" />
-          </a>
+        
         </motion.div>
       </div>
     </section>
