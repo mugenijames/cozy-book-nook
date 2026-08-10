@@ -6,6 +6,7 @@ import FeaturedBooks from "../sections/FeaturedBooks";
 import Program from "../sections/Programs";
 import Speaking from "../sections/Speaking";
 import LogoSplash from "../components/LogoSplash";
+import Testimonials from "@/sections/Testimonials";
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
           <About />
           <FeaturedBooks />
           <Program />
+          <Testimonials />
           <Speaking />
         </main>
       </div>

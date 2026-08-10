@@ -1,39 +1,148 @@
+// frontend/src/sections/Program.tsx
+
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  Church,
+  GraduationCap,
+  HeartHandshake,
+  Users,
+} from "lucide-react";
 import { Link } from "react-router-dom";
+
 import { PROGRAM_ACTIVITIES } from "@/data/programActivities";
+
+const iconMap = {
+  GraduationCap,
+  Church,
+  Users,
+  HeartHandshake,
+};
 
 const Program = () => {
   return (
-    <section id="program" className="py-24 bg-white text-center">
-      <h2 className="text-3xl font-bold mb-6">
-        Dear Dad Student Transformation Program
-      </h2>
+    <section
+      id="program"
+      className="relative overflow-hidden bg-white py-20 sm:py-24 lg:py-32"
+    >
+      {/* Background decorations */}
+      <div className="pointer-events-none absolute -left-32 top-20 h-72 w-72 rounded-full bg-[#D4A017]/10 blur-3xl" />
 
-      <p className="max-w-3xl mx-auto text-gray-700">
-        A practical, school-based initiative designed to help
-        students heal emotionally, build identity, develop discipline,
-        and grow into responsible leaders.
-      </p>
+      <div className="pointer-events-none absolute -right-32 bottom-20 h-80 w-80 rounded-full bg-[#4A1F0E]/10 blur-3xl" />
 
-      <div className="mt-14 max-w-4xl mx-auto px-4">
-        <h3 className="text-lg font-semibold text-[#2E1208] mb-4">Programs &amp; activities</h3>
-        <ul className="grid gap-4 sm:grid-cols-2 text-left">
-          {PROGRAM_ACTIVITIES.map((p) => (
-            <li key={p.slug}>
-              <Link
-                to={`/programs/${p.slug}`}
-                className="block rounded-xl border border-[#E8DDD4] bg-[#FDF8F3] px-5 py-4 text-[#2E1208] transition hover:border-[#D4A017]/60 hover:shadow-sm"
+      <div className="container relative z-10 mx-auto px-5 sm:px-6 lg:px-8">
+
+        {/* Section heading */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.7 }}
+          className="mx-auto mb-14 max-w-3xl text-center lg:mb-20"
+        >
+          <p className="mb-4 text-sm font-bold uppercase tracking-[0.25em] text-[#D4A017]">
+            Programs & Impact
+          </p>
+
+          <h2 className="text-4xl font-bold tracking-tight text-[#2E1208] sm:text-5xl lg:text-6xl">
+            Transforming lives
+            <span className="block text-[#8B4513]">
+              through intentional action.
+            </span>
+          </h2>
+
+          <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-[#D4A017]" />
+
+          <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-gray-600 sm:text-lg">
+            Through speaking, mentorship, leadership development and
+            community initiatives, these programs are designed to inspire
+            people, develop potential and create meaningful transformation.
+          </p>
+        </motion.div>
+
+        {/* Program cards */}
+        <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-4">
+          {PROGRAM_ACTIVITIES.map((program, index) => {
+            const Icon = iconMap[program.icon];
+
+            return (
+              <motion.article
+                key={program.slug}
+                initial={{ opacity: 0, y: 35 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{
+                  duration: 0.6,
+                  delay: index * 0.1,
+                }}
+                whileHover={{ y: -8 }}
+                className="group flex h-full flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition-shadow duration-500 hover:shadow-2xl"
               >
-                <span className="font-medium">{p.title}</span>
-                <span className="mt-1 block text-sm text-[#5C4436] line-clamp-2">
-                  {p.description}
-                </span>
-                <span className="mt-2 inline-block text-sm font-medium text-[#8B4513]">
-                  View photos →
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                {/* Image */}
+                <Link
+                  to={`/programs/${program.slug}`}
+                  className="relative block aspect-[4/3] overflow-hidden"
+                >
+                  <img
+                    src={program.featuredImage.src}
+                    alt={program.featuredImage.alt}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+
+                  {/* Image overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+                  {/* Category */}
+                  <div className="absolute left-4 top-4">
+                    <span className="rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[#4A1F0E] shadow-md backdrop-blur-sm">
+                      {program.category}
+                    </span>
+                  </div>
+
+                  {/* Icon */}
+                  <div className="absolute bottom-4 left-4 flex h-11 w-11 items-center justify-center rounded-xl bg-[#D4A017] text-white shadow-lg">
+                    <Icon className="h-5 w-5" strokeWidth={2} />
+                  </div>
+                </Link>
+
+                {/* Card content */}
+                <div className="flex flex-1 flex-col p-6">
+                  <h3 className="text-xl font-bold text-[#2E1208]">
+                    {program.title}
+                  </h3>
+
+                  <p className="mt-3 flex-1 text-sm leading-6 text-gray-600">
+                    {program.description}
+                  </p>
+
+                  <Link
+                    to={`/programs/${program.slug}`}
+                    className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B4513] transition-all duration-300 group-hover:gap-3 hover:text-[#4A1F0E]"
+                  >
+                    Explore program
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </motion.article>
+            );
+          })}
+        </div>
+
+        {/* Bottom statement */}
+        <motion.div
+          initial={{ opacity: 0, y: 25 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7 }}
+          className="mx-auto mt-16 max-w-4xl border-t border-gray-200 pt-10 text-center lg:mt-20"
+        >
+          <p className="text-lg font-medium leading-8 text-[#4A1F0E] sm:text-xl">
+            "Transformation begins when people are equipped to understand
+            their potential and use it to make a difference."
+          </p>
+        </motion.div>
       </div>
     </section>
   );

@@ -44,37 +44,42 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Routes>
 
-        {/* ================================
+        {/* =====================================================
             PUBLIC WEBSITE
-        ================================= */}
+        ====================================================== */}
 
         <Route element={<Layout />}>
 
-          {/* Homepage */}
+          {/* ================= HOME ================= */}
           <Route
             path="/"
             element={<Home />}
           />
 
-          {/* Full Books Catalog */}
+          {/* ================= BOOKS ================= */}
+
+          {/* Full books catalogue */}
           <Route
             path="/books"
             element={<BooksCatalogPage />}
           />
 
-          {/* Individual Book */}
+          {/* Individual book */}
           <Route
             path="/book/:slug"
             element={<BookDetail />}
           />
 
-          {/* Programs */}
+          {/* ================= PROGRAMS ================= */}
+
+          {/* Individual program/activity */}
           <Route
             path="/programs/:slug"
             element={<ProgramActivityPage />}
           />
 
-          {/* Legal */}
+          {/* ================= LEGAL ================= */}
+
           <Route
             path="/privacy"
             element={<Privacy />}
@@ -88,9 +93,9 @@ function App() {
         </Route>
 
 
-        {/* ================================
+        {/* =====================================================
             ADMIN LOGIN
-        ================================= */}
+        ====================================================== */}
 
         <Route
           path="/admin/login"
@@ -98,9 +103,9 @@ function App() {
         />
 
 
-        {/* ================================
-            PROTECTED ADMIN
-        ================================= */}
+        {/* =====================================================
+            PROTECTED ADMIN AREA
+        ====================================================== */}
 
         <Route
           path="/admin"
@@ -138,9 +143,9 @@ function App() {
         </Route>
 
 
-        {/* ================================
-            CATCH ALL
-        ================================= */}
+        {/* =====================================================
+            404 / UNKNOWN ROUTES
+        ====================================================== */}
 
         <Route
           path="*"
@@ -149,7 +154,9 @@ function App() {
 
       </Routes>
 
+      {/* React Query developer tools */}
       <ReactQueryDevtools initialIsOpen={false} />
+
     </QueryClientProvider>
   );
 }
