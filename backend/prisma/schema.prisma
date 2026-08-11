@@ -1,46 +1,39 @@
-// prisma/schema.prisma
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model Book {
-  id               String    @id @default(uuid())
-  slug             String    @unique
-  title            String
-  author           String
-  description      String?
-  summary          String?   @db.Text
-  genre            String?
-  coverImage       String?
-  pdfUrl           String?
-  pdfPreviewImage  String?
-
-  // ==========================
-  // AI Generated Information
-  // ==========================
-  aiSummary        String?   @db.Text
-  shortSummary     String?   @db.Text
-  keyThemes        Json?
-  keywords         Json?
-  targetAudience   String?
-  readingTime      String?
-
-  publishedYear    Int?
-  pages            Int?
-  rating           Float     @default(0.0)
-  priceCents       Int?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  orders           Order[]
-  pendingPayments  PendingPayment[]
+  id              String           @id @default(uuid())
+  slug            String           @unique
+  title           String
+  author          String
+  description     String?
+  genre           String?
+  coverImage      String?
+  publishedYear   Int?
+  pages           Int?
+  rating          Float            @default(0.0)
+  priceCents      Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  pdfUrl          String?
+  pdfPreviewImage String?
+  aiSummary       String?
+  keyThemes       Json?
+  keywords        Json?
+  readingTime     String?
+  shortSummary    String?
+  targetAudience  String?
+  summary         String?
+  orders          Order[]
+  pendingPayments PendingPayment[]
 
   @@index([title])
   @@index([author])
@@ -48,18 +41,18 @@ model Book {
 }
 
 model Order {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   bookId          String
   bookTitle       String
   paymentMethod   String
-  transactionCode String    @unique
+  transactionCode String   @unique
   email           String
   amountCents     Int
-  status          String    @default("approved")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  status          String   @default("approved")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  book            Book?     @relation(fields: [bookId], references: [id])
+  book            Book     @relation(fields: [bookId], references: [id])
 
   @@index([email])
   @@index([status])
@@ -68,26 +61,47 @@ model Order {
 }
 
 model PendingPayment {
-  id                  String    @id @default(uuid())
-  checkoutRequestID   String?   @unique
-  paypalOrderId       String?   @unique
-  bookId              String
-  bookTitle           String
-  email               String
-  phoneNumber         String?
-  amount              Float
-  status              String    @default("pending")
-  mpesaReceiptNumber  String?
-  paypalCaptureId     String?
-  errorMessage        String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                 String   @id @default(uuid())
+  checkoutRequestID  String?  @unique
+  paypalOrderId      String?  @unique
+  bookId             String
+  bookTitle          String
+  email              String
+  phoneNumber        String?
+  amount             Float
+  status             String   @default("pending")
+  mpesaReceiptNumber String?
+  paypalCaptureId    String?
+  errorMessage       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  book                Book?     @relation(fields: [bookId], references: [id])
+  book               Book     @relation(fields: [bookId], references: [id])
 
   @@index([email])
   @@index([status])
   @@index([checkoutRequestID])
   @@index([paypalOrderId])
   @@map("pending_payments")
+}
+
+model Testimonial {
+  id        String   @id @default(uuid())
+  name      String
+  role      String?
+  company   String?
+  message   String   @db.Text
+  rating    Int      @default(5)
+  photoUrl  String?
+
+  approved  Boolean  @default(false)
+  featured  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([approved])
+  @@index([featured])
+  @@index([createdAt])
+  @@map("testimonials")
 }
