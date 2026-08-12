@@ -308,10 +308,9 @@ const BookFormPage = () => {
       try {
         setLoadingBook(true);
 
-        const book =
-          await apiFetch<BookResponse>(
-            `/api/books/${id}`
-          );
+        const book = await apiFetch<BookResponse>(
+          `/api/books/${id}`
+        );
 
         console.log(
           "📚 Existing book loaded:",
@@ -349,9 +348,9 @@ const BookFormPage = () => {
           listPrice:
             book.priceCents != null
               ? (
-                  Number(book.priceCents) /
-                  100
-                ).toFixed(2)
+                Number(book.priceCents) /
+                100
+              ).toFixed(2)
               : "",
 
           coverImage:
@@ -729,7 +728,7 @@ const BookFormPage = () => {
       setValue(
         "pdfPreviewImage",
         response.pdfPreviewImage ||
-          "",
+        "",
         {
           shouldDirty: true,
           shouldTouch: true,
@@ -1002,22 +1001,22 @@ const BookFormPage = () => {
       const publishedYear =
         values.publishedYear.trim() !== ""
           ? Number(
-              values.publishedYear
-            )
+            values.publishedYear
+          )
           : null;
 
       const pages =
         values.pages.trim() !== ""
           ? Number(
-              values.pages
-            )
+            values.pages
+          )
           : null;
 
       const rating =
         values.rating.trim() !== ""
           ? Number(
-              values.rating
-            )
+            values.rating
+          )
           : 0;
 
       /* --------------------------------------------------------------------
@@ -1546,10 +1545,9 @@ const BookFormPage = () => {
                 p-6
                 text-center
                 transition
-                ${
-                  uploadingCover
-                    ? "cursor-not-allowed border-orange-300 bg-orange-50"
-                    : "border-gray-300 hover:border-[#C17B4F] hover:bg-[#C17B4F]/5"
+                ${uploadingCover
+                  ? "cursor-not-allowed border-orange-300 bg-orange-50"
+                  : "border-gray-300 hover:border-[#C17B4F] hover:bg-[#C17B4F]/5"
                 }
               `}
             >
@@ -1754,11 +1752,10 @@ const BookFormPage = () => {
                 p-6
                 text-center
                 transition
-                ${
-                  uploadingPdf ||
+                ${uploadingPdf ||
                   generatingPreview
-                    ? "cursor-not-allowed border-blue-300 bg-blue-50"
-                    : "border-gray-300 hover:border-[#C17B4F] hover:bg-[#C17B4F]/5"
+                  ? "cursor-not-allowed border-blue-300 bg-blue-50"
+                  : "border-gray-300 hover:border-[#C17B4F] hover:bg-[#C17B4F]/5"
                 }
               `}
             >
@@ -2022,7 +2019,7 @@ const BookFormPage = () => {
             >
 
               {loading ||
-              generatingPreview ? (
+                generatingPreview ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               ) : (
                 <Save className="mr-2 h-5 w-5" />

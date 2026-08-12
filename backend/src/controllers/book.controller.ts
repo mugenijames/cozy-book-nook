@@ -53,22 +53,19 @@ async function generateUniqueSlug(
 }
 
 /* -------------------------------------------------------------------------- */
-/* PUBLIC BOOK RESPONSE                                                       */
+/* PUBLIC RESPONSE                                                            */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Public response.
- *
- * IMPORTANT:
- * pdfUrl is NEVER returned here.
+ * Public customers NEVER receive the private PDF URL.
  */
 function sanitizePublicBook(book: any) {
   return {
     id: book.id,
     slug: book.slug,
+
     title: book.title,
     author: book.author,
-
     description: book.description,
     genre: book.genre,
 
@@ -96,25 +93,25 @@ function sanitizePublicBook(book: any) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* ADMIN BOOK RESPONSE                                                        */
+/* ADMIN RESPONSE                                                             */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Admin response.
- *
- * This response includes pdfUrl because the admin dashboard
- * needs to know which PDF is attached to the book.
+ * ADMIN response.
  *
  * IMPORTANT:
- * This endpoint MUST be protected by your admin middleware.
+ * The admin dashboard NEEDS pdfUrl so that an administrator
+ * can see/edit the uploaded PDF.
+ *
+ * This function should NEVER be used by public customer endpoints.
  */
 function sanitizeAdminBook(book: any) {
   return {
     id: book.id,
     slug: book.slug,
+
     title: book.title,
     author: book.author,
-
     description: book.description,
     genre: book.genre,
 
@@ -125,20 +122,22 @@ function sanitizeAdminBook(book: any) {
     rating: book.rating,
     priceCents: book.priceCents,
 
+    createdAt: book.createdAt,
+    updatedAt: book.updatedAt,
+
+    /* PDF */
     pdfUrl: book.pdfUrl,
     pdfPreviewImage: book.pdfPreviewImage,
 
     hasDigitalEdition: Boolean(book.pdfUrl),
 
+    /* AI */
     aiSummary: book.aiSummary,
     shortSummary: book.shortSummary,
     keyThemes: book.keyThemes,
     keywords: book.keywords,
     readingTime: book.readingTime,
     targetAudience: book.targetAudience,
-
-    createdAt: book.createdAt,
-    updatedAt: book.updatedAt,
   };
 }
 
@@ -157,11 +156,9 @@ const getBooks = async (
       },
     });
 
-    const publicBooks = books.map(
-      sanitizePublicBook
+    return res.json(
+      books.map(sanitizePublicBook)
     );
-
-    return res.json(publicBooks);
   } catch (error: any) {
     console.error(
       "❌ Error fetching books:",
@@ -233,13 +230,16 @@ const getBook = async (
 /* -------------------------------------------------------------------------- */
 
 /**
- * ADMIN ONLY
- *
- * This endpoint returns pdfUrl.
- *
- * Example:
+ * THIS IS THE ENDPOINT YOUR FRONTEND IS CURRENTLY REQUESTING:
  *
  * GET /api/admin/books/:id
+ *
+ * Your console currently shows:
+ *
+ * GET /api/admin/books/acf5ee30-...
+ * 404
+ *
+ * This function fixes that.
  */
 const getAdminBook = async (
   req: Request,
@@ -251,7 +251,7 @@ const getAdminBook = async (
     );
 
     console.log(
-      "🔐 Admin fetching book:",
+      "🔐 ADMIN GET BOOK:",
       id
     );
 
@@ -263,19 +263,28 @@ const getAdminBook = async (
       });
 
     if (!book) {
+      console.log(
+        "❌ ADMIN BOOK NOT FOUND:",
+        id
+      );
+
       return res.status(404).json({
         error: "Book not found",
+        id,
       });
     }
 
     console.log(
-      "📕 Admin book PDF:",
-      Boolean(book.pdfUrl)
-    );
-
-    console.log(
-      "🖼️ Admin book cover:",
-      Boolean(book.coverImage)
+      "✅ ADMIN BOOK FOUND:",
+      {
+        id: book.id,
+        title: book.title,
+        hasPdf: Boolean(book.pdfUrl),
+        hasCover: Boolean(book.coverImage),
+        hasPreview: Boolean(
+          book.pdfPreviewImage
+        ),
+      }
     );
 
     return res.json(
@@ -330,9 +339,12 @@ const createBook = async (
           String(title)
         );
 
-    let resolvedPrice:
-      | number
-      | null = null;
+    /* ---------------------------------------------------------------------- */
+    /* PRICE                                                                  */
+    /* ---------------------------------------------------------------------- */
+
+    let resolvedPrice: number | null =
+      null;
 
     if (
       priceCents !== undefined &&
@@ -348,6 +360,10 @@ const createBook = async (
         resolvedPrice = n;
       }
     }
+
+    /* ---------------------------------------------------------------------- */
+    /* CREATE                                                                  */
+    /* ---------------------------------------------------------------------- */
 
     const newBook =
       await prisma.book.create({
@@ -413,13 +429,10 @@ const createBook = async (
       });
 
     console.log(
-      "✅ Book created:",
+      "✅ BOOK CREATED:",
       {
         id: newBook.id,
         title: newBook.title,
-        hasCover: Boolean(
-          newBook.coverImage
-        ),
         hasPdf: Boolean(
           newBook.pdfUrl
         ),
@@ -430,8 +443,11 @@ const createBook = async (
     );
 
     /*
-     * Return the admin version because this
-     * endpoint is used by the admin dashboard.
+     * Since this is an admin operation,
+     * return the ADMIN representation.
+     *
+     * This means pdfUrl will NOT disappear
+     * immediately after saving.
      */
     return res.status(201).json(
       sanitizeAdminBook(newBook)
@@ -467,17 +483,12 @@ const updateBook = async (
     console.log(
       "========================================"
     );
-    console.log(
-      "📚 UPDATE BOOK"
-    );
+    console.log("📚 UPDATE BOOK");
     console.log(
       "========================================"
     );
 
-    console.log(
-      "Book ID:",
-      id
-    );
+    console.log("Book ID:", id);
 
     const existingBook =
       await prisma.book.findUnique({
@@ -510,21 +521,27 @@ const updateBook = async (
 
     const updateData: any = {};
 
-    /* ------------------------------- TITLE ------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* TITLE                                                                  */
+    /* ---------------------------------------------------------------------- */
 
     if (title !== undefined) {
       updateData.title =
         String(title).trim();
     }
 
-    /* ------------------------------- AUTHOR ------------------------------ */
+    /* ---------------------------------------------------------------------- */
+    /* AUTHOR                                                                 */
+    /* ---------------------------------------------------------------------- */
 
     if (author !== undefined) {
       updateData.author =
         String(author).trim();
     }
 
-    /* ----------------------------- DESCRIPTION --------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* DESCRIPTION                                                            */
+    /* ---------------------------------------------------------------------- */
 
     if (description !== undefined) {
       updateData.description =
@@ -534,7 +551,9 @@ const updateBook = async (
           : String(description);
     }
 
-    /* ----------------------------- COVER IMAGE --------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* COVER                                                                   */
+    /* ---------------------------------------------------------------------- */
 
     if (coverImage !== undefined) {
       updateData.coverImage =
@@ -544,7 +563,9 @@ const updateBook = async (
           : String(coverImage);
     }
 
-    /* -------------------------------- GENRE ------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* GENRE                                                                   */
+    /* ---------------------------------------------------------------------- */
 
     if (genre !== undefined) {
       updateData.genre =
@@ -554,7 +575,9 @@ const updateBook = async (
           : String(genre);
     }
 
-    /* --------------------------- PUBLISHED YEAR -------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* YEAR                                                                    */
+    /* ---------------------------------------------------------------------- */
 
     if (
       publishedYear !== undefined
@@ -566,7 +589,9 @@ const updateBook = async (
           : Number(publishedYear);
     }
 
-    /* -------------------------------- PAGES ------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* PAGES                                                                   */
+    /* ---------------------------------------------------------------------- */
 
     if (pages !== undefined) {
       updateData.pages =
@@ -576,7 +601,9 @@ const updateBook = async (
           : Number(pages);
     }
 
-    /* ------------------------------- RATING ------------------------------ */
+    /* ---------------------------------------------------------------------- */
+    /* RATING                                                                  */
+    /* ---------------------------------------------------------------------- */
 
     if (rating !== undefined) {
       const parsedRating =
@@ -592,7 +619,9 @@ const updateBook = async (
       }
     }
 
-    /* -------------------------------- SLUG -------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* SLUG                                                                    */
+    /* ---------------------------------------------------------------------- */
 
     if (
       slug !== undefined &&
@@ -603,7 +632,9 @@ const updateBook = async (
         String(slug).trim();
     }
 
-    /* ------------------------------- PRICE ------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* PRICE                                                                   */
+    /* ---------------------------------------------------------------------- */
 
     if (
       priceCents !== undefined
@@ -626,7 +657,9 @@ const updateBook = async (
       }
     }
 
-    /* ------------------------------- PDF --------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* PDF                                                                     */
+    /* ---------------------------------------------------------------------- */
 
     if (pdfUrl !== undefined) {
       updateData.pdfUrl =
@@ -636,12 +669,14 @@ const updateBook = async (
           : String(pdfUrl);
 
       console.log(
-        "📕 PDF URL received:",
+        "📕 PDF URL UPDATE:",
         updateData.pdfUrl
       );
     }
 
-    /* -------------------------- PDF PREVIEW ------------------------------ */
+    /* ---------------------------------------------------------------------- */
+    /* PDF PREVIEW                                                             */
+    /* ---------------------------------------------------------------------- */
 
     if (
       pdfPreviewImage !==
@@ -654,44 +689,14 @@ const updateBook = async (
           : String(pdfPreviewImage);
 
       console.log(
-        "🖼️ PDF preview received:",
-        Boolean(
-          updateData.pdfPreviewImage
-        )
+        "🖼️ PDF PREVIEW UPDATE:",
+        updateData.pdfPreviewImage
       );
     }
 
-    /* -------------------------- DATABASE UPDATE -------------------------- */
-
-    console.log(
-      "💾 Updating database with:"
-    );
-
-    console.log({
-      hasCover:
-        updateData.coverImage !==
-        undefined
-          ? Boolean(
-              updateData.coverImage
-            )
-          : "unchanged",
-
-      hasPdf:
-        updateData.pdfUrl !==
-        undefined
-          ? Boolean(
-              updateData.pdfUrl
-            )
-          : "unchanged",
-
-      hasPreview:
-        updateData.pdfPreviewImage !==
-        undefined
-          ? Boolean(
-              updateData.pdfPreviewImage
-            )
-          : "unchanged",
-    });
+    /* ---------------------------------------------------------------------- */
+    /* DATABASE UPDATE                                                         */
+    /* ---------------------------------------------------------------------- */
 
     const updatedBook =
       await prisma.book.update({
@@ -708,20 +713,21 @@ const updateBook = async (
     console.log({
       id: updatedBook.id,
       title: updatedBook.title,
-      hasCover: Boolean(
-        updatedBook.coverImage
-      ),
       hasPdf: Boolean(
         updatedBook.pdfUrl
       ),
-      hasPreview: Boolean(
-        updatedBook.pdfPreviewImage
-      ),
+      pdfUrl: updatedBook.pdfUrl,
+      hasPreview:
+        Boolean(
+          updatedBook.pdfPreviewImage
+        ),
     });
 
     /*
-     * This is an ADMIN endpoint,
-     * therefore return pdfUrl.
+     * IMPORTANT:
+     *
+     * This is an ADMIN operation.
+     * Therefore return pdfUrl.
      */
     return res.json(
       sanitizeAdminBook(
@@ -783,12 +789,11 @@ const deleteBook = async (
     });
 
     console.log(
-      "🗑️ Book deleted:",
+      "🗑️ BOOK DELETED:",
       id
     );
 
     return res.json({
-      success: true,
       message:
         "Book deleted successfully",
       id,
@@ -800,9 +805,9 @@ const deleteBook = async (
     );
 
     return res.status(500).json({
-      success: false,
       error:
         "Failed to delete book",
+
       details:
         error?.message,
     });
