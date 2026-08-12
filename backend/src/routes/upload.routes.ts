@@ -1,43 +1,53 @@
+// backend/src/routes/upload.routes.ts
+
 import { Router } from "express";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
+
 import { isAdmin } from "../middleware/authMiddleware";
 import { prisma } from "../lib/prisma";
+
 import Anthropic from "@anthropic-ai/sdk";
+
 import * as pdfParseModule from "pdf-parse";
+
+const pdfParse =
+  (pdfParseModule as any).default ??
+  pdfParseModule;
 
 const router = Router();
 
 /* -------------------------------------------------------------------------- */
-/* CLOUDINARY                                                                 */
+/* CLOUDINARY CONFIG                                                          */
 /* -------------------------------------------------------------------------- */
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name:
+    process.env.CLOUDINARY_CLOUD_NAME,
+
+  api_key:
+    process.env.CLOUDINARY_API_KEY,
+
+  api_secret:
+    process.env.CLOUDINARY_API_SECRET,
 });
 
 /* -------------------------------------------------------------------------- */
 /* ANTHROPIC                                                                  */
 /* -------------------------------------------------------------------------- */
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-/* -------------------------------------------------------------------------- */
-/* PDF PARSER                                                                 */
-/* -------------------------------------------------------------------------- */
-
-const pdfParse =
-  (pdfParseModule as any).default ?? pdfParseModule;
+const anthropic =
+  new Anthropic({
+    apiKey:
+      process.env.ANTHROPIC_API_KEY,
+  });
 
 /* -------------------------------------------------------------------------- */
 /* MULTER                                                                     */
 /* -------------------------------------------------------------------------- */
 
-const storage = multer.memoryStorage();
+const storage =
+  multer.memoryStorage();
 
 /* -------------------------------------------------------------------------- */
 /* IMAGE FILTER                                                               */
@@ -49,28 +59,39 @@ const imageFilter = (
   cb: any
 ) => {
   const allowedExtensions =
-    /\.(jpeg|jpg|png|gif|webp)$/i;
+    [
+      "jpeg",
+      "jpg",
+      "png",
+      "gif",
+      "webp",
+    ];
 
-  const allowedMimeTypes = [
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-  ];
+  const extension =
+    file.originalname
+      .split(".")
+      .pop()
+      ?.toLowerCase() || "";
 
-  const extensionOk =
-    allowedExtensions.test(file.originalname);
+  const validExtension =
+    allowedExtensions.includes(
+      extension
+    );
 
-  const mimeOk =
-    allowedMimeTypes.includes(file.mimetype);
+  const validMime =
+    /^image\/(jpeg|jpg|png|gif|webp)$/i.test(
+      file.mimetype
+    );
 
-  if (extensionOk && mimeOk) {
+  if (
+    validExtension &&
+    validMime
+  ) {
     cb(null, true);
   } else {
     cb(
       new Error(
-        "Only JPEG, JPG, PNG, GIF and WEBP images are allowed"
+        "Only JPG, PNG, GIF and WEBP image files are allowed"
       )
     );
   }
@@ -85,7 +106,10 @@ const pdfFilter = (
   file: any,
   cb: any
 ) => {
-  if (file.mimetype === "application/pdf") {
+  if (
+    file.mimetype ===
+    "application/pdf"
+  ) {
     cb(null, true);
   } else {
     cb(
@@ -97,85 +121,30 @@ const pdfFilter = (
 };
 
 /* -------------------------------------------------------------------------- */
-/* UPLOAD INSTANCES                                                           */
+/* MULTER INSTANCES                                                           */
 /* -------------------------------------------------------------------------- */
 
-const uploadImage = multer({
-  storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024,
-  },
-  fileFilter: imageFilter,
-});
+const uploadImage =
+  multer({
+    storage,
+    limits: {
+      fileSize:
+        10 * 1024 * 1024,
+    },
+    fileFilter:
+      imageFilter,
+  });
 
-const uploadPdf = multer({
-  storage,
-  limits: {
-    fileSize: 20 * 1024 * 1024,
-  },
-  fileFilter: pdfFilter,
-});
-
-/* -------------------------------------------------------------------------- */
-/* HELPER: CLOUDINARY UPLOAD                                                  */
-/* -------------------------------------------------------------------------- */
-
-function uploadBufferToCloudinary(
-  buffer: Buffer,
-  options: Record<string, any>
-): Promise<any> {
-  return new Promise(
-    (resolve, reject) => {
-      const stream =
-        cloudinary.uploader.upload_stream(
-          options,
-          (error, result) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-
-            resolve(result);
-          }
-        );
-
-      stream.end(buffer);
-    }
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* HELPER: PDF PREVIEW URL                                                    */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Cloudinary stores PDFs as image assets.
- *
- * Original PDF:
- *
- * /image/upload/.../book.pdf
- *
- * First page preview:
- *
- * /image/upload/pg_1/.../book.jpg
- *
- * IMPORTANT:
- * Do NOT use /raw/upload here.
- */
-function createPdfPreviewUrl(
-  publicId: string
-): string {
-  const cloudName =
-    process.env.CLOUDINARY_CLOUD_NAME;
-
-  if (!cloudName) {
-    throw new Error(
-      "CLOUDINARY_CLOUD_NAME is not configured"
-    );
-  }
-
-  return `https://res.cloudinary.com/${cloudName}/image/upload/pg_1,w_800,q_auto/${publicId}.jpg`;
-}
+const uploadPdf =
+  multer({
+    storage,
+    limits: {
+      fileSize:
+        20 * 1024 * 1024,
+    },
+    fileFilter:
+      pdfFilter,
+  });
 
 /* -------------------------------------------------------------------------- */
 /* UPLOAD COVER                                                               */
@@ -187,23 +156,20 @@ router.post(
   uploadImage.single("cover"),
   async (req, res) => {
     try {
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "🖼️ STARTING COVER UPLOAD"
-      );
-
-      console.log(
-        "========================================"
-      );
-
       if (!req.file) {
         return res.status(400).json({
-          error: "No cover image uploaded",
+          error:
+            "No cover image uploaded",
         });
       }
+
+      console.log(
+        "========================================"
+      );
+
+      console.log(
+        "🖼️ COVER UPLOAD"
+      );
 
       console.log(
         "File:",
@@ -216,50 +182,67 @@ router.post(
       );
 
       console.log(
-        "Type:",
-        req.file.mimetype
+        "========================================"
       );
 
-      const result =
-        await uploadBufferToCloudinary(
-          req.file.buffer,
-          {
-            folder:
-              "cozy-book-nook/covers",
+      const result: any =
+        await new Promise(
+          (
+            resolve,
+            reject
+          ) => {
+            cloudinary.uploader
+              .upload_stream(
+                {
+                  folder:
+                    "cozy-book-nook/covers",
 
-            resource_type: "image",
+                  resource_type:
+                    "image",
 
-            transformation: [
-              {
-                width: 500,
-                height: 750,
-                crop: "fill",
-              },
-            ],
+                  quality:
+                    "auto",
 
-            quality: "auto",
+                  transformation: [
+                    {
+                      width: 500,
+                      height: 750,
+                      crop: "fill",
+                    },
+                  ],
+                },
 
-            fetch_format: "auto",
-
-            use_filename: true,
-
-            unique_filename: true,
+                (
+                  error,
+                  uploaded
+                ) => {
+                  if (error) {
+                    reject(
+                      error
+                    );
+                  } else {
+                    resolve(
+                      uploaded
+                    );
+                  }
+                }
+              )
+              .end(
+                req.file!.buffer
+              );
           }
         );
 
       console.log(
-        "✅ COVER UPLOADED"
-      );
-
-      console.log(
-        "URL:",
+        "✅ Cover uploaded:",
         result.secure_url
       );
 
       return res.json({
         success: true,
 
-        url: result.secure_url,
+        url:
+          result.secure_url,
 
         filename:
           result.public_id,
@@ -272,7 +255,7 @@ router.post(
       });
     } catch (error: any) {
       console.error(
-        "❌ COVER UPLOAD ERROR:",
+        "❌ Cover upload error:",
         error
       );
 
@@ -292,34 +275,46 @@ router.post(
 /* UPLOAD PDF                                                                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * IMPORTANT:
+ *
+ * The PDF is uploaded to Cloudinary as an IMAGE resource.
+ *
+ * This allows Cloudinary to render individual PDF pages.
+ *
+ * We DO NOT set:
+ *
+ * format: "jpg"
+ *
+ * because that would convert the actual PDF into an image.
+ */
 router.post(
   "/upload-pdf",
   isAdmin,
   uploadPdf.single("pdf"),
   async (req, res) => {
     try {
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "📕 STARTING PDF UPLOAD"
-      );
-
-      console.log(
-        "========================================"
-      );
-
       if (!req.file) {
         return res.status(400).json({
-          error: "No PDF file uploaded",
+          error:
+            "No PDF file uploaded",
         });
       }
 
       const bookId =
         req.body.bookId
-          ? String(req.body.bookId)
+          ? String(
+              req.body.bookId
+            )
           : undefined;
+
+      console.log(
+        "========================================"
+      );
+
+      console.log(
+        "📕 PDF UPLOAD"
+      );
 
       console.log(
         "File:",
@@ -332,7 +327,7 @@ router.post(
       );
 
       console.log(
-        "Type:",
+        "MIME:",
         req.file.mimetype
       );
 
@@ -341,47 +336,65 @@ router.post(
         bookId || "Not provided"
       );
 
+      console.log(
+        "========================================"
+      );
+
       /* -------------------------------------------------------------------- */
       /* UPLOAD PDF TO CLOUDINARY                                             */
       /* -------------------------------------------------------------------- */
 
-      /**
-       * IMPORTANT
-       *
-       * PDF must remain a PDF.
-       *
-       * Cloudinary supports PDFs as image assets.
-       * This allows us to later request page 1 as JPG.
-       *
-       * DO NOT use:
-       *
-       * resource_type: "raw"
-       *
-       * because then PDF page transformations will not work.
-       *
-       * DO NOT use:
-       *
-       * format: "jpg"
-       *
-       * during upload because that changes what is stored.
-       */
+      const result: any =
+        await new Promise(
+          (
+            resolve,
+            reject
+          ) => {
+            cloudinary.uploader
+              .upload_stream(
+                {
+                  folder:
+                    "cozy-book-nook/pdfs",
 
-      const result =
-        await uploadBufferToCloudinary(
-          req.file.buffer,
-          {
-            folder:
-              "cozy-book-nook/pdfs",
+                  /*
+                   * IMPORTANT:
+                   *
+                   * Do NOT specify format: "jpg".
+                   *
+                   * Cloudinary will keep this as a PDF while
+                   * allowing page transformations.
+                   */
+                  resource_type:
+                    "image",
 
-            resource_type: "image",
+                  type:
+                    "upload",
 
-            format: "pdf",
+                  use_filename:
+                    false,
 
-            use_filename: true,
+                  unique_filename:
+                    true,
+                },
 
-            unique_filename: true,
-
-            overwrite: false,
+                (
+                  error,
+                  uploaded
+                ) => {
+                  if (error) {
+                    reject(
+                      error
+                    );
+                  } else {
+                    resolve(
+                      uploaded
+                    );
+                  }
+                }
+              )
+              .end(
+                req.file!.buffer
+              );
           }
         );
 
@@ -392,75 +405,71 @@ router.post(
         result.public_id;
 
       console.log(
-        "========================================"
+        "✅ PDF uploaded successfully"
       );
 
       console.log(
-        "✅ PDF UPLOADED TO CLOUDINARY"
-      );
-
-      console.log(
-        "PDF URL:",
+        "📕 PDF URL:",
         pdfUrl
       );
 
       console.log(
-        "Public ID:",
+        "🆔 Public ID:",
         publicId
       );
 
-      console.log(
-        "Pages:",
-        result.pages || "Unknown"
-      );
-
       /* -------------------------------------------------------------------- */
-      /* GENERATE PREVIEW URL                                                 */
+      /* GENERATE FIRST PAGE PREVIEW                                          */
       /* -------------------------------------------------------------------- */
 
-      const pdfPreviewImage =
-        createPdfPreviewUrl(
-          publicId
+      let pdfPreviewImage:
+        | string
+        | null = null;
+
+      try {
+        pdfPreviewImage =
+          cloudinary.url(
+            publicId,
+            {
+              secure: true,
+
+              resource_type:
+                "image",
+
+              type:
+                "upload",
+
+              format:
+                "jpg",
+
+              transformation: [
+                {
+                  page: 1,
+                },
+                {
+                  width: 900,
+                  crop: "scale",
+                },
+                {
+                  quality: "auto",
+                },
+              ],
+            }
+          );
+
+        console.log(
+          "🖼️ PDF preview URL:",
+          pdfPreviewImage
         );
-
-      console.log(
-        "🖼️ PDF PREVIEW URL:"
-      );
-
-      console.log(
-        pdfPreviewImage
-      );
+      } catch (previewError) {
+        console.warn(
+          "⚠️ Could not generate PDF preview URL:",
+          previewError
+        );
+      }
 
       /* -------------------------------------------------------------------- */
-      /* VERIFY PREVIEW URL                                                    */
-      /* -------------------------------------------------------------------- */
-
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "🔎 PDF PREVIEW CONFIGURATION"
-      );
-
-      console.log(
-        "Resource type: image"
-      );
-
-      console.log(
-        "Page: 1"
-      );
-
-      console.log(
-        "Format: jpg"
-      );
-
-      console.log(
-        "========================================"
-      );
-
-      /* -------------------------------------------------------------------- */
-      /* AI SUMMARY                                                            */
+      /* AI BOOK PREVIEW                                                      */
       /* -------------------------------------------------------------------- */
 
       let preview:
@@ -468,25 +477,22 @@ router.post(
         | null = null;
 
       try {
+        console.log(
+          "📖 Extracting PDF text..."
+        );
+
         const parsed =
           await pdfParse(
             req.file.buffer
           );
 
         const rawText =
-          parsed?.text?.trim();
-
-        console.log(
-          "📄 Extracted PDF text:",
-          rawText
-            ? `${rawText.length} characters`
-            : "No text"
-        );
+          parsed.text
+            ?.trim();
 
         if (
           rawText &&
-          rawText.length > 100 &&
-          process.env.ANTHROPIC_API_KEY
+          rawText.length > 100
         ) {
           const excerpt =
             rawText.slice(
@@ -495,7 +501,7 @@ router.post(
             );
 
           console.log(
-            "🤖 GENERATING AI BOOK PREVIEW"
+            "🤖 Generating AI preview..."
           );
 
           const message =
@@ -504,31 +510,36 @@ router.post(
                 model:
                   "claude-sonnet-4-6",
 
-                max_tokens: 800,
+                max_tokens:
+                  800,
 
                 messages: [
                   {
-                    role: "user",
+                    role:
+                      "user",
 
                     content: `
 You are a professional book editor.
 
-Based on the following excerpt, write a compelling 4-6 paragraph preview summary.
+Based on the following excerpt, write a compelling book preview summary.
 
 Requirements:
 - Introduce the main themes and purpose of the book.
 - Highlight key ideas or lessons.
 - Use an engaging and warm tone.
 - Do not reveal major conclusions or spoilers.
-- Make the reader interested in reading the complete book.
-- Write only the preview summary.
-- Do not include headings.
+- Make the reader want to read the complete book.
+- Write 4-6 paragraphs.
+- Do not use headings.
+- Do not mention that the text came from an excerpt.
 
 Book excerpt:
 
 """
 ${excerpt}
 """
+
+Write only the preview summary.
 `,
                   },
                 ],
@@ -537,50 +548,53 @@ ${excerpt}
 
           const block =
             message.content.find(
-              (item: any) =>
-                item.type === "text"
+              (
+                item
+              ) =>
+                item.type ===
+                "text"
             );
 
           if (
             block &&
-            block.type === "text"
+            block.type ===
+              "text"
           ) {
             preview =
               block.text.trim();
 
             console.log(
-              "✅ AI PREVIEW GENERATED"
+              "✅ AI preview generated"
             );
           }
         } else {
           console.log(
-            "ℹ️ AI preview skipped"
+            "⚠️ PDF contains insufficient text for AI preview"
           );
         }
-      } catch (aiError: any) {
+      } catch (aiError) {
         console.warn(
-          "⚠️ AI PREVIEW FAILED"
+          "⚠️ AI preview generation failed:",
+          aiError
         );
-
-        console.warn(
-          aiError?.message ||
-            aiError
-        );
-
-        // AI failure must NOT stop PDF upload.
       }
 
       /* -------------------------------------------------------------------- */
-      /* SAVE PDF TO DATABASE                                                  */
+      /* SAVE TO DATABASE                                                     */
       /* -------------------------------------------------------------------- */
 
       if (bookId) {
         try {
           const updateData: any = {
             pdfUrl,
-
-            pdfPreviewImage,
           };
+
+          if (
+            pdfPreviewImage
+          ) {
+            updateData.pdfPreviewImage =
+              pdfPreviewImage;
+          }
 
           if (preview) {
             updateData.aiSummary =
@@ -604,54 +618,56 @@ ${excerpt}
           );
 
           console.log(
-            "✅ PDF SAVED TO DATABASE"
+            "✅ BOOK UPDATED WITH PDF"
           );
 
-          console.log(
-            "Book ID:",
-            updatedBook.id
-          );
+          console.log({
+            id:
+              updatedBook.id,
 
-          console.log(
-            "PDF:",
-            updatedBook.pdfUrl
-          );
+            title:
+              updatedBook.title,
 
-          console.log(
-            "Preview:",
-            updatedBook.pdfPreviewImage
-          );
+            hasPdf:
+              Boolean(
+                updatedBook.pdfUrl
+              ),
+
+            pdfUrl:
+              updatedBook.pdfUrl,
+
+            hasPreview:
+              Boolean(
+                updatedBook.pdfPreviewImage
+              ),
+
+            pdfPreviewImage:
+              updatedBook.pdfPreviewImage,
+
+            hasAiSummary:
+              Boolean(
+                updatedBook.aiSummary
+              ),
+          });
 
           console.log(
             "========================================"
           );
         } catch (dbError: any) {
           console.error(
-            "❌ DATABASE UPDATE FAILED:"
-          );
-
-          console.error(
+            "❌ Database update failed:",
             dbError
           );
 
-          return res.status(500).json(
-            {
-              error:
-                "PDF uploaded but could not be saved to the book",
-
-              details:
-                dbError?.message,
-
-              pdfUrl,
-
-              pdfPreviewImage,
-            }
-          );
+          /*
+           * Do not fail the entire upload because the Cloudinary
+           * upload itself succeeded.
+           */
         }
       }
 
       /* -------------------------------------------------------------------- */
-      /* RESPONSE                                                              */
+      /* RESPONSE                                                             */
       /* -------------------------------------------------------------------- */
 
       return res.json({
@@ -665,27 +681,16 @@ ${excerpt}
 
         publicId,
 
-        pages:
-          result.pages || null,
+        filename:
+          req.file.originalname,
 
         message:
           "PDF upload successful",
       });
     } catch (error: any) {
       console.error(
-        "========================================"
-      );
-
-      console.error(
-        "❌ PDF UPLOAD ERROR"
-      );
-
-      console.error(
+        "❌ PDF upload error:",
         error
-      );
-
-      console.error(
-        "========================================"
       );
 
       return res.status(500).json({
@@ -701,13 +706,13 @@ ${excerpt}
 );
 
 /* -------------------------------------------------------------------------- */
-/* TEST ENDPOINT                                                              */
+/* UPLOAD TEST                                                                */
 /* -------------------------------------------------------------------------- */
 
 router.get(
   "/upload-test",
   (req, res) => {
-    res.json({
+    return res.json({
       message:
         "Upload routes working",
 

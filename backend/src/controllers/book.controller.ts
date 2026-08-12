@@ -57,13 +57,19 @@ async function generateUniqueSlug(
 /* -------------------------------------------------------------------------- */
 
 /**
- * Public customers NEVER receive the private PDF URL.
+ * Public customers must NEVER receive pdfUrl.
+ *
+ * They can receive:
+ * - book information
+ * - cover
+ * - preview image
+ * - AI summary
+ * - whether a digital edition exists
  */
 function sanitizePublicBook(book: any) {
   return {
     id: book.id,
     slug: book.slug,
-
     title: book.title,
     author: book.author,
     description: book.description,
@@ -85,55 +91,7 @@ function sanitizePublicBook(book: any) {
 
     aiSummary: book.aiSummary,
     shortSummary: book.shortSummary,
-    keyThemes: book.keyThemes,
-    keywords: book.keywords,
-    readingTime: book.readingTime,
-    targetAudience: book.targetAudience,
-  };
-}
-
-/* -------------------------------------------------------------------------- */
-/* ADMIN RESPONSE                                                             */
-/* -------------------------------------------------------------------------- */
-
-/**
- * ADMIN response.
- *
- * IMPORTANT:
- * The admin dashboard NEEDS pdfUrl so that an administrator
- * can see/edit the uploaded PDF.
- *
- * This function should NEVER be used by public customer endpoints.
- */
-function sanitizeAdminBook(book: any) {
-  return {
-    id: book.id,
-    slug: book.slug,
-
-    title: book.title,
-    author: book.author,
-    description: book.description,
-    genre: book.genre,
-
-    coverImage: book.coverImage,
-
-    publishedYear: book.publishedYear,
-    pages: book.pages,
-    rating: book.rating,
-    priceCents: book.priceCents,
-
-    createdAt: book.createdAt,
-    updatedAt: book.updatedAt,
-
-    /* PDF */
-    pdfUrl: book.pdfUrl,
-    pdfPreviewImage: book.pdfPreviewImage,
-
-    hasDigitalEdition: Boolean(book.pdfUrl),
-
-    /* AI */
-    aiSummary: book.aiSummary,
-    shortSummary: book.shortSummary,
+    pdfSummary: book.pdfSummary,
     keyThemes: book.keyThemes,
     keywords: book.keywords,
     readingTime: book.readingTime,
@@ -150,6 +108,8 @@ const getBooks = async (
   res: Response
 ) => {
   try {
+    console.log(">>> GET /api/books");
+
     const books = await prisma.book.findMany({
       orderBy: {
         createdAt: "desc",
@@ -167,7 +127,7 @@ const getBooks = async (
 
     return res.status(500).json({
       error: "Failed to fetch books",
-      details: error?.message,
+      details: error?.message || "Unknown error",
     });
   }
 };
@@ -183,6 +143,11 @@ const getBook = async (
   try {
     const idOrSlug = getSingleParam(
       req.params.idOrSlug
+    );
+
+    console.log(
+      ">>> GET /api/books/:idOrSlug",
+      idOrSlug
     );
 
     const uuidPattern =
@@ -220,26 +185,62 @@ const getBook = async (
 
     return res.status(500).json({
       error: "Failed to fetch book",
-      details: error?.message,
+      details: error?.message || "Unknown error",
     });
   }
 };
 
 /* -------------------------------------------------------------------------- */
-/* GET ONE ADMIN BOOK                                                         */
+/* ADMIN GET ALL BOOKS                                                        */
 /* -------------------------------------------------------------------------- */
 
 /**
- * THIS IS THE ENDPOINT YOUR FRONTEND IS CURRENTLY REQUESTING:
+ * IMPORTANT:
+ *
+ * This endpoint is protected by isAdmin in admin.book.routes.ts.
+ *
+ * Unlike the public endpoint, the admin needs pdfUrl.
+ */
+const getAdminBooks = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    console.log(
+      ">>> GET /api/admin/books"
+    );
+
+    const books = await prisma.book.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.json(books);
+  } catch (error: any) {
+    console.error(
+      "❌ Error fetching admin books:",
+      error
+    );
+
+    return res.status(500).json({
+      error: "Failed to fetch books",
+      details: error?.message || "Unknown error",
+    });
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/* ADMIN GET ONE BOOK                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * This endpoint fixes:
  *
  * GET /api/admin/books/:id
  *
- * Your console currently shows:
- *
- * GET /api/admin/books/acf5ee30-...
- * 404
- *
- * This function fixes that.
+ * The admin edit page needs the complete book record,
+ * including pdfUrl.
  */
 const getAdminBook = async (
   req: Request,
@@ -251,20 +252,19 @@ const getAdminBook = async (
     );
 
     console.log(
-      "🔐 ADMIN GET BOOK:",
+      ">>> GET /api/admin/books/:id",
       id
     );
 
-    const book =
-      await prisma.book.findUnique({
-        where: {
-          id,
-        },
-      });
+    const book = await prisma.book.findUnique({
+      where: {
+        id,
+      },
+    });
 
     if (!book) {
       console.log(
-        "❌ ADMIN BOOK NOT FOUND:",
+        "❌ Admin book not found:",
         id
       );
 
@@ -275,21 +275,23 @@ const getAdminBook = async (
     }
 
     console.log(
-      "✅ ADMIN BOOK FOUND:",
+      "✅ Admin book found:",
       {
         id: book.id,
         title: book.title,
         hasPdf: Boolean(book.pdfUrl),
-        hasCover: Boolean(book.coverImage),
         hasPreview: Boolean(
           book.pdfPreviewImage
         ),
       }
     );
 
-    return res.json(
-      sanitizeAdminBook(book)
-    );
+    /*
+     * Admin is authenticated.
+     *
+     * Return the complete record including pdfUrl.
+     */
+    return res.json(book);
   } catch (error: any) {
     console.error(
       "❌ Error fetching admin book:",
@@ -297,8 +299,8 @@ const getAdminBook = async (
     );
 
     return res.status(500).json({
-      error: "Failed to fetch admin book",
-      details: error?.message,
+      error: "Failed to fetch book",
+      details: error?.message || "Unknown error",
     });
   }
 };
@@ -326,6 +328,10 @@ const createBook = async (
       pdfPreviewImage,
     } = req.body;
 
+    console.log(
+      ">>> POST /api/admin/books"
+    );
+
     if (!title || !author) {
       return res.status(400).json({
         error:
@@ -333,18 +339,21 @@ const createBook = async (
       });
     }
 
-    const slug = req.body.slug
-      ? String(req.body.slug).trim()
-      : await generateUniqueSlug(
-          String(title)
-        );
+    const slug =
+      req.body.slug &&
+      String(req.body.slug).trim() !== ""
+        ? String(req.body.slug).trim()
+        : await generateUniqueSlug(
+            String(title)
+          );
 
     /* ---------------------------------------------------------------------- */
     /* PRICE                                                                  */
     /* ---------------------------------------------------------------------- */
 
-    let resolvedPrice: number | null =
-      null;
+    let resolvedPrice:
+      | number
+      | null = null;
 
     if (
       priceCents !== undefined &&
@@ -362,7 +371,7 @@ const createBook = async (
     }
 
     /* ---------------------------------------------------------------------- */
-    /* CREATE                                                                  */
+    /* CREATE                                                                 */
     /* ---------------------------------------------------------------------- */
 
     const newBook =
@@ -429,7 +438,7 @@ const createBook = async (
       });
 
     console.log(
-      "✅ BOOK CREATED:",
+      "✅ Book created:",
       {
         id: newBook.id,
         title: newBook.title,
@@ -442,15 +451,8 @@ const createBook = async (
       }
     );
 
-    /*
-     * Since this is an admin operation,
-     * return the ADMIN representation.
-     *
-     * This means pdfUrl will NOT disappear
-     * immediately after saving.
-     */
     return res.status(201).json(
-      sanitizeAdminBook(newBook)
+      sanitizePublicBook(newBook)
     );
   } catch (error: any) {
     console.error(
@@ -460,7 +462,7 @@ const createBook = async (
 
     return res.status(500).json({
       error: "Failed to create book",
-      details: error?.message,
+      details: error?.message || "Unknown error",
       code: error?.code,
     });
   }
@@ -488,7 +490,10 @@ const updateBook = async (
       "========================================"
     );
 
-    console.log("Book ID:", id);
+    console.log(
+      "Book ID:",
+      id
+    );
 
     const existingBook =
       await prisma.book.findUnique({
@@ -552,7 +557,7 @@ const updateBook = async (
     }
 
     /* ---------------------------------------------------------------------- */
-    /* COVER                                                                   */
+    /* COVER                                                                  */
     /* ---------------------------------------------------------------------- */
 
     if (coverImage !== undefined) {
@@ -564,7 +569,7 @@ const updateBook = async (
     }
 
     /* ---------------------------------------------------------------------- */
-    /* GENRE                                                                   */
+    /* GENRE                                                                  */
     /* ---------------------------------------------------------------------- */
 
     if (genre !== undefined) {
@@ -576,7 +581,7 @@ const updateBook = async (
     }
 
     /* ---------------------------------------------------------------------- */
-    /* YEAR                                                                    */
+    /* PUBLISHED YEAR                                                         */
     /* ---------------------------------------------------------------------- */
 
     if (
@@ -590,7 +595,7 @@ const updateBook = async (
     }
 
     /* ---------------------------------------------------------------------- */
-    /* PAGES                                                                   */
+    /* PAGES                                                                  */
     /* ---------------------------------------------------------------------- */
 
     if (pages !== undefined) {
@@ -602,7 +607,7 @@ const updateBook = async (
     }
 
     /* ---------------------------------------------------------------------- */
-    /* RATING                                                                  */
+    /* RATING                                                                 */
     /* ---------------------------------------------------------------------- */
 
     if (rating !== undefined) {
@@ -620,7 +625,7 @@ const updateBook = async (
     }
 
     /* ---------------------------------------------------------------------- */
-    /* SLUG                                                                    */
+    /* SLUG                                                                   */
     /* ---------------------------------------------------------------------- */
 
     if (
@@ -633,7 +638,7 @@ const updateBook = async (
     }
 
     /* ---------------------------------------------------------------------- */
-    /* PRICE                                                                   */
+    /* PRICE                                                                  */
     /* ---------------------------------------------------------------------- */
 
     if (
@@ -658,7 +663,7 @@ const updateBook = async (
     }
 
     /* ---------------------------------------------------------------------- */
-    /* PDF                                                                     */
+    /* PDF URL                                                                */
     /* ---------------------------------------------------------------------- */
 
     if (pdfUrl !== undefined) {
@@ -669,13 +674,15 @@ const updateBook = async (
           : String(pdfUrl);
 
       console.log(
-        "📕 PDF URL UPDATE:",
-        updateData.pdfUrl
+        "📕 PDF URL updated:",
+        Boolean(
+          updateData.pdfUrl
+        )
       );
     }
 
     /* ---------------------------------------------------------------------- */
-    /* PDF PREVIEW                                                             */
+    /* PDF PREVIEW IMAGE                                                      */
     /* ---------------------------------------------------------------------- */
 
     if (
@@ -689,13 +696,15 @@ const updateBook = async (
           : String(pdfPreviewImage);
 
       console.log(
-        "🖼️ PDF PREVIEW UPDATE:",
-        updateData.pdfPreviewImage
+        "🖼️ PDF preview updated:",
+        Boolean(
+          updateData.pdfPreviewImage
+        )
       );
     }
 
     /* ---------------------------------------------------------------------- */
-    /* DATABASE UPDATE                                                         */
+    /* DATABASE UPDATE                                                        */
     /* ---------------------------------------------------------------------- */
 
     const updatedBook =
@@ -716,21 +725,19 @@ const updateBook = async (
       hasPdf: Boolean(
         updatedBook.pdfUrl
       ),
-      pdfUrl: updatedBook.pdfUrl,
-      hasPreview:
-        Boolean(
-          updatedBook.pdfPreviewImage
-        ),
+      hasPreview: Boolean(
+        updatedBook.pdfPreviewImage
+      ),
     });
 
     /*
-     * IMPORTANT:
+     * Return public-safe response.
      *
-     * This is an ADMIN operation.
-     * Therefore return pdfUrl.
+     * The admin edit page should reload using
+     * GET /api/admin/books/:id.
      */
     return res.json(
-      sanitizeAdminBook(
+      sanitizePublicBook(
         updatedBook
       )
     );
@@ -769,6 +776,11 @@ const deleteBook = async (
       req.params.id
     );
 
+    console.log(
+      ">>> DELETE /api/admin/books/:id",
+      id
+    );
+
     const existingBook =
       await prisma.book.findUnique({
         where: {
@@ -779,6 +791,7 @@ const deleteBook = async (
     if (!existingBook) {
       return res.status(404).json({
         error: "Book not found",
+        id,
       });
     }
 
@@ -789,11 +802,12 @@ const deleteBook = async (
     });
 
     console.log(
-      "🗑️ BOOK DELETED:",
+      "🗑️ Book deleted:",
       id
     );
 
     return res.json({
+      success: true,
       message:
         "Book deleted successfully",
       id,
@@ -809,7 +823,8 @@ const deleteBook = async (
         "Failed to delete book",
 
       details:
-        error?.message,
+        error?.message ||
+        "Unknown error",
     });
   }
 };
@@ -819,9 +834,15 @@ const deleteBook = async (
 /* -------------------------------------------------------------------------- */
 
 export {
+  // Public
   getBooks,
   getBook,
+
+  // Admin
+  getAdminBooks,
   getAdminBook,
+
+  // CRUD
   createBook,
   updateBook,
   deleteBook,
