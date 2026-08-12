@@ -22,29 +22,16 @@ import {
   Image as ImageIcon,
   Loader2,
   Save,
+  Sparkles,
   Upload,
   X,
 } from "lucide-react";
 
 import { toast } from "sonner";
 
-import {
-  Button,
-} from "@/components/ui/button";
-
-import {
-  Input,
-} from "@/components/ui/input";
-
-import {
-  Textarea,
-} from "@/components/ui/textarea";
-
-// IMPORTANT:
-// apiFetch must be exported from src/services/api.ts
-import {
-  apiFetch,
-} from "@/services/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 /* -------------------------------------------------------------------------- */
 /* TYPES                                                                      */
@@ -69,16 +56,164 @@ interface BookResponse {
   id: string;
   title: string;
   author: string;
+
   description?: string | null;
   genre?: string | null;
+
   publishedYear?: number | null;
   pages?: number | null;
   rating?: number | null;
+
   priceCents?: number | null;
+
   coverImage?: string | null;
+
   pdfUrl?: string | null;
   pdfPreviewImage?: string | null;
+
+  aiSummary?: string | null;
+  pdfSummary?: string | null;
+  shortSummary?: string | null;
+
+  keyThemes?: string[] | null;
+  keywords?: string[] | null;
+
+  readingTime?: string | null;
+  targetAudience?: string | null;
+
   slug?: string | null;
+}
+
+interface PreviewResponse {
+  success: boolean;
+  message: string;
+
+  preview?: {
+    shortSummary?: string;
+    pdfSummary?: string;
+    keyThemes?: string[];
+    keywords?: string[];
+    readingTime?: string;
+    targetAudience?: string;
+  };
+}
+
+interface UploadResponse {
+  url?: string;
+  secure_url?: string;
+  secureUrl?: string;
+  imageUrl?: string;
+  coverImage?: string;
+  pdfUrl?: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/* API CONFIGURATION                                                          */
+/* -------------------------------------------------------------------------- */
+
+const getApiBase = (): string => {
+  const configuredBase =
+    import.meta.env.VITE_API_BASE_URL;
+
+  if (configuredBase) {
+    return String(configuredBase).replace(/\/+$/, "");
+  }
+
+  return "http://localhost:5000";
+};
+
+/* -------------------------------------------------------------------------- */
+/* API FETCH                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * IMPORTANT:
+ *
+ * This is deliberately written as a normal generic function instead of:
+ *
+ * const apiFetch = async <T>(...)
+ *
+ * because .tsx files can interpret <T> as JSX.
+ */
+
+async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const base = getApiBase();
+
+  const cleanEndpoint = endpoint.startsWith("/")
+    ? endpoint
+    : `/${endpoint}`;
+
+  const url = `${base}${cleanEndpoint}`;
+
+  const token =
+    localStorage.getItem("admin_token");
+
+  console.log(
+    `🌐 API ${options.method || "GET"} ${url}`
+  );
+
+  const headers = new Headers(
+    options.headers || {}
+  );
+
+  /*
+   * Do not manually set Content-Type for FormData.
+   * The browser automatically creates the multipart boundary.
+   */
+  if (
+    options.body &&
+    !(options.body instanceof FormData) &&
+    !headers.has("Content-Type")
+  ) {
+    headers.set(
+      "Content-Type",
+      "application/json"
+    );
+  }
+
+  if (token) {
+    headers.set(
+      "Authorization",
+      `Bearer ${token}`
+    );
+  }
+
+  const response = await fetch(
+    url,
+    {
+      ...options,
+      headers,
+    }
+  );
+
+  const rawText =
+    await response.text();
+
+  let data: any = null;
+
+  if (rawText) {
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = rawText;
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      data?.error ||
+      data?.message ||
+      `Request failed with status ${response.status}`;
+
+    throw new Error(
+      `API error (${endpoint}): ${message}`
+    );
+  }
+
+  return data as T;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -94,7 +229,12 @@ const BookFormPage = () => {
 
   const isEditing = Boolean(id);
 
-  const [loading, setLoading] = useState(false);
+  /* ------------------------------------------------------------------------ */
+  /* STATE                                                                    */
+  /* ------------------------------------------------------------------------ */
+
+  const [loading, setLoading] =
+    useState(false);
 
   const [loadingBook, setLoadingBook] =
     useState(isEditing);
@@ -105,11 +245,18 @@ const BookFormPage = () => {
   const [uploadingCover, setUploadingCover] =
     useState(false);
 
+  const [generatingPreview, setGeneratingPreview] =
+    useState(false);
+
   const [pdfFileName, setPdfFileName] =
     useState("");
 
   const [coverFileName, setCoverFileName] =
     useState("");
+
+  /* ------------------------------------------------------------------------ */
+  /* FORM                                                                     */
+  /* ------------------------------------------------------------------------ */
 
   const {
     register,
@@ -137,9 +284,11 @@ const BookFormPage = () => {
     },
   });
 
-  const pdfUrl = watch("pdfUrl");
+  const pdfUrl =
+    watch("pdfUrl");
 
-  const coverImage = watch("coverImage");
+  const coverImage =
+    watch("coverImage");
 
   /* ------------------------------------------------------------------------ */
   /* LOAD EXISTING BOOK                                                       */
@@ -166,18 +315,23 @@ const BookFormPage = () => {
         );
 
         reset({
-          title: book.title || "",
+          title:
+            book.title || "",
 
-          author: book.author || "",
+          author:
+            book.author || "",
 
           description:
             book.description || "",
 
-          genre: book.genre || "",
+          genre:
+            book.genre || "",
 
           publishedYear:
             book.publishedYear != null
-              ? String(book.publishedYear)
+              ? String(
+                  book.publishedYear
+                )
               : "",
 
           pages:
@@ -193,7 +347,9 @@ const BookFormPage = () => {
           listPrice:
             book.priceCents != null
               ? (
-                  Number(book.priceCents) / 100
+                  Number(
+                    book.priceCents
+                  ) / 100
                 ).toFixed(2)
               : "",
 
@@ -214,23 +370,23 @@ const BookFormPage = () => {
           setPdfFileName(
             "Existing uploaded PDF"
           );
-
-          console.log(
-            "📕 Existing PDF URL:",
-            book.pdfUrl
-          );
         }
 
         if (book.coverImage) {
           setCoverFileName(
-            "Existing uploaded cover"
-          );
-
-          console.log(
-            "🖼️ Existing cover URL:",
-            book.coverImage
+            "Existing book cover"
           );
         }
+
+        console.log(
+          "📕 Existing PDF:",
+          book.pdfUrl
+        );
+
+        console.log(
+          "🖼️ Existing cover:",
+          book.coverImage
+        );
       } catch (error) {
         console.error(
           "❌ Failed to load book:",
@@ -238,7 +394,9 @@ const BookFormPage = () => {
         );
 
         toast.error(
-          "Failed to load book"
+          error instanceof Error
+            ? error.message
+            : "Failed to load book"
         );
       } finally {
         setLoadingBook(false);
@@ -262,35 +420,28 @@ const BookFormPage = () => {
       return;
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Validate image type                                                    */
-    /* ---------------------------------------------------------------------- */
-
+    /*
+     * Accept common image formats.
+     */
     const allowedTypes = [
       "image/jpeg",
-      "image/jpg",
       "image/png",
       "image/webp",
+      "image/jpg",
     ];
 
-    if (
-      !allowedTypes.includes(
-        file.type
-      )
-    ) {
+    if (!allowedTypes.includes(file.type)) {
       toast.error(
         "Please select a JPG, PNG, or WebP image."
       );
 
       event.target.value = "";
-
       return;
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* Validate size                                                          */
-    /* ---------------------------------------------------------------------- */
-
+    /*
+     * Maximum cover size: 10MB.
+     */
     const MAX_SIZE =
       10 * 1024 * 1024;
 
@@ -300,7 +451,6 @@ const BookFormPage = () => {
       );
 
       event.target.value = "";
-
       return;
     }
 
@@ -323,109 +473,56 @@ const BookFormPage = () => {
       const formData =
         new FormData();
 
+      /*
+       * IMPORTANT:
+       *
+       * The backend upload route must expect
+       * the field name "image".
+       */
       formData.append(
-        "cover",
+        "image",
         file
       );
 
-      /* -------------------------------------------------------------------- */
-      /* Upload to backend                                                    */
-      /* -------------------------------------------------------------------- */
-
-      const apiBase =
-        import.meta.env
-          .VITE_API_BASE_URL ||
-        "http://localhost:5000";
-
-      const token =
-        localStorage.getItem(
-          "admin_token"
-        );
-
+      /*
+       * If your backend uses /api/upload-image,
+       * this will upload the cover.
+       */
       const response =
-        await fetch(
-          `${apiBase}/api/upload-cover`,
+        await apiFetch<UploadResponse>(
+          "/api/upload-image",
           {
             method: "POST",
-
             body: formData,
-
-            credentials: "include",
-
-            headers: {
-              ...(token
-                ? {
-                    Authorization:
-                      `Bearer ${token}`,
-                  }
-                : {}),
-            },
           }
         );
 
-      const rawText =
-        await response.text();
-
-      let data: any = {};
-
-      try {
-        data = rawText
-          ? JSON.parse(rawText)
-          : {};
-      } catch {
-        console.error(
-          "❌ Cover upload returned non-JSON:",
-          rawText
-        );
-      }
-
       console.log(
         "🖼️ Cover upload response:",
-        {
-          status:
-            response.status,
-          ok:
-            response.ok,
-          data,
-        }
+        response
       );
 
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            data?.message ||
-            `Cover upload failed (${response.status})`
-        );
-      }
+      const uploadedImageUrl =
+        response?.url ||
+        response?.secure_url ||
+        response?.secureUrl ||
+        response?.imageUrl ||
+        response?.coverImage;
 
-      /* -------------------------------------------------------------------- */
-      /* Support different response names                                     */
-      /* -------------------------------------------------------------------- */
-
-      const uploadedCoverUrl =
-        data?.url ||
-        data?.coverImage ||
-        data?.secure_url ||
-        data?.secureUrl;
-
-      if (!uploadedCoverUrl) {
+      if (!uploadedImageUrl) {
         console.error(
-          "❌ Cover upload succeeded but no URL was returned:",
-          data
+          "❌ Cover upload succeeded but no image URL returned:",
+          response
         );
 
         throw new Error(
-          "Cover uploaded, but the server did not return a cover URL."
+          "Cover uploaded, but the server did not return an image URL."
         );
       }
-
-      /* -------------------------------------------------------------------- */
-      /* Store URL in React Hook Form                                         */
-      /* -------------------------------------------------------------------- */
 
       setValue(
         "coverImage",
-        String(uploadedCoverUrl),
+        String(uploadedImageUrl),
         {
           shouldDirty: true,
           shouldTouch: true,
@@ -434,14 +531,14 @@ const BookFormPage = () => {
       );
 
       console.log(
-        "✅ Cover URL stored in form:",
-        uploadedCoverUrl
+        "✅ Cover URL stored:",
+        uploadedImageUrl
       );
 
       toast.success(
-        "Book cover uploaded successfully"
+        "Book cover uploaded successfully."
       );
-    } catch (error: any) {
+    } catch (error) {
       console.error(
         "❌ Cover upload error:",
         error
@@ -458,8 +555,9 @@ const BookFormPage = () => {
       );
 
       toast.error(
-        error?.message ||
-          "Failed to upload book cover"
+        error instanceof Error
+          ? error.message
+          : "Failed to upload book cover."
       );
     } finally {
       setUploadingCover(false);
@@ -485,7 +583,7 @@ const BookFormPage = () => {
     setCoverFileName("");
 
     toast.success(
-      "Book cover removed"
+      "Book cover removed."
     );
   };
 
@@ -504,8 +602,7 @@ const BookFormPage = () => {
     }
 
     if (
-      file.type !==
-        "application/pdf" &&
+      file.type !== "application/pdf" &&
       !file.name
         .toLowerCase()
         .endsWith(".pdf")
@@ -515,7 +612,6 @@ const BookFormPage = () => {
       );
 
       event.target.value = "";
-
       return;
     }
 
@@ -528,7 +624,6 @@ const BookFormPage = () => {
       );
 
       event.target.value = "";
-
       return;
     }
 
@@ -556,82 +651,30 @@ const BookFormPage = () => {
         file
       );
 
-      const apiBase =
-        import.meta.env
-          .VITE_API_BASE_URL ||
-        "http://localhost:5000";
-
-      const token =
-        localStorage.getItem(
-          "admin_token"
-        );
-
       const response =
-        await fetch(
-          `${apiBase}/api/upload-pdf`,
+        await apiFetch<UploadResponse>(
+          "/api/upload-pdf",
           {
             method: "POST",
-
             body: formData,
-
-            credentials: "include",
-
-            headers: {
-              ...(token
-                ? {
-                    Authorization:
-                      `Bearer ${token}`,
-                  }
-                : {}),
-            },
           }
         );
 
-      const rawText =
-        await response.text();
-
-      let data: any = {};
-
-      try {
-        data = rawText
-          ? JSON.parse(rawText)
-          : {};
-      } catch {
-        console.error(
-          "❌ Upload returned non-JSON:",
-          rawText
-        );
-      }
-
       console.log(
         "📕 PDF upload response:",
-        {
-          status:
-            response.status,
-          ok:
-            response.ok,
-          data,
-        }
+        response
       );
 
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            data?.message ||
-            `PDF upload failed (${response.status})`
-        );
-      }
-
       const uploadedPdfUrl =
-        data?.url ||
-        data?.pdfUrl ||
-        data?.secure_url ||
-        data?.secureUrl;
+        response?.url ||
+        response?.pdfUrl ||
+        response?.secure_url ||
+        response?.secureUrl;
 
       if (!uploadedPdfUrl) {
         console.error(
-          "❌ Upload succeeded but no URL was returned:",
-          data
+          "❌ Upload succeeded but no PDF URL returned:",
+          response
         );
 
         throw new Error(
@@ -650,16 +693,16 @@ const BookFormPage = () => {
       );
 
       console.log(
-        "✅ PDF URL stored in form:",
+        "✅ PDF URL stored:",
         uploadedPdfUrl
       );
 
       toast.success(
-        "PDF uploaded successfully"
+        "PDF uploaded successfully."
       );
-    } catch (error: any) {
+    } catch (error) {
       console.error(
-        "❌ PDF Upload error:",
+        "❌ PDF upload error:",
         error
       );
 
@@ -674,8 +717,9 @@ const BookFormPage = () => {
       );
 
       toast.error(
-        error?.message ||
-          "Failed to upload PDF"
+        error instanceof Error
+          ? error.message
+          : "Failed to upload PDF."
       );
     } finally {
       setUploadingPdf(false);
@@ -701,8 +745,121 @@ const BookFormPage = () => {
     setPdfFileName("");
 
     toast.success(
-      "PDF removed from this book"
+      "PDF removed from this book."
     );
+  };
+
+  /* ------------------------------------------------------------------------ */
+  /* GENERATE AI PREVIEW                                                      */
+  /* ------------------------------------------------------------------------ */
+
+  const generatePreviewForBook = async (
+    bookId: string,
+    uploadedPdfUrl?: string | null
+  ) => {
+    if (!bookId) {
+      throw new Error(
+        "Cannot generate preview without a book ID."
+      );
+    }
+
+    if (!uploadedPdfUrl) {
+      console.log(
+        "ℹ️ No PDF attached. Skipping AI preview generation."
+      );
+
+      return null;
+    }
+
+    try {
+      setGeneratingPreview(true);
+
+      console.log(
+        "========================================"
+      );
+
+      console.log(
+        "🤖 GENERATING AI BOOK PREVIEW"
+      );
+
+      console.log(
+        "Book ID:",
+        bookId
+      );
+
+      console.log(
+        "PDF URL:",
+        uploadedPdfUrl
+      );
+
+      console.log(
+        "========================================"
+      );
+
+      const response =
+        await apiFetch<PreviewResponse>(
+          `/api/books/${bookId}/generate-preview`,
+          {
+            method: "POST",
+          }
+        );
+
+      console.log(
+        "🤖 AI PREVIEW RESPONSE:",
+        response
+      );
+
+      if (!response.success) {
+        throw new Error(
+          response.message ||
+            "Preview generation failed."
+        );
+      }
+
+      if (
+        !response.preview?.pdfSummary
+      ) {
+        console.warn(
+          "⚠️ AI request succeeded but no pdfSummary was returned.",
+          response
+        );
+
+        throw new Error(
+          "The AI preview was generated without a summary."
+        );
+      }
+
+      console.log(
+        "✅ AI PDF SUMMARY:",
+        response.preview.pdfSummary
+      );
+
+      console.log(
+        "✅ KEY THEMES:",
+        response.preview.keyThemes
+      );
+
+      toast.success(
+        "AI book preview generated successfully."
+      );
+
+      return response;
+    } catch (error) {
+      console.error(
+        "❌ AI preview generation failed:",
+        error
+      );
+
+      toast.warning(
+        error instanceof Error
+          ? `Book saved, but preview generation failed: ${error.message}`
+          : "Book saved, but preview generation failed."
+      );
+
+      return null;
+    } finally {
+      setGeneratingPreview(false);
+    }
   };
 
   /* ------------------------------------------------------------------------ */
@@ -712,12 +869,25 @@ const BookFormPage = () => {
   const onSubmit = async (
     values: BookFormValues
   ) => {
-    if (
-      uploadingPdf ||
-      uploadingCover
-    ) {
+    if (uploadingPdf) {
       toast.error(
-        "Please wait for all uploads to finish."
+        "Please wait for the PDF upload to finish."
+      );
+
+      return;
+    }
+
+    if (uploadingCover) {
+      toast.error(
+        "Please wait for the cover upload to finish."
+      );
+
+      return;
+    }
+
+    if (generatingPreview) {
+      toast.error(
+        "Please wait for the preview generation to finish."
       );
 
       return;
@@ -727,12 +897,10 @@ const BookFormPage = () => {
       setLoading(true);
 
       const currentPdfUrl =
-        values.pdfUrl?.trim() ||
-        null;
+        values.pdfUrl?.trim() || null;
 
       const currentCoverImage =
-        values.coverImage?.trim() ||
-        null;
+        values.coverImage?.trim() || null;
 
       console.log(
         "========================================"
@@ -743,32 +911,35 @@ const BookFormPage = () => {
       );
 
       console.log(
-        "PDF URL:",
-        currentPdfUrl
+        "Title:",
+        values.title
       );
 
       console.log(
-        "COVER URL:",
+        "Cover:",
         currentCoverImage
+      );
+
+      console.log(
+        "PDF:",
+        currentPdfUrl
       );
 
       console.log(
         "========================================"
       );
 
-      /* -------------------------------------------------------------------- */
-      /* PRICE                                                                 */
-      /* -------------------------------------------------------------------- */
+      /* ------------------------------------------------------------------ */
+      /* PRICE                                                              */
+      /* ------------------------------------------------------------------ */
 
       let priceCents:
         | number
         | null = null;
 
       if (
-        values.listPrice !==
-          undefined &&
-        values.listPrice !==
-          null &&
+        values.listPrice !== undefined &&
+        values.listPrice !== null &&
         values.listPrice.trim() !== ""
       ) {
         const price =
@@ -787,9 +958,30 @@ const BookFormPage = () => {
         }
       }
 
-      /* -------------------------------------------------------------------- */
-      /* PAYLOAD                                                               */
-      /* -------------------------------------------------------------------- */
+      /* ------------------------------------------------------------------ */
+      /* NUMERIC VALUES                                                     */
+      /* ------------------------------------------------------------------ */
+
+      const publishedYear =
+        values.publishedYear.trim() !== ""
+          ? Number(
+              values.publishedYear
+            )
+          : null;
+
+      const pages =
+        values.pages.trim() !== ""
+          ? Number(values.pages)
+          : null;
+
+      const rating =
+        values.rating.trim() !== ""
+          ? Number(values.rating)
+          : 0;
+
+      /* ------------------------------------------------------------------ */
+      /* PAYLOAD                                                            */
+      /* ------------------------------------------------------------------ */
 
       const payload = {
         title:
@@ -806,43 +998,17 @@ const BookFormPage = () => {
           values.genre.trim() ||
           null,
 
-        publishedYear:
-          values.publishedYear.trim() !==
-          ""
-            ? Number(
-                values.publishedYear
-              )
-            : null,
+        publishedYear,
 
-        pages:
-          values.pages.trim() !==
-          ""
-            ? Number(
-                values.pages
-              )
-            : null,
+        pages,
 
-        rating:
-          values.rating.trim() !==
-          ""
-            ? Number(
-                values.rating
-              )
-            : 0,
+        rating,
 
         priceCents,
 
-        /*
-         * IMPORTANT:
-         * This is now the Cloudinary URL returned
-         * after uploading the actual cover image.
-         */
         coverImage:
           currentCoverImage,
 
-        /*
-         * PDF uploaded through the PDF uploader.
-         */
         pdfUrl:
           currentPdfUrl,
 
@@ -856,7 +1022,7 @@ const BookFormPage = () => {
       };
 
       console.log(
-        "📦 PAYLOAD BEING SENT TO BACKEND:"
+        "📦 PAYLOAD BEING SENT:"
       );
 
       console.log(
@@ -871,20 +1037,21 @@ const BookFormPage = () => {
         | BookResponse
         | undefined;
 
-      /* -------------------------------------------------------------------- */
-      /* UPDATE                                                               */
-      /* -------------------------------------------------------------------- */
+      /* ------------------------------------------------------------------ */
+      /* UPDATE                                                             */
+      /* ------------------------------------------------------------------ */
 
-      if (
-        isEditing &&
-        id
-      ) {
+      if (isEditing && id) {
+        console.log(
+          "✏️ Updating existing book:",
+          id
+        );
+
         savedBook =
           await apiFetch<BookResponse>(
             `/api/books/${id}`,
             {
               method: "PUT",
-
               body:
                 JSON.stringify(
                   payload
@@ -893,17 +1060,20 @@ const BookFormPage = () => {
           );
       }
 
-      /* -------------------------------------------------------------------- */
-      /* CREATE                                                               */
-      /* -------------------------------------------------------------------- */
+      /* ------------------------------------------------------------------ */
+      /* CREATE                                                             */
+      /* ------------------------------------------------------------------ */
 
       else {
+        console.log(
+          "📚 Creating new book"
+        );
+
         savedBook =
           await apiFetch<BookResponse>(
             "/api/books",
             {
               method: "POST",
-
               body:
                 JSON.stringify(
                   payload
@@ -912,90 +1082,102 @@ const BookFormPage = () => {
           );
       }
 
+      /* ------------------------------------------------------------------ */
+      /* SAVED                                                              */
+      /* ------------------------------------------------------------------ */
+
       console.log(
-        "✅ BOOK SAVED:",
+        "========================================"
+      );
+
+      console.log(
+        "✅ BOOK SUCCESSFULLY SAVED"
+      );
+
+      console.log(
+        "Saved book:",
         savedBook
       );
 
       console.log(
-        "📕 SAVED PDF URL:",
+        "Book ID:",
+        savedBook?.id
+      );
+
+      console.log(
+        "Saved cover:",
+        savedBook?.coverImage
+      );
+
+      console.log(
+        "Saved PDF:",
         savedBook?.pdfUrl
       );
 
       console.log(
-        "🖼️ SAVED COVER URL:",
-        savedBook?.coverImage
+        "========================================"
       );
 
-      /* -------------------------------------------------------------------- */
-      /* VERIFY PDF                                                           */
-      /* -------------------------------------------------------------------- */
+      /* ------------------------------------------------------------------ */
+      /* AI PREVIEW                                                         */
+      /* ------------------------------------------------------------------ */
 
       if (
-        currentPdfUrl &&
+        savedBook?.id &&
+        savedBook?.pdfUrl
+      ) {
+        console.log(
+          "🤖 PDF exists. Starting AI preview generation..."
+        );
+
+        await generatePreviewForBook(
+          savedBook.id,
+          savedBook.pdfUrl
+        );
+
+        console.log(
+          "🤖 AI preview process finished."
+        );
+      } else if (
+        savedBook?.id &&
         !savedBook?.pdfUrl
       ) {
-        toast.warning(
-          "Book saved, but the PDF URL was not returned by the server."
+        console.log(
+          "ℹ️ Book saved without PDF."
         );
-      }
 
-      /* -------------------------------------------------------------------- */
-      /* VERIFY COVER                                                         */
-      /* -------------------------------------------------------------------- */
-
-      if (
-        currentCoverImage &&
-        !savedBook?.coverImage
-      ) {
-        toast.warning(
-          "Book saved, but the cover image URL was not returned by the server."
-        );
-      }
-
-      /* -------------------------------------------------------------------- */
-      /* SUCCESS                                                              */
-      /* -------------------------------------------------------------------- */
-
-      if (
-        currentPdfUrl &&
-        currentCoverImage
-      ) {
-        toast.success(
-          "Book, cover and PDF saved successfully."
-        );
-      } else if (
-        currentPdfUrl
-      ) {
-        toast.success(
-          "Book and PDF saved successfully."
-        );
-      } else if (
-        currentCoverImage
-      ) {
-        toast.success(
-          "Book and cover saved successfully."
-        );
-      } else {
         toast.success(
           isEditing
             ? "Book updated successfully."
             : "Book created successfully."
         );
+      } else {
+        throw new Error(
+          "The backend saved the book but did not return a book ID."
+        );
       }
+
+      /* ------------------------------------------------------------------ */
+      /* NAVIGATE                                                           */
+      /* ------------------------------------------------------------------ */
+
+      console.log(
+        "🚀 Finished saving book."
+      );
 
       navigate(
         "/admin/books"
       );
-    } catch (error: any) {
+    } catch (error) {
       console.error(
         "❌ Submit error:",
         error
       );
 
       toast.error(
-        error?.message ||
-          "Failed to save book"
+        error instanceof Error
+          ? error.message
+          : "Failed to save book."
       );
     } finally {
       setLoading(false);
@@ -1037,6 +1219,12 @@ const BookFormPage = () => {
               type="button"
               variant="outline"
               size="icon"
+              disabled={
+                loading ||
+                uploadingPdf ||
+                uploadingCover ||
+                generatingPreview
+              }
               onClick={() =>
                 navigate(
                   "/admin/books"
@@ -1055,7 +1243,7 @@ const BookFormPage = () => {
 
               <p className="text-sm text-gray-500">
                 Manage book information,
-                cover and digital PDF
+                cover and digital PDF.
               </p>
             </div>
 
@@ -1071,7 +1259,9 @@ const BookFormPage = () => {
           className="space-y-6"
         >
 
-          {/* BASIC INFORMATION */}
+          {/* ---------------------------------------------------------------- */}
+          {/* BASIC INFORMATION                                                */}
+          {/* ---------------------------------------------------------------- */}
 
           <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
 
@@ -1098,6 +1288,7 @@ const BookFormPage = () => {
               {/* TITLE */}
 
               <div className="md:col-span-2">
+
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Title *
                 </label>
@@ -1118,11 +1309,13 @@ const BookFormPage = () => {
                     {errors.title.message}
                   </p>
                 )}
+
               </div>
 
               {/* AUTHOR */}
 
               <div>
+
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Author *
                 </label>
@@ -1143,11 +1336,13 @@ const BookFormPage = () => {
                     {errors.author.message}
                   </p>
                 )}
+
               </div>
 
               {/* GENRE */}
 
               <div>
+
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Genre
                 </label>
@@ -1158,11 +1353,13 @@ const BookFormPage = () => {
                   )}
                   placeholder="Fiction, Business, Christian..."
                 />
+
               </div>
 
               {/* YEAR */}
 
               <div>
+
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Published Year
                 </label>
@@ -1174,11 +1371,13 @@ const BookFormPage = () => {
                   )}
                   placeholder="2026"
                 />
+
               </div>
 
               {/* PAGES */}
 
               <div>
+
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Pages
                 </label>
@@ -1190,11 +1389,13 @@ const BookFormPage = () => {
                   )}
                   placeholder="250"
                 />
+
               </div>
 
               {/* RATING */}
 
               <div>
+
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Rating
                 </label>
@@ -1209,11 +1410,13 @@ const BookFormPage = () => {
                   )}
                   placeholder="4.5"
                 />
+
               </div>
 
               {/* PRICE */}
 
               <div>
+
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Price
                 </label>
@@ -1232,11 +1435,13 @@ const BookFormPage = () => {
                   Enter the selling price
                   in your currency.
                 </p>
+
               </div>
 
               {/* SLUG */}
 
               <div>
+
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Slug
                 </label>
@@ -1247,11 +1452,13 @@ const BookFormPage = () => {
                   )}
                   placeholder="book-title"
                 />
+
               </div>
 
               {/* DESCRIPTION */}
 
               <div className="md:col-span-2">
+
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Description
                 </label>
@@ -1263,13 +1470,15 @@ const BookFormPage = () => {
                   rows={6}
                   placeholder="Write a description of the book..."
                 />
+
               </div>
 
             </div>
+
           </section>
 
           {/* ---------------------------------------------------------------- */}
-          {/* BOOK COVER                                                        */}
+          {/* BOOK COVER                                                       */}
           {/* ---------------------------------------------------------------- */}
 
           <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
@@ -1286,7 +1495,7 @@ const BookFormPage = () => {
                 </h2>
 
                 <p className="text-sm text-gray-500">
-                  Upload the actual book cover image.
+                  Upload the cover image for this book.
                 </p>
               </div>
 
@@ -1330,7 +1539,7 @@ const BookFormPage = () => {
                 </>
               ) : (
                 <>
-                  <ImageIcon className="mb-3 h-10 w-10 text-[#C17B4F]" />
+                  <Upload className="mb-3 h-10 w-10 text-[#C17B4F]" />
 
                   <p className="font-semibold text-[#2E1208]">
                     Click to upload book cover
@@ -1344,10 +1553,12 @@ const BookFormPage = () => {
 
               <input
                 type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                 className="hidden"
                 disabled={
-                  uploadingCover
+                  uploadingCover ||
+                  uploadingPdf ||
+                  generatingPreview
                 }
                 onChange={
                   handleCoverUpload
@@ -1361,35 +1572,15 @@ const BookFormPage = () => {
             {coverImage && (
               <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5">
 
-                <div className="flex flex-col gap-5 sm:flex-row">
+                <div className="flex items-start gap-4">
 
-                  {/* IMAGE */}
-
-                  <div className="flex justify-center sm:justify-start">
-                    <div className="overflow-hidden rounded-xl border bg-white p-2 shadow-sm">
-                      <img
-                        src={
-                          coverImage
-                        }
-                        alt={
-                          "Book cover"
-                        }
-                        className="h-64 w-44 rounded-lg object-cover"
-                        onError={(
-                          event
-                        ) => {
-                          event.currentTarget.style.display =
-                            "none";
-                        }}
-                      />
-                    </div>
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-100">
+                    <ImageIcon className="h-6 w-6 text-green-700" />
                   </div>
-
-                  {/* INFORMATION */}
 
                   <div className="min-w-0 flex-1">
 
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
 
                       <div>
                         <p className="font-semibold text-green-800">
@@ -1398,16 +1589,21 @@ const BookFormPage = () => {
 
                         <p className="text-sm text-green-700">
                           {coverFileName ||
-                            "Book cover image"}
+                            "Book cover"}
                         </p>
                       </div>
 
                       <button
                         type="button"
+                        disabled={
+                          loading ||
+                          uploadingCover ||
+                          generatingPreview
+                        }
                         onClick={
                           handleRemoveCover
                         }
-                        className="rounded-full p-2 text-red-600 transition hover:bg-red-100"
+                        className="rounded-full p-2 text-red-600 transition hover:bg-red-100 disabled:opacity-50"
                         title="Remove cover"
                       >
                         <X className="h-5 w-5" />
@@ -1415,10 +1611,26 @@ const BookFormPage = () => {
 
                     </div>
 
+                    <div className="mt-4 overflow-hidden rounded-xl border bg-white p-3">
+
+                      <img
+                        src={coverImage}
+                        alt="Book cover preview"
+                        className="mx-auto max-h-[400px] w-auto rounded-lg object-contain"
+                        onError={(
+                          event
+                        ) => {
+                          event.currentTarget.style.display =
+                            "none";
+                        }}
+                      />
+
+                    </div>
+
                     <div className="mt-4 rounded-lg bg-white p-3">
 
                       <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Cover URL
+                        Cover Image URL
                       </p>
 
                       <p className="break-all text-xs text-gray-700">
@@ -1426,17 +1638,6 @@ const BookFormPage = () => {
                       </p>
 
                     </div>
-
-                    <a
-                      href={
-                        coverImage
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-4 inline-flex items-center rounded-full border border-green-300 bg-white px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
-                    >
-                      View Cover
-                    </a>
 
                   </div>
 
@@ -1448,14 +1649,15 @@ const BookFormPage = () => {
             {!coverImage &&
               !uploadingCover && (
                 <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-700">
-                  No book cover is currently attached.
+                  No book cover is currently
+                  attached.
                 </div>
               )}
 
           </section>
 
           {/* ---------------------------------------------------------------- */}
-          {/* PDF                                                                */}
+          {/* PDF                                                               */}
           {/* ---------------------------------------------------------------- */}
 
           <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
@@ -1472,8 +1674,8 @@ const BookFormPage = () => {
                 </h2>
 
                 <p className="text-sm text-gray-500">
-                  Upload the PDF that will be used
-                  for the digital edition and preview.
+                  Upload the PDF that will power
+                  the digital edition and AI preview.
                 </p>
               </div>
 
@@ -1496,7 +1698,8 @@ const BookFormPage = () => {
                 text-center
                 transition
                 ${
-                  uploadingPdf
+                  uploadingPdf ||
+                  generatingPreview
                     ? "cursor-not-allowed border-blue-300 bg-blue-50"
                     : "border-gray-300 hover:border-[#C17B4F] hover:bg-[#C17B4F]/5"
                 }
@@ -1513,6 +1716,18 @@ const BookFormPage = () => {
 
                   <p className="mt-1 text-sm text-gray-500">
                     Please wait until the upload finishes.
+                  </p>
+                </>
+              ) : generatingPreview ? (
+                <>
+                  <Sparkles className="mb-3 h-10 w-10 animate-pulse text-purple-600" />
+
+                  <p className="font-semibold text-purple-700">
+                    Generating AI preview...
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    The system is analyzing the PDF.
                   </p>
                 </>
               ) : (
@@ -1534,7 +1749,9 @@ const BookFormPage = () => {
                 accept="application/pdf,.pdf"
                 className="hidden"
                 disabled={
-                  uploadingPdf
+                  uploadingPdf ||
+                  uploadingCover ||
+                  generatingPreview
                 }
                 onChange={
                   handlePdfUpload
@@ -1571,10 +1788,15 @@ const BookFormPage = () => {
 
                       <button
                         type="button"
+                        disabled={
+                          loading ||
+                          uploadingPdf ||
+                          generatingPreview
+                        }
                         onClick={
                           handleRemovePdf
                         }
-                        className="rounded-full p-2 text-red-600 transition hover:bg-red-100"
+                        className="rounded-full p-2 text-red-600 transition hover:bg-red-100 disabled:opacity-50"
                         title="Remove PDF"
                       >
                         <X className="h-5 w-5" />
@@ -1597,9 +1819,7 @@ const BookFormPage = () => {
                     <div className="mt-4 flex flex-wrap gap-3">
 
                       <a
-                        href={
-                          pdfUrl
-                        }
+                        href={pdfUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center rounded-full border border-green-300 bg-white px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
@@ -1617,16 +1837,64 @@ const BookFormPage = () => {
             )}
 
             {!pdfUrl &&
-              !uploadingPdf && (
+              !uploadingPdf &&
+              !generatingPreview && (
                 <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-700">
-                  No PDF is currently attached to this book.
+                  No PDF is currently attached
+                  to this book.
                 </div>
               )}
 
           </section>
 
           {/* ---------------------------------------------------------------- */}
-          {/* SAVE                                                               */}
+          {/* AI PREVIEW                                                       */}
+          {/* ---------------------------------------------------------------- */}
+
+          <section className="rounded-2xl border border-purple-100 bg-purple-50 p-6">
+
+            <div className="flex items-start gap-4">
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-100">
+                <Sparkles className="h-6 w-6 text-purple-600" />
+              </div>
+
+              <div>
+
+                <h3 className="font-bold text-purple-900">
+                  AI Book Preview
+                </h3>
+
+                <p className="mt-1 text-sm leading-6 text-purple-800">
+                  After the book is saved with
+                  a PDF, the system automatically
+                  analyzes the uploaded PDF and
+                  generates the book preview.
+                </p>
+
+                <div className="mt-3 rounded-lg bg-white/70 p-3 text-xs text-purple-700">
+
+                  <p>
+                    <strong>
+                      PDF →
+                    </strong>{" "}
+                    AI analysis →
+                    summary →
+                    key themes →
+                    reading information →
+                    Preview modal
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          {/* ---------------------------------------------------------------- */}
+          {/* SAVE                                                             */}
           {/* ---------------------------------------------------------------- */}
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -1637,7 +1905,8 @@ const BookFormPage = () => {
               disabled={
                 loading ||
                 uploadingPdf ||
-                uploadingCover
+                uploadingCover ||
+                generatingPreview
               }
               onClick={() =>
                 navigate(
@@ -1654,22 +1923,26 @@ const BookFormPage = () => {
               disabled={
                 loading ||
                 uploadingPdf ||
-                uploadingCover
+                uploadingCover ||
+                generatingPreview
               }
               className="rounded-full bg-[#C17B4F] px-7 text-white hover:bg-[#A55E36]"
             >
 
-              {loading ? (
+              {loading ||
+              generatingPreview ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               ) : (
                 <Save className="mr-2 h-5 w-5" />
               )}
 
-              {loading
-                ? "Saving..."
-                : isEditing
-                  ? "Save Changes"
-                  : "Create Book"}
+              {generatingPreview
+                ? "Generating Preview..."
+                : loading
+                  ? "Saving..."
+                  : isEditing
+                    ? "Save Changes"
+                    : "Create Book"}
 
             </Button>
 

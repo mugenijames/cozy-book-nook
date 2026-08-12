@@ -158,11 +158,19 @@ const createBook = async (
       });
     }
 
+    /* ---------------------------------------------------------------------- */
+    /* SLUG                                                                   */
+    /* ---------------------------------------------------------------------- */
+
     const slug = req.body.slug
-      ? String(req.body.slug)
+      ? String(req.body.slug).trim()
       : await generateUniqueSlug(
           String(title)
         );
+
+    /* ---------------------------------------------------------------------- */
+    /* PRICE                                                                  */
+    /* ---------------------------------------------------------------------- */
 
     let resolvedPrice: number | null = null;
 
@@ -179,11 +187,15 @@ const createBook = async (
           : null;
     }
 
+    /* ---------------------------------------------------------------------- */
+    /* CREATE                                                                  */
+    /* ---------------------------------------------------------------------- */
+
     const newBook = await prisma.book.create({
       data: {
-        title: String(title),
+        title: String(title).trim(),
 
-        author: String(author),
+        author: String(author).trim(),
 
         slug,
 
@@ -219,16 +231,13 @@ const createBook = async (
 
         rating:
           rating === undefined ||
-          rating === null
+          rating === null ||
+          rating === ""
             ? 0
             : Number(rating),
 
         priceCents: resolvedPrice,
 
-        /*
-         * IMPORTANT:
-         * Save PDF URL when creating the book.
-         */
         pdfUrl:
           pdfUrl === null ||
           pdfUrl === ""
@@ -246,53 +255,76 @@ const createBook = async (
     console.log("✅ Book created:", {
       id: newBook.id,
       title: newBook.title,
+      slug: newBook.slug,
       pdfUrl: newBook.pdfUrl,
+      pdfPreviewImage:
+        newBook.pdfPreviewImage,
     });
 
-    /*
-     * Return the book immediately.
-     */
+    /* ---------------------------------------------------------------------- */
+    /* RETURN BOOK IMMEDIATELY                                                */
+    /* ---------------------------------------------------------------------- */
+
     res.status(201).json(newBook);
 
-    /*
-     * Generate AI analysis in the background.
-     */
+    /* ---------------------------------------------------------------------- */
+    /* AI ANALYSIS                                                            */
+    /* ---------------------------------------------------------------------- */
+
     if (pdfUrl) {
       void generateBookSummary(
         String(pdfUrl)
       )
         .then(async (aiResult) => {
-          await prisma.book.update({
-            where: {
-              id: newBook.id,
-            },
+          try {
+            await prisma.book.update({
+              where: {
+                id: newBook.id,
+              },
 
-            data: {
-              aiSummary: aiResult.summary,
+              data: {
+                aiSummary:
+                  aiResult.summary,
 
-              shortSummary:
-                aiResult.shortSummary,
+                shortSummary:
+                  aiResult.shortSummary,
 
-              keyThemes:
-                aiResult.keyThemes,
+                keyThemes:
+                  aiResult.keyThemes,
 
-              keywords:
-                aiResult.keywords,
+                keywords:
+                  aiResult.keywords,
 
-              readingTime:
-                aiResult.readingTime,
+                readingTime:
+                  aiResult.readingTime,
 
-              targetAudience:
-                aiResult.targetAudience,
+                targetAudience:
+                  aiResult.targetAudience,
 
-              summary:
-                aiResult.summary,
-            },
-          });
+                /*
+                 * IMPORTANT:
+                 *
+                 * We do NOT save:
+                 *
+                 * summary: aiResult.summary
+                 *
+                 * because the current Prisma Book model
+                 * does not contain a "summary" field.
+                 *
+                 * The summary is stored in aiSummary instead.
+                 */
+              },
+            });
 
-          console.log(
-            `✅ AI analysis saved for "${newBook.title}"`
-          );
+            console.log(
+              `✅ AI analysis saved for "${newBook.title}"`
+            );
+          } catch (error) {
+            console.error(
+              `❌ Failed saving AI analysis for "${newBook.title}":`,
+              error
+            );
+          }
         })
         .catch((error) => {
           console.error(
@@ -343,12 +375,17 @@ const updateBook = async (
 
     console.log(
       "Request body:",
-      JSON.stringify(req.body, null, 2)
+      JSON.stringify(
+        req.body,
+        null,
+        2
+      )
     );
 
-    /*
-     * First make sure the book exists.
-     */
+    /* ---------------------------------------------------------------------- */
+    /* CHECK EXISTING BOOK                                                    */
+    /* ---------------------------------------------------------------------- */
+
     const existingBook =
       await prisma.book.findUnique({
         where: {
@@ -368,6 +405,10 @@ const updateBook = async (
       });
     }
 
+    /* ---------------------------------------------------------------------- */
+    /* REQUEST DATA                                                            */
+    /* ---------------------------------------------------------------------- */
+
     const {
       title,
       description,
@@ -385,19 +426,27 @@ const updateBook = async (
 
     const updateData: any = {};
 
-    /* ------------------------------ TITLE ------------------------------ */
+    /* ---------------------------------------------------------------------- */
+    /* TITLE                                                                  */
+    /* ---------------------------------------------------------------------- */
 
     if (title !== undefined) {
-      updateData.title = String(title);
+      updateData.title =
+        String(title).trim();
     }
 
-    /* ------------------------------ AUTHOR ----------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* AUTHOR                                                                 */
+    /* ---------------------------------------------------------------------- */
 
     if (author !== undefined) {
-      updateData.author = String(author);
+      updateData.author =
+        String(author).trim();
     }
 
-    /* ---------------------------- DESCRIPTION -------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* DESCRIPTION                                                            */
+    /* ---------------------------------------------------------------------- */
 
     if (description !== undefined) {
       updateData.description =
@@ -407,7 +456,9 @@ const updateBook = async (
           : String(description);
     }
 
-    /* ----------------------------- COVER ------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* COVER IMAGE                                                            */
+    /* ---------------------------------------------------------------------- */
 
     if (coverImage !== undefined) {
       updateData.coverImage =
@@ -417,7 +468,9 @@ const updateBook = async (
           : String(coverImage);
     }
 
-    /* ------------------------------ GENRE ------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* GENRE                                                                  */
+    /* ---------------------------------------------------------------------- */
 
     if (genre !== undefined) {
       updateData.genre =
@@ -427,7 +480,9 @@ const updateBook = async (
           : String(genre);
     }
 
-    /* ------------------------- PUBLISHED YEAR --------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* PUBLISHED YEAR                                                         */
+    /* ---------------------------------------------------------------------- */
 
     if (publishedYear !== undefined) {
       updateData.publishedYear =
@@ -437,7 +492,9 @@ const updateBook = async (
           : Number(publishedYear);
     }
 
-    /* ------------------------------ PAGES ------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* PAGES                                                                  */
+    /* ---------------------------------------------------------------------- */
 
     if (pages !== undefined) {
       updateData.pages =
@@ -447,38 +504,51 @@ const updateBook = async (
           : Number(pages);
     }
 
-    /* ----------------------------- RATING ------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* RATING                                                                 */
+    /* ---------------------------------------------------------------------- */
 
     if (rating !== undefined) {
-      const parsedRating = Number(
-        rating
-      );
+      const parsedRating =
+        Number(rating);
 
-      if (Number.isFinite(parsedRating)) {
-        updateData.rating = parsedRating;
+      if (
+        Number.isFinite(
+          parsedRating
+        )
+      ) {
+        updateData.rating =
+          parsedRating;
       }
     }
 
-    /* ------------------------------ SLUG -------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* SLUG                                                                   */
+    /* ---------------------------------------------------------------------- */
 
     if (
       slug !== undefined &&
       slug !== null &&
       String(slug).trim() !== ""
     ) {
-      updateData.slug = String(slug);
+      updateData.slug =
+        String(slug).trim();
     }
 
-    /* ---------------------------- PRICE -------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* PRICE                                                                  */
+    /* ---------------------------------------------------------------------- */
 
     if (priceCents !== undefined) {
       if (
         priceCents === null ||
         priceCents === ""
       ) {
-        updateData.priceCents = null;
+        updateData.priceCents =
+          null;
       } else {
-        const n = Number(priceCents);
+        const n =
+          Number(priceCents);
 
         if (
           Number.isInteger(n) &&
@@ -486,14 +556,15 @@ const updateBook = async (
         ) {
           updateData.priceCents = n;
         } else {
-          updateData.priceCents = null;
+          updateData.priceCents =
+            null;
         }
       }
     }
 
-    /* -------------------------------------------------------------------- */
-    /* PDF URL                                                              */
-    /* -------------------------------------------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* PDF URL                                                                */
+    /* ---------------------------------------------------------------------- */
 
     if (pdfUrl !== undefined) {
       updateData.pdfUrl =
@@ -503,19 +574,19 @@ const updateBook = async (
           : String(pdfUrl);
 
       console.log(
-        "📕 PDF URL received:"
-      );
-
-      console.log(
+        "📕 PDF URL received:",
         updateData.pdfUrl
       );
     }
 
-    /* -------------------------------------------------------------------- */
-    /* PDF PREVIEW IMAGE                                                    */
-    /* -------------------------------------------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* PDF PREVIEW IMAGE                                                      */
+    /* ---------------------------------------------------------------------- */
 
-    if (pdfPreviewImage !== undefined) {
+    if (
+      pdfPreviewImage !==
+      undefined
+    ) {
       updateData.pdfPreviewImage =
         pdfPreviewImage === null ||
         pdfPreviewImage === ""
@@ -527,6 +598,10 @@ const updateBook = async (
         updateData.pdfPreviewImage
       );
     }
+
+    /* ---------------------------------------------------------------------- */
+    /* FINAL DATA                                                             */
+    /* ---------------------------------------------------------------------- */
 
     console.log(
       "📦 FINAL PRISMA UPDATE DATA:"
@@ -540,9 +615,9 @@ const updateBook = async (
       )
     );
 
-    /* -------------------------------------------------------------------- */
-    /* UPDATE DATABASE                                                       */
-    /* -------------------------------------------------------------------- */
+    /* ---------------------------------------------------------------------- */
+    /* UPDATE DATABASE                                                        */
+    /* ---------------------------------------------------------------------- */
 
     const updatedBook =
       await prisma.book.update({
@@ -564,7 +639,11 @@ const updateBook = async (
     console.log({
       id: updatedBook.id,
       title: updatedBook.title,
-      pdfUrl: updatedBook.pdfUrl,
+      slug: updatedBook.slug,
+      coverImage:
+        updatedBook.coverImage,
+      pdfUrl:
+        updatedBook.pdfUrl,
       pdfPreviewImage:
         updatedBook.pdfPreviewImage,
     });
@@ -575,10 +654,12 @@ const updateBook = async (
 
     console.log("");
 
-    return res.json(updatedBook);
-
+    return res.json(
+      updatedBook
+    );
   } catch (error: any) {
     console.error("");
+
     console.error(
       "========================================"
     );
@@ -665,6 +746,7 @@ const deleteBook = async (
     return res.status(500).json({
       error:
         "Failed to delete book",
+
       details:
         error?.message,
     });

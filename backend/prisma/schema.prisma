@@ -23,15 +23,20 @@ model Book {
   priceCents      Int?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+
+  // Digital book
   pdfUrl          String?
   pdfPreviewImage String?
+
+  // AI-generated preview information
   aiSummary       String?
+  shortSummary    String?
+  pdfSummary      String?          @db.Text
   keyThemes       Json?
   keywords        Json?
   readingTime     String?
-  shortSummary    String?
   targetAudience  String?
-  summary         String?
+  
   orders          Order[]
   pendingPayments PendingPayment[]
 

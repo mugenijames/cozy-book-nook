@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -11,8 +10,13 @@ import uploadRoutes from "./routes/upload.routes";
 import invitationRoutes from "./routes/invitation.routes";
 import orderRoutes from "./routes/order.routes";
 import paymentRoutes from "./routes/payment.routes";
+import bookPreviewRoutes from "./routes/bookPreview.routes";
 
 dotenv.config();
+
+/* ==========================================================================
+   ENVIRONMENT / SERVICE STATUS
+   ========================================================================== */
 
 console.log(
   "OpenAI Key Loaded:",
@@ -29,7 +33,15 @@ console.log(
   process.env.CLOUDINARY_CLOUD_NAME ? "YES" : "NO"
 );
 
+/* ==========================================================================
+   APP
+   ========================================================================== */
+
 const app = express();
+
+/* ==========================================================================
+   ENVIRONMENT
+   ========================================================================== */
 
 const isDevelopment =
   process.env.NODE_ENV === "development";
@@ -37,6 +49,10 @@ const isDevelopment =
 const BYPASS_AUTH =
   isDevelopment ||
   process.env.BYPASS_AUTH === "true";
+
+/* ==========================================================================
+   UPLOADS DIRECTORY
+   ========================================================================== */
 
 const uploadsDir = path.join(
   __dirname,
@@ -54,6 +70,10 @@ if (!fs.existsSync(uploadsDir)) {
   );
 }
 
+/* ==========================================================================
+   CORS
+   ========================================================================== */
+
 const allowedOrigins = [
   "http://localhost:8080",
   "http://192.168.100.8:8080",
@@ -62,9 +82,15 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 
+console.log(
+  "Allowed CORS origins:",
+  allowedOrigins
+);
+
 app.use(
   cors({
     origin: allowedOrigins,
+
     methods: [
       "GET",
       "POST",
@@ -72,13 +98,19 @@ app.use(
       "DELETE",
       "OPTIONS",
     ],
+
     allowedHeaders: [
       "Content-Type",
       "Authorization",
     ],
+
     credentials: true,
   })
 );
+
+/* ==========================================================================
+   BODY PARSERS
+   ========================================================================== */
 
 app.use(
   express.json({
@@ -93,118 +125,212 @@ app.use(
   })
 );
 
-app.use((req, res, next) => {
-  if (!req.originalUrl.includes("favicon")) {
-    console.log(
-      ">>> " +
-        req.method +
-        " " +
-        req.originalUrl
-    );
-  }
+/* ==========================================================================
+   REQUEST LOGGER
+   ========================================================================== */
 
-  next();
-});
+app.use(
+  (
+    req: express.Request,
+    _res: express.Response,
+    next: express.NextFunction
+  ) => {
+    if (
+      !req.originalUrl.includes("favicon")
+    ) {
+      console.log(
+        `>>> ${req.method} ${req.originalUrl}`
+      );
+    }
+
+    next();
+  }
+);
+
+/* ==========================================================================
+   STATIC UPLOADS
+   ========================================================================== */
 
 app.use(
   "/uploads",
   express.static(uploadsDir)
 );
 
+/* ==========================================================================
+   API ROUTES
+   ========================================================================== */
+
+/*
+ * Books
+ *
+ * GET    /api/books
+ * GET    /api/books/:id
+ * POST   /api/books
+ * PUT    /api/books/:id
+ * DELETE /api/books/:id
+ */
 app.use(
   "/api/books",
   bookRoutes
 );
 
+/*
+ * Checkout
+ */
 app.use(
   "/api/checkout",
   checkoutRoutes
 );
 
+/*
+ * Uploads
+ *
+ * /api/upload-cover
+ * /api/upload-pdf
+ */
 app.use(
   "/api",
   uploadRoutes
 );
 
+/*
+ * Invitations
+ */
 app.use(
   "/api/invite",
   invitationRoutes
 );
 
+/*
+ * Orders
+ */
 app.use(
   "/api/orders",
   orderRoutes
 );
 
+/*
+ * Payments
+ */
 app.use(
   "/api/payments",
   paymentRoutes
 );
 
-app.get("/health", (req, res) => {
-  res.json({
-    status: "OK",
+/*
+ * Book preview / AI summary routes
+ *
+ * These may include endpoints such as:
+ *
+ * GET  /api/books/:id/preview
+ * POST /api/books/:id/generate-preview
+ * POST /api/books/:id/generate-summary
+ *
+ * depending on your bookPreview.routes.ts implementation.
+ */
+app.use(
+  "/api",
+  bookPreviewRoutes
+);
 
-    environment:
-      process.env.NODE_ENV || "development",
+/* ==========================================================================
+   HEALTH CHECK
+   ========================================================================== */
 
-    auth_bypass: BYPASS_AUTH,
+app.get(
+  "/health",
+  (_req, res) => {
+    res.json({
+      status: "OK",
 
-    timestamp:
-      new Date().toISOString(),
+      environment:
+        process.env.NODE_ENV ||
+        "development",
 
-    database:
-      process.env.DATABASE_URL
-        ? "configured"
-        : "missing",
+      auth_bypass:
+        BYPASS_AUTH,
 
-    services: {
-      openai:
-        !!process.env.OPENAI_API_KEY,
+      timestamp:
+        new Date().toISOString(),
 
-      stripe:
-        !!process.env.STRIPE_SECRET_KEY,
+      database:
+        process.env.DATABASE_URL
+          ? "configured"
+          : "missing",
 
-      mpesa:
-        !!process.env.MPESA_CONSUMER_KEY,
+      services: {
+        openai:
+          !!process.env.OPENAI_API_KEY,
 
-      paypal:
-        !!process.env.PAYPAL_CLIENT_ID,
+        stripe:
+          !!process.env.STRIPE_SECRET_KEY,
 
-      cloudinary:
-        !!process.env.CLOUDINARY_CLOUD_NAME,
+        mpesa:
+          !!process.env.MPESA_CONSUMER_KEY,
 
-      email:
-        !!process.env.SMTP_HOST,
-    },
-  });
-});
+        paypal:
+          !!process.env.PAYPAL_CLIENT_ID,
 
-app.get("/", (req, res) => {
-  res.json({
-    message: "Cozy Book Nook API",
+        cloudinary:
+          !!process.env.CLOUDINARY_CLOUD_NAME,
 
-    version: "2.0.0",
+        email:
+          !!process.env.SMTP_HOST,
+      },
+    });
+  }
+);
 
-    status: "running",
+/* ==========================================================================
+   ROOT
+   ========================================================================== */
 
-    endpoints: {
-      books: "/api/books",
-      checkout: "/api/checkout/status",
-      uploadCover: "/api/upload-cover",
-      uploadPdf: "/api/upload-pdf",
-      payments: "/api/payments",
-      health: "/health",
-    },
-  });
-});
+app.get(
+  "/",
+  (_req, res) => {
+    res.json({
+      message:
+        "Cozy Book Nook API",
+
+      version:
+        "2.0.0",
+
+      status:
+        "running",
+
+      endpoints: {
+        books:
+          "/api/books",
+
+        checkout:
+          "/api/checkout/status",
+
+        uploadCover:
+          "/api/upload-cover",
+
+        uploadPdf:
+          "/api/upload-pdf",
+
+        payments:
+          "/api/payments",
+
+        health:
+          "/health",
+      },
+    });
+  }
+);
+
+/* ==========================================================================
+   GLOBAL ERROR HANDLER
+   ========================================================================== */
 
 app.use(
   (
     err: any,
     req: express.Request,
     res: express.Response,
-    next: express.NextFunction
+    _next: express.NextFunction
   ) => {
     console.error(
       "Global Error:",
@@ -212,18 +338,25 @@ app.use(
     );
 
     res
-      .status(err.status || 500)
+      .status(
+        err?.status || 500
+      )
       .json({
         error:
-          err.message ||
+          err?.message ||
           "Internal Server Error",
 
         ...(isDevelopment && {
-          stack: err.stack,
+          stack:
+            err?.stack,
         }),
       });
   }
 );
+
+/* ==========================================================================
+   SERVER
+   ========================================================================== */
 
 const PORT = parseInt(
   process.env.PORT || "5000",
@@ -235,52 +368,74 @@ app.listen(
   "0.0.0.0",
   () => {
     console.log(
-      "Server running on port " + PORT
+      "========================================"
     );
 
     console.log(
-      "Environment: " +
-        (process.env.NODE_ENV ||
-          "development")
+      `Server running on port ${PORT}`
     );
 
     console.log(
-      "Auth Bypass: " +
-        (BYPASS_AUTH
-          ? "ENABLED"
-          : "DISABLED")
+      "Environment:",
+      process.env.NODE_ENV ||
+        "development"
     );
 
     console.log(
-      "Books API: /api/books"
+      "Auth Bypass:",
+      BYPASS_AUTH
+        ? "ENABLED"
+        : "DISABLED"
     );
 
     console.log(
-      "Checkout API: /api/checkout/status"
+      "========================================"
     );
 
     console.log(
-      "Upload Cover API: /api/upload-cover"
+      "Books API:",
+      "/api/books"
     );
 
     console.log(
-      "Upload PDF API: /api/upload-pdf"
+      "Checkout API:",
+      "/api/checkout/status"
     );
 
     console.log(
-      "Payments API: /api/payments"
+      "Upload Cover API:",
+      "/api/upload-cover"
     );
 
     console.log(
-      "Health Check: /health"
+      "Upload PDF API:",
+      "/api/upload-pdf"
     );
 
     console.log(
-      "Uploads Directory: " +
-        uploadsDir
+      "Book Preview API:",
+      "/api/*preview*"
     );
 
-    console.log("");
+    console.log(
+      "Payments API:",
+      "/api/payments"
+    );
+
+    console.log(
+      "Health Check:",
+      "/health"
+    );
+
+    console.log(
+      "Uploads Directory:",
+      uploadsDir
+    );
+
+    console.log(
+      "========================================"
+    );
+
     console.log(
       "Email Configuration"
     );
@@ -310,6 +465,10 @@ app.listen(
         : "Missing"
     );
 
+    console.log(
+      "========================================"
+    );
+
     if (BYPASS_AUTH) {
       console.log(
         "WARNING: Authentication is BYPASSED"
@@ -319,4 +478,3 @@ app.listen(
 );
 
 export default app;
-
