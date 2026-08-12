@@ -1,591 +1,1292 @@
-// src/features/admin/books/BookFormPage.tsx
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// frontend/src/features/admin/books/BookFormPage.tsx
+
+import {
+  useEffect,
+  useState,
+  type ChangeEvent,
+} from "react";
+
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
+import {
+  useForm,
+} from "react-hook-form";
+
+import {
+  ArrowLeft,
+  BookOpen,
+  FileText,
+  Loader2,
+  Save,
+  Upload,
+  X,
+} from "lucide-react";
+
 import { toast } from "sonner";
-import { Loader2, X, ImagePlus, FileText, Download } from "lucide-react";
-import { createBook, updateBook, getBook, getApiBase } from "@/services/api";
-import { useAuth } from "@/contexts/AuthContext";
 
-const bookSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  author: z.string().min(1, "Author is required"),
-  description: z.string().optional(),
-  genre: z.string().optional(),
-  coverImage: z.string().optional(),
-  pdfUrl: z.string().optional(),
-  publishedYear: z.number().int().optional(),
-  pages: z.number().int().positive().optional(),
-  rating: z.number().min(0).max(5).optional(),
-  /** Major units (e.g. 12.99 USD); converted to priceCents on save */
-  listPrice: z.string().optional(),
-});
+import {
+  Button,
+} from "@/components/ui/button";
 
-type BookFormData = z.infer<typeof bookSchema>;
+import {
+  Input,
+} from "@/components/ui/input";
 
-export default function BookFormPage() {
-  const { id } = useParams<{ id: string }>();
+import {
+  Textarea,
+} from "@/components/ui/textarea";
+
+/* -------------------------------------------------------------------------- */
+/* TYPES                                                                      */
+/* -------------------------------------------------------------------------- */
+
+interface BookFormValues {
+  title: string;
+  author: string;
+  description: string;
+  genre: string;
+  publishedYear: string;
+  pages: string;
+  rating: string;
+  listPrice: string;
+  coverImage: string;
+  pdfUrl: string;
+  pdfPreviewImage: string;
+  slug: string;
+}
+
+interface BookResponse {
+  id: string;
+  title: string;
+  author: string;
+  description?: string | null;
+  genre?: string | null;
+  publishedYear?: number | null;
+  pages?: number | null;
+  rating?: number | null;
+  priceCents?: number | null;
+  coverImage?: string | null;
+  pdfUrl?: string | null;
+  pdfPreviewImage?: string | null;
+  slug?: string | null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* COMPONENT                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const BookFormPage = () => {
   const navigate = useNavigate();
-  const { token, isAdmin, logout } = useAuth();
-  const isEdit = !!id;
 
-  const [loading, setLoading] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [pdfFileName, setPdfFileName] = useState<string>("");
+  const { id } = useParams<{
+    id: string;
+  }>();
 
-  // Set bypass auth flag for testing
-  const BYPASS_AUTH = true; // Set to false when backend auth is ready
+  const isEditing = Boolean(id);
 
-  // Check if user is admin (only if not bypassing)
-  useEffect(() => {
-    if (!BYPASS_AUTH && !isAdmin) {
-      toast.error("Access denied. Admin privileges required.");
-      navigate("/admin/login");
-    }
-  }, [isAdmin, navigate]);
+  const [loading, setLoading] =
+    useState(false);
 
-  const form = useForm<BookFormData>({
-    resolver: zodResolver(bookSchema),
+  const [loadingBook, setLoadingBook] =
+    useState(isEditing);
+
+  const [uploadingPdf, setUploadingPdf] =
+    useState(false);
+
+  const [pdfFileName, setPdfFileName] =
+    useState("");
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: {
+      errors,
+    },
+  } = useForm<BookFormValues>({
     defaultValues: {
       title: "",
       author: "",
       description: "",
       genre: "",
+      publishedYear: "",
+      pages: "",
+      rating: "",
+      listPrice: "",
       coverImage: "",
       pdfUrl: "",
-      publishedYear: undefined,
-      pages: undefined,
-      rating: 0,
-      listPrice: "",
+      pdfPreviewImage: "",
+      slug: "",
     },
   });
 
+  const pdfUrl =
+    watch("pdfUrl");
+
+  const coverImage =
+    watch("coverImage");
+
+  /* ------------------------------------------------------------------------ */
+  /* LOAD EXISTING BOOK                                                       */
+  /* ------------------------------------------------------------------------ */
+
   useEffect(() => {
-    if (isEdit && id) {
-      const fetchBook = async () => {
-        try {
-          const book = await getBook(id);
-          const listPrice =
-            book.priceCents != null && book.priceCents !== undefined
-              ? (Number(book.priceCents) / 100).toFixed(2).replace(/\.?0+$/, "")
-              : "";
-          form.reset({ ...book, listPrice });
-          if (book.coverImage) {
-            setCoverPreview(book.coverImage);
-          }
-          if (book.pdfUrl) {
-            setPdfFileName("PDF uploaded");
-          }
-        } catch (err) {
-          toast.error("Failed to load book details");
-          console.error(err);
+    if (!id) {
+      setLoadingBook(false);
+      return;
+    }
+
+    const loadBook = async () => {
+      try {
+        setLoadingBook(true);
+
+        const book =
+          await apiFetch<BookResponse>(
+            `/api/books/${id}`
+          );
+
+        console.log(
+          "📚 Existing book loaded:",
+          book
+        );
+
+        reset({
+          title:
+            book.title || "",
+
+          author:
+            book.author || "",
+
+          description:
+            book.description || "",
+
+          genre:
+            book.genre || "",
+
+          publishedYear:
+            book.publishedYear != null
+              ? String(
+                book.publishedYear
+              )
+              : "",
+
+          pages:
+            book.pages != null
+              ? String(book.pages)
+              : "",
+
+          rating:
+            book.rating != null
+              ? String(book.rating)
+              : "",
+
+          listPrice:
+            book.priceCents != null
+              ? (
+                Number(
+                  book.priceCents
+                ) / 100
+              ).toFixed(2)
+              : "",
+
+          coverImage:
+            book.coverImage || "",
+
+          pdfUrl:
+            book.pdfUrl || "",
+
+          pdfPreviewImage:
+            book.pdfPreviewImage || "",
+
+          slug:
+            book.slug || "",
+        });
+
+        if (book.pdfUrl) {
+          setPdfFileName(
+            "Existing uploaded PDF"
+          );
+
+          console.log(
+            "📕 Existing PDF URL:",
+            book.pdfUrl
+          );
         }
-      };
-      fetchBook();
-    }
-  }, [id, isEdit, form]);
+      } catch (error) {
+        console.error(
+          "❌ Failed to load book:",
+          error
+        );
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+        toast.error(
+          "Failed to load book"
+        );
+      } finally {
+        setLoadingBook(false);
+      }
+    };
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size should be less than 5MB");
-      e.target.value = "";
+    void loadBook();
+  }, [
+    id,
+    reset,
+  ]);
+
+  /* ------------------------------------------------------------------------ */
+  /* PDF UPLOAD                                                               */
+  /* ------------------------------------------------------------------------ */
+
+  const handlePdfUpload = async (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file =
+      event.target.files?.[0];
+
+    if (!file) {
       return;
     }
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file");
-      e.target.value = "";
+    if (
+      file.type !==
+      "application/pdf" &&
+      !file.name
+        .toLowerCase()
+        .endsWith(".pdf")
+    ) {
+      toast.error(
+        "Please select a PDF file."
+      );
+
+      event.target.value = "";
       return;
     }
 
-    setUploadingImage(true);
-    const formData = new FormData();
-    formData.append("cover", file);
+    /*
+     * Prevent extremely large files from
+     * causing unnecessary upload failures.
+     */
+    const MAX_SIZE =
+      50 * 1024 * 1024;
+
+    if (file.size > MAX_SIZE) {
+      toast.error(
+        "PDF must be smaller than 50MB."
+      );
+
+      event.target.value = "";
+      return;
+    }
 
     try {
-      // Get the API base URL (works for both local and production)
-      const apiBase = getApiBase();
-      
-      // Create headers - only add auth if not bypassing
-      const headers: HeadersInit = {};
-      
-      if (!BYPASS_AUTH && token) {
-        headers["Authorization"] = `Bearer ${token}`;
-        console.log("🔐 Uploading with auth token");
-      } else {
-        console.log("⚠️ Uploading without auth (bypass enabled)");
+      setUploadingPdf(true);
+
+      setPdfFileName(
+        file.name
+      );
+
+      console.log(
+        "📕 Starting PDF upload:",
+        {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        }
+      );
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        "pdf",
+        file
+      );
+
+      /*
+       * IMPORTANT:
+       * Do NOT manually set Content-Type
+       * when using FormData.
+       * The browser creates the multipart
+       * boundary automatically.
+       */
+
+      const response =
+        await fetch(
+          `${import.meta.env
+            .VITE_API_BASE_URL ||
+          "http://localhost:5000"
+          }/api/upload-pdf`,
+          {
+            method: "POST",
+
+            body: formData,
+
+            credentials:
+              "include",
+          }
+        );
+
+      const rawText =
+        await response.text();
+
+      let data: any = {};
+
+      try {
+        data =
+          rawText
+            ? JSON.parse(rawText)
+            : {};
+      } catch {
+        console.error(
+          "❌ Upload returned non-JSON:",
+          rawText
+        );
       }
 
-      const response = await fetch(`${apiBase}/api/upload-cover`, {
-        method: "POST",
-        headers,
-        body: formData,
-      });
+      console.log(
+        "📕 PDF upload response:",
+        {
+          status:
+            response.status,
+          ok:
+            response.ok,
+          data,
+        }
+      );
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+        throw new Error(
+          data?.error ||
+          data?.message ||
+          `PDF upload failed (${response.status})`
+        );
       }
 
-      const data = await response.json();
-      console.log("Upload successful:", data);
-      
-      // Store the backend path
-      const imagePath = data.url;
-      
-      // Create local preview URL
-      const localPreviewUrl = URL.createObjectURL(file);
-      setCoverPreview(localPreviewUrl);
-      
-      // Update the form state with the backend path
-      form.setValue("coverImage", imagePath);
-      
-      toast.success("Image uploaded successfully!");
-      
-      // Clean up the blob URL when component unmounts
-      return () => {
-        URL.revokeObjectURL(localPreviewUrl);
-      };
-    } catch (err: any) {
-      console.error("Upload error:", err);
-      toast.error(err.message || "Failed to upload image");
-      e.target.value = "";
-    } finally {
-      setUploadingImage(false);
-    }
-  };
+      /*
+       * Support the possible URL names
+       * returned by your upload endpoint.
+       */
+      const uploadedPdfUrl =
+        data?.url ||
+        data?.pdfUrl ||
+        data?.secure_url ||
+        data?.secureUrl;
 
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+      if (!uploadedPdfUrl) {
+        console.error(
+          "❌ Upload succeeded but no URL was returned:",
+          data
+        );
 
-    // Validate file type
-    if (file.type !== "application/pdf") {
-      toast.error("Only PDF files are allowed");
-      e.target.value = "";
-      return;
-    }
-
-    // Validate file size (max 20MB)
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error("PDF size should be less than 20MB");
-      e.target.value = "";
-      return;
-    }
-
-    setUploadingPdf(true);
-    setPdfFileName(file.name);
-    const formData = new FormData();
-    formData.append("pdf", file);
-
-    try {
-      const apiBase = getApiBase();
-      
-      const headers: HeadersInit = {};
-      
-      if (!BYPASS_AUTH && token) {
-        headers["Authorization"] = `Bearer ${token}`;
-        console.log("🔐 Uploading PDF with auth token");
-      } else {
-        console.log("⚠️ Uploading PDF without auth (bypass enabled)");
+        throw new Error(
+          "PDF uploaded, but the server did not return a PDF URL."
+        );
       }
 
-      const response = await fetch(`${apiBase}/api/upload-pdf`, {
-        method: "POST",
-        headers,
-        body: formData,
-      });
+      /*
+       * THIS IS THE IMPORTANT PART.
+       *
+       * Store the URL inside React Hook Form.
+       */
+      setValue(
+        "pdfUrl",
+        String(uploadedPdfUrl),
+        {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: true,
+        }
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Upload failed with status ${response.status}`);
-      }
+      console.log(
+        "✅ PDF URL stored in form:",
+        uploadedPdfUrl
+      );
 
-      const data = await response.json();
-      console.log("PDF Upload successful:", data);
-      
-      // Update the form state with the PDF URL
-      form.setValue("pdfUrl", data.url);
-      
-      toast.success("PDF uploaded successfully!");
-    } catch (err: any) {
-      console.error("PDF Upload error:", err);
-      toast.error(err.message || "Failed to upload PDF");
+      toast.success(
+        "PDF uploaded successfully"
+      );
+    } catch (error: any) {
+      console.error(
+        "❌ PDF Upload error:",
+        error
+      );
+
       setPdfFileName("");
-      e.target.value = "";
+
+      setValue(
+        "pdfUrl",
+        "",
+        {
+          shouldDirty: true,
+        }
+      );
+
+      toast.error(
+        error?.message ||
+        "Failed to upload PDF"
+      );
     } finally {
       setUploadingPdf(false);
+
+      /*
+       * Allow selecting the same file again.
+       */
+      event.target.value = "";
     }
   };
 
-  const removeCoverImage = () => {
-    if (coverPreview?.startsWith("blob:")) {
-      URL.revokeObjectURL(coverPreview);
-    }
-    setCoverPreview(null);
-    form.setValue("coverImage", "");
-  };
+  /* ------------------------------------------------------------------------ */
+  /* REMOVE PDF                                                               */
+  /* ------------------------------------------------------------------------ */
 
-  const removePdf = () => {
-    form.setValue("pdfUrl", "");
+  const handleRemovePdf = () => {
+    setValue(
+      "pdfUrl",
+      "",
+      {
+        shouldDirty: true,
+        shouldTouch: true,
+      }
+    );
+
     setPdfFileName("");
-    toast.info("PDF removed");
+
+    toast.success(
+      "PDF removed from this book"
+    );
   };
 
-  const getImageUrl = (imagePath: string | null) => {
-    if (!imagePath) return null;
-    
-    if (imagePath.startsWith("blob:")) {
-      return imagePath;
-    }
-    
-    if (imagePath.startsWith("http")) {
-      return imagePath;
-    }
-    
-    // Use the API base URL instead of hardcoded localhost
-    const apiBase = getApiBase();
-    return `${apiBase}${imagePath}`;
-  };
+  /* ------------------------------------------------------------------------ */
+  /* SUBMIT                                                                   */
+  /* ------------------------------------------------------------------------ */
 
-  const onSubmit = async (data: BookFormData) => {
-    if (uploadingImage) {
-      toast.error("Please wait for image upload to complete");
-      return;
-    }
-    
+  const onSubmit = async (
+    values: BookFormValues
+  ) => {
+    /*
+     * Never save while an upload is still
+     * happening.
+     */
     if (uploadingPdf) {
-      toast.error("Please wait for PDF upload to complete");
+      toast.error(
+        "Please wait for the PDF upload to finish."
+      );
+
       return;
     }
 
-    const { listPrice, ...rest } = data;
-    const trimmed = listPrice?.trim() ?? "";
-    let priceCents: number | null = null;
-    if (trimmed !== "") {
-      const n = parseFloat(trimmed);
-      if (!Number.isFinite(n) || n < 0) {
-        toast.error("List price must be a valid non-negative number");
-        return;
-      }
-      priceCents = Math.round(n * 100);
-    }
-
-    const payload = { ...rest, priceCents };
-
-    setLoading(true);
     try {
-      if (isEdit && id) {
-        await updateBook(id, payload);
-        toast.success("Book updated successfully");
-      } else {
-        await createBook(payload);
-        toast.success("Book created successfully");
+      setLoading(true);
+
+      /*
+       * Get the latest values directly from
+       * React Hook Form.
+       */
+      const currentPdfUrl =
+        values.pdfUrl?.trim() || null;
+
+      console.log(
+        "========================================"
+      );
+
+      console.log(
+        "📦 FORM SUBMISSION"
+      );
+
+      console.log(
+        "PDF URL:",
+        currentPdfUrl
+      );
+
+      console.log(
+        "========================================"
+      );
+
+      /*
+       * Convert price to cents.
+       */
+      let priceCents:
+        | number
+        | null = null;
+
+      if (
+        values.listPrice !==
+        undefined &&
+        values.listPrice !== null &&
+        values.listPrice.trim() !== ""
+      ) {
+        const price =
+          Number(
+            values.listPrice
+          );
+
+        if (
+          Number.isFinite(price) &&
+          price >= 0
+        ) {
+          priceCents =
+            Math.round(
+              price * 100
+            );
+        }
       }
-      navigate("/admin/books");
-    } catch (err: any) {
-      console.error("Submit error:", err);
-      
-      if (!BYPASS_AUTH && (err.message?.includes("Access denied") || err.message?.includes("403"))) {
-        toast.error("Your session has expired. Please log in again.");
-        logout();
-        navigate("/admin/login");
-      } else {
-        toast.error(err.message || "Failed to save book");
+
+      const payload = {
+        title:
+          values.title.trim(),
+
+        author:
+          values.author.trim(),
+
+        description:
+          values.description.trim() ||
+          null,
+
+        genre:
+          values.genre.trim() ||
+          null,
+
+        publishedYear:
+          values.publishedYear.trim() !==
+            ""
+            ? Number(
+              values.publishedYear
+            )
+            : null,
+
+        pages:
+          values.pages.trim() !==
+            ""
+            ? Number(
+              values.pages
+            )
+            : null,
+
+        rating:
+          values.rating.trim() !==
+            ""
+            ? Number(
+              values.rating
+            )
+            : 0,
+
+        priceCents,
+
+        coverImage:
+          values.coverImage.trim() ||
+          null,
+
+        /*
+         * CRITICAL:
+         * Explicitly send the uploaded PDF.
+         */
+        pdfUrl:
+          currentPdfUrl,
+
+        pdfPreviewImage:
+          values.pdfPreviewImage.trim() ||
+          null,
+
+        slug:
+          values.slug.trim() ||
+          undefined,
+      };
+
+      console.log(
+        "📦 PAYLOAD BEING SENT TO BACKEND:"
+      );
+
+      console.log(
+        JSON.stringify(
+          payload,
+          null,
+          2
+        )
+      );
+
+      let savedBook:
+        | BookResponse
+        | undefined;
+
+      /* ------------------------------------------------------------------ */
+      /* UPDATE                                                              */
+      /* ------------------------------------------------------------------ */
+
+      if (isEditing && id) {
+        savedBook =
+          await apiFetch<BookResponse>(
+            `/api/books/${id}`,
+            {
+              method: "PUT",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  payload
+                ),
+            }
+          );
       }
+
+      /* ------------------------------------------------------------------ */
+      /* CREATE                                                              */
+      /* ------------------------------------------------------------------ */
+
+      else {
+        savedBook =
+          await apiFetch<BookResponse>(
+            "/api/books",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  payload
+                ),
+            }
+          );
+      }
+
+      console.log(
+        "✅ BOOK SAVED:",
+        savedBook
+      );
+
+      console.log(
+        "📕 SAVED PDF URL:",
+        savedBook?.pdfUrl
+      );
+
+      /*
+       * Verify that the backend actually
+       * returned the URL we sent.
+       */
+      if (
+        currentPdfUrl &&
+        !savedBook?.pdfUrl
+      ) {
+        console.warn(
+          "⚠️ PDF URL was sent but backend did not return it."
+        );
+
+        toast.warning(
+          "Book saved, but the PDF URL was not returned by the server."
+        );
+      } else if (
+        currentPdfUrl &&
+        savedBook?.pdfUrl
+      ) {
+        toast.success(
+          "Book and PDF saved successfully."
+        );
+      } else {
+        toast.success(
+          isEditing
+            ? "Book updated successfully."
+            : "Book created successfully."
+        );
+      }
+
+      /*
+       * Navigate back to books list.
+       */
+      navigate(
+        "/admin/books"
+      );
+    } catch (error: any) {
+      console.error(
+        "❌ Submit error:",
+        error
+      );
+
+      toast.error(
+        error?.message ||
+        "Failed to save book"
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  /* ------------------------------------------------------------------------ */
+  /* LOADING                                                                  */
+  /* ------------------------------------------------------------------------ */
+
+  if (loadingBook) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin" />
+
+          <p className="text-sm text-gray-500">
+            Loading book...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ------------------------------------------------------------------------ */
+  /* RENDER                                                                   */
+  /* ------------------------------------------------------------------------ */
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          {isEdit ? "Edit Book" : "Add New Book"}
-        </h1>
-        {BYPASS_AUTH && (
-          <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-            <p className="text-sm text-yellow-800">
-              ⚠️ Development Mode: Authentication is bypassed for testing. 
-              In production, this will be disabled.
-            </p>
+    <div className="min-h-screen bg-[#EEF2F7] p-4 sm:p-6 lg:p-8">
+
+      <div className="mx-auto max-w-5xl">
+
+        {/* ---------------------------------------------------------------- */}
+        {/* HEADER                                                           */}
+        {/* ---------------------------------------------------------------- */}
+
+        <div className="mb-6 flex items-center justify-between gap-4">
+
+          <div className="flex items-center gap-3">
+
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() =>
+                navigate(
+                  "/admin/books"
+                )
+              }
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+
+            <div>
+              <h1 className="text-2xl font-bold text-[#2E1208]">
+                {isEditing
+                  ? "Edit Book"
+                  : "Add Book"}
+              </h1>
+
+              <p className="text-sm text-gray-500">
+                Manage book information and
+                digital PDF
+              </p>
+            </div>
+
           </div>
-        )}
-        <p className="text-muted-foreground mt-1">
-          {isEdit 
-            ? "Update book information, cover image, and PDF" 
-            : "Fill in the details to add a new book to your collection"}
-        </p>
+
+        </div>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* FORM                                                             */}
+        {/* ---------------------------------------------------------------- */}
+
+        <form
+          onSubmit={handleSubmit(
+            onSubmit
+          )}
+          className="space-y-6"
+        >
+
+          {/* -------------------------------------------------------------- */}
+          {/* BASIC INFORMATION                                              */}
+          {/* -------------------------------------------------------------- */}
+
+          <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+
+            <div className="mb-6 flex items-center gap-3">
+
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C17B4F]/10">
+                <BookOpen className="h-5 w-5 text-[#C17B4F]" />
+              </div>
+
+              <div>
+                <h2 className="font-bold text-[#2E1208]">
+                  Book Information
+                </h2>
+
+                <p className="text-sm text-gray-500">
+                  Enter the details of the book.
+                </p>
+              </div>
+
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+
+              {/* TITLE */}
+
+              <div className="md:col-span-2">
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Title *
+                </label>
+
+                <Input
+                  {...register(
+                    "title",
+                    {
+                      required:
+                        "Title is required",
+                    }
+                  )}
+                  placeholder="Book title"
+                />
+
+                {errors.title && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {
+                      errors.title
+                        .message
+                    }
+                  </p>
+                )}
+
+              </div>
+
+              {/* AUTHOR */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Author *
+                </label>
+
+                <Input
+                  {...register(
+                    "author",
+                    {
+                      required:
+                        "Author is required",
+                    }
+                  )}
+                  placeholder="Author name"
+                />
+
+                {errors.author && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {
+                      errors.author
+                        .message
+                    }
+                  </p>
+                )}
+
+              </div>
+
+              {/* GENRE */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Genre
+                </label>
+
+                <Input
+                  {...register(
+                    "genre"
+                  )}
+                  placeholder="Fiction, Business, Christian..."
+                />
+
+              </div>
+
+              {/* YEAR */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Published Year
+                </label>
+
+                <Input
+                  type="number"
+                  {...register(
+                    "publishedYear"
+                  )}
+                  placeholder="2026"
+                />
+
+              </div>
+
+              {/* PAGES */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Pages
+                </label>
+
+                <Input
+                  type="number"
+                  {...register(
+                    "pages"
+                  )}
+                  placeholder="250"
+                />
+
+              </div>
+
+              {/* RATING */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Rating
+                </label>
+
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="5"
+                  {...register(
+                    "rating"
+                  )}
+                  placeholder="4.5"
+                />
+
+              </div>
+
+              {/* PRICE */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Price
+                </label>
+
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...register(
+                    "listPrice"
+                  )}
+                  placeholder="10.00"
+                />
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Enter the selling price in
+                  your currency.
+                </p>
+
+              </div>
+
+              {/* SLUG */}
+
+              <div>
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Slug
+                </label>
+
+                <Input
+                  {...register(
+                    "slug"
+                  )}
+                  placeholder="book-title"
+                />
+
+              </div>
+
+              {/* DESCRIPTION */}
+
+              <div className="md:col-span-2">
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Description
+                </label>
+
+                <Textarea
+                  {...register(
+                    "description"
+                  )}
+                  rows={6}
+                  placeholder="Write a description of the book..."
+                />
+
+              </div>
+
+              {/* COVER IMAGE */}
+
+              <div className="md:col-span-2">
+
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Cover Image URL
+                </label>
+
+                <Input
+                  {...register(
+                    "coverImage"
+                  )}
+                  placeholder="https://..."
+                />
+
+                {coverImage && (
+                  <div className="mt-4 overflow-hidden rounded-xl border bg-gray-50 p-3">
+
+                    <img
+                      src={
+                        coverImage
+                      }
+                      alt="Book cover preview"
+                      className="h-48 w-auto rounded-lg object-cover"
+                      onError={(
+                        event
+                      ) => {
+                        event.currentTarget.style.display =
+                          "none";
+                      }}
+                    />
+
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+
+          </section>
+
+          {/* -------------------------------------------------------------- */}
+          {/* PDF                                                            */}
+          {/* -------------------------------------------------------------- */}
+
+          <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+
+            <div className="mb-6 flex items-center gap-3">
+
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
+                <FileText className="h-5 w-5 text-blue-600" />
+              </div>
+
+              <div>
+
+                <h2 className="font-bold text-[#2E1208]">
+                  Digital PDF
+                </h2>
+
+                <p className="text-sm text-gray-500">
+                  Upload the PDF that will be used
+                  for the digital edition and preview.
+                </p>
+
+              </div>
+
+            </div>
+
+            {/* UPLOAD */}
+
+            <label
+              className={`
+                flex
+                min-h-[180px]
+                cursor-pointer
+                flex-col
+                items-center
+                justify-center
+                rounded-2xl
+                border-2
+                border-dashed
+                p-6
+                text-center
+                transition
+                ${uploadingPdf
+                  ? "cursor-not-allowed border-blue-300 bg-blue-50"
+                  : "border-gray-300 hover:border-[#C17B4F] hover:bg-[#C17B4F]/5"
+                }
+              `}
+            >
+
+              {uploadingPdf ? (
+                <>
+                  <Loader2 className="mb-3 h-10 w-10 animate-spin text-blue-600" />
+
+                  <p className="font-semibold text-blue-700">
+                    Uploading PDF...
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Please wait until the upload
+                    finishes before saving.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Upload className="mb-3 h-10 w-10 text-[#C17B4F]" />
+
+                  <p className="font-semibold text-[#2E1208]">
+                    Click to upload PDF
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    PDF files up to 50MB
+                  </p>
+                </>
+              )}
+
+              <input
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                disabled={
+                  uploadingPdf
+                }
+                onChange={
+                  handlePdfUpload
+                }
+              />
+
+            </label>
+
+            {/* CURRENT PDF */}
+
+            {pdfUrl && (
+              <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5">
+
+                <div className="flex items-start gap-4">
+
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-100">
+                    <FileText className="h-6 w-6 text-green-700" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+
+                      <div>
+                        <p className="font-semibold text-green-800">
+                          PDF uploaded
+                        </p>
+
+                        <p className="text-sm text-green-700">
+                          {pdfFileName ||
+                            "Digital book PDF"}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={
+                          handleRemovePdf
+                        }
+                        className="rounded-full p-2 text-red-600 transition hover:bg-red-100"
+                        title="Remove PDF"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+
+                    </div>
+
+                    <div className="mt-3 rounded-lg bg-white p-3">
+
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        PDF URL
+                      </p>
+
+                      <p className="break-all text-xs text-gray-700">
+                        {pdfUrl}
+                      </p>
+
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+
+                      <a
+                        href={
+                          pdfUrl
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center rounded-full border border-green-300 bg-white px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+                      >
+                        Open PDF
+                      </a>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+
+            {!pdfUrl &&
+              !uploadingPdf && (
+                <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-700">
+                  No PDF is currently attached
+                  to this book.
+                </div>
+              )}
+
+          </section>
+
+          {/* -------------------------------------------------------------- */}
+          {/* SAVE                                                           */}
+          {/* -------------------------------------------------------------- */}
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
+            <Button
+              type="button"
+              variant="outline"
+              disabled={
+                loading ||
+                uploadingPdf
+              }
+              onClick={() =>
+                navigate(
+                  "/admin/books"
+                )
+              }
+              className="rounded-full px-6"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={
+                loading ||
+                uploadingPdf
+              }
+              className="rounded-full bg-[#C17B4F] px-7 text-white hover:bg-[#A55E36]"
+            >
+
+              {loading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-5 w-5" />
+              )}
+
+              {loading
+                ? "Saving..."
+                : isEditing
+                  ? "Save Changes"
+                  : "Create Book"}
+
+            </Button>
+
+          </div>
+
+        </form>
+
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Book Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="title">Title *</Label>
-                  <Input 
-                    id="title" 
-                    {...form.register("title")} 
-                    placeholder="Enter book title"
-                    disabled={loading}
-                  />
-                  {form.formState.errors.title && (
-                    <p className="text-sm text-red-500">{form.formState.errors.title.message}</p>
-                  )}
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="author">Author *</Label>
-                  <Input 
-                    id="author" 
-                    {...form.register("author")} 
-                    placeholder="Enter author name"
-                    disabled={loading}
-                  />
-                  {form.formState.errors.author && (
-                    <p className="text-sm text-red-500">{form.formState.errors.author.message}</p>
-                  )}
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="genre">Genre</Label>
-                  <Input 
-                    id="genre" 
-                    {...form.register("genre")} 
-                    placeholder="e.g., Fiction, Self-Help, Biography"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <Label>Cover Image</Label>
-                <div className="flex items-start gap-4">
-                  <div className="relative h-48 w-32 shrink-0 overflow-hidden rounded-lg border bg-muted flex items-center justify-center">
-                    {coverPreview ? (
-                      <>
-                        <img
-                          src={getImageUrl(coverPreview) || undefined}
-                          alt="Cover preview"
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            console.error("Image failed to load:", coverPreview);
-                            e.currentTarget.src = "https://via.placeholder.com/128x192?text=No+Image";
-                          }}
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6"
-                          onClick={removeCoverImage}
-                          disabled={uploadingImage}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="text-center">
-                        <ImagePlus className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-xs text-muted-foreground">No image</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 space-y-2">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      disabled={uploadingImage || loading}
-                      className="cursor-pointer"
-                    />
-                    {uploadingImage && (
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <p className="text-xs text-muted-foreground">Uploading to Cloudinary...</p>
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Supported formats: JPG, PNG, GIF. Max size: 5MB
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* PDF Upload Section */}
-            <div className="grid gap-4 border-t pt-6">
-              <Label>PDF File (for downloadable content)</Label>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <Input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={handlePdfUpload}
-                    disabled={uploadingPdf || loading}
-                    className="cursor-pointer"
-                  />
-                </div>
-                
-                {form.watch("pdfUrl") && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(form.watch("pdfUrl") || undefined, '_blank')}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      View PDF
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={removePdf}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-              
-              {uploadingPdf && (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <p className="text-xs text-muted-foreground">Uploading PDF to Cloudinary...</p>
-                </div>
-              )}
-              
-              {pdfFileName && !uploadingPdf && form.watch("pdfUrl") && (
-                <div className="flex items-center gap-2 text-sm text-green-600">
-                  <FileText className="h-4 w-4" />
-                  {pdfFileName}
-                </div>
-              )}
-              
-              <p className="text-xs text-muted-foreground">
-                Upload the book PDF (max 20MB). Customers will get access to download after purchase.
-              </p>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea 
-                id="description" 
-                rows={4} 
-                {...form.register("description")}
-                placeholder="Enter book description or summary..."
-                disabled={loading}
-                className="resize-none"
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="listPrice">List price (for online checkout)</Label>
-              <Input
-                id="listPrice"
-                inputMode="decimal"
-                placeholder="e.g. 12.99 — leave empty if not sold online"
-                {...form.register("listPrice")}
-                disabled={loading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Amount in your Stripe currency (see backend{" "}
-                <code className="rounded bg-muted px-1">STRIPE_CURRENCY</code>). Stored as cents.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="publishedYear">Publication Year</Label>
-                <Input 
-                  type="number" 
-                  id="publishedYear"
-                  {...form.register("publishedYear", { valueAsNumber: true })}
-                  placeholder="e.g., 2024"
-                  disabled={loading}
-                  min={1000}
-                  max={new Date().getFullYear()}
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="pages">Page Count</Label>
-                <Input 
-                  type="number" 
-                  id="pages"
-                  {...form.register("pages", { valueAsNumber: true })}
-                  placeholder="Number of pages"
-                  disabled={loading}
-                  min={1}
-                />
-                {form.formState.errors.pages && (
-                  <p className="text-sm text-red-500">{form.formState.errors.pages.message}</p>
-                )}
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="rating">Rating (0-5)</Label>
-                <Input 
-                  type="number" 
-                  step="0.1"
-                  id="rating"
-                  {...form.register("rating", { valueAsNumber: true })}
-                  placeholder="e.g., 4.5"
-                  disabled={loading}
-                  min={0}
-                  max={5}
-                />
-                {form.formState.errors.rating && (
-                  <p className="text-sm text-red-500">{form.formState.errors.rating.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4 pt-4 border-t">
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={() => navigate("/admin/books")}
-                disabled={loading || uploadingImage || uploadingPdf}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={loading || uploadingImage || uploadingPdf}
-                className="min-w-[120px]"
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEdit ? "Update Book" : "Create Book"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
     </div>
   );
-}
+};
+
+export default BookFormPage;

@@ -1,27 +1,102 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-// backend/src/routes/invite.routes.ts
 const express_1 = require("express");
+const nodemailer_1 = __importDefault(require("nodemailer"));
 const router = (0, express_1.Router)();
+const transporter = nodemailer_1.default.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+});
 router.post("/invite-david", async (req, res) => {
-    const { name, email, phone, eventType, date, location, message } = req.body;
-    // Basic validation
-    if (!name || !email || !eventType || !date) {
-        return res.status(400).json({ error: "Missing required fields" });
+    try {
+        const { name, email, phone, eventType, date, location, message, } = req.body;
+        // Validation
+        if (!name || !email || !eventType || !date) {
+            return res.status(400).json({
+                success: false,
+                error: "Missing required fields",
+            });
+        }
+        // Email to you
+        await transporter.sendMail({
+            from: `"Speaking Invitation" <${process.env.EMAIL_USER}>`,
+            to: process.env.OWNER_EMAIL,
+            subject: "🎤 New Speaking Invitation Received",
+            html: `
+        <div style="font-family:Arial,sans-serif;padding:20px">
+          <h2 style="color:#B8860B;">New Speaking Invitation</h2>
+
+          <table cellpadding="8">
+            <tr><td><strong>Name</strong></td><td>${name}</td></tr>
+            <tr><td><strong>Email</strong></td><td>${email}</td></tr>
+            <tr><td><strong>Phone</strong></td><td>${phone || "Not provided"}</td></tr>
+            <tr><td><strong>Event Type</strong></td><td>${eventType}</td></tr>
+            <tr><td><strong>Date</strong></td><td>${date}</td></tr>
+            <tr><td><strong>Location</strong></td><td>${location || "Not provided"}</td></tr>
+          </table>
+
+          <h3>Message</h3>
+
+          <p>${message || "No message provided"}</p>
+
+          <hr>
+
+          <small>Submitted from your website.</small>
+        </div>
+      `,
+        });
+        // Confirmation email
+        await transporter.sendMail({
+            from: `"David's Team" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "✅ We have received your invitation",
+            html: `
+        <div style="font-family:Arial,sans-serif;padding:20px">
+
+          <h2>Thank you ${name}!</h2>
+
+          <p>
+            We have successfully received your speaking invitation.
+          </p>
+
+          <p>
+            Our team will review your request and contact you shortly.
+          </p>
+
+          <hr>
+
+          <p><strong>Your Request</strong></p>
+
+          <ul>
+            <li><strong>Event:</strong> ${eventType}</li>
+            <li><strong>Date:</strong> ${date}</li>
+            <li><strong>Location:</strong> ${location || "Not specified"}</li>
+          </ul>
+
+          <p>
+            Thank you for considering David.
+          </p>
+
+        </div>
+      `,
+        });
+        return res.status(200).json({
+            success: true,
+            message: "Invitation submitted successfully.",
+        });
     }
-    // TODO: Send email to David (use Nodemailer, Resend, SendGrid, etc.)
-    // Example with console log for now
-    console.log("📧 New speaking invite:");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log(`👤 Name: ${name}`);
-    console.log(`📧 Email: ${email}`);
-    console.log(`📞 Phone: ${phone || 'Not provided'}`);
-    console.log(`🎯 Event Type: ${eventType}`);
-    console.log(`📅 Date: ${date}`);
-    console.log(`📍 Location: ${location || 'Not provided'}`);
-    console.log(`💬 Message: ${message || 'Not provided'}`);
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-    // In real app: send email or save to DB + notify admin dashboard
-    res.status(200).json({ message: "Invite sent successfully" });
+    catch (error) {
+        console.error("Invite Email Error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to send invitation.",
+        });
+    }
 });
 exports.default = router;

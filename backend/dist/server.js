@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// backend/src/server.ts
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -16,102 +15,142 @@ const invitation_routes_1 = __importDefault(require("./routes/invitation.routes"
 const order_routes_1 = __importDefault(require("./routes/order.routes"));
 const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
 dotenv_1.default.config();
+console.log("OpenAI Key Loaded:", process.env.OPENAI_API_KEY ? "YES" : "NO");
+console.log("Database URL Loaded:", process.env.DATABASE_URL ? "YES" : "NO");
+console.log("Cloudinary Loaded:", process.env.CLOUDINARY_CLOUD_NAME ? "YES" : "NO");
 const app = (0, express_1.default)();
-const isDevelopment = process.env.NODE_ENV === 'development';
-const BYPASS_AUTH = isDevelopment || process.env.BYPASS_AUTH === 'true';
-// Ensure database directory exists (for SQLite)
-const dbPath = path_1.default.join(__dirname, '../prisma');
-if (!fs_1.default.existsSync(dbPath)) {
-    fs_1.default.mkdirSync(dbPath, { recursive: true });
-    console.log('📁 Created database directory:', dbPath);
-}
-// Ensure uploads directory exists
-const uploadsDir = path_1.default.join(__dirname, '../uploads');
+const isDevelopment = process.env.NODE_ENV === "development";
+const BYPASS_AUTH = isDevelopment ||
+    process.env.BYPASS_AUTH === "true";
+const uploadsDir = path_1.default.join(__dirname, "../uploads");
 if (!fs_1.default.existsSync(uploadsDir)) {
-    fs_1.default.mkdirSync(uploadsDir, { recursive: true });
-    console.log('📁 Created uploads directory:', uploadsDir);
+    fs_1.default.mkdirSync(uploadsDir, {
+        recursive: true,
+    });
+    console.log("Created uploads directory:", uploadsDir);
 }
-// 1. CORS Configuration
+const allowedOrigins = [
+    "http://localhost:8080",
+    "http://192.168.100.8:8080",
+    "http://localhost:3000",
+    "https://emuriadavid.netlify.app",
+    process.env.FRONTEND_URL,
+].filter(Boolean);
 app.use((0, cors_1.default)({
-    origin: [
-        "http://localhost:8080",
-        "http://192.168.100.8:8080",
-        "http://localhost:5173",
-        'https://speakeremuriadavid.netlify.app',
-        'https://emuriadavid.netlify.app', // Your production Netlify URL
-        process.env.FRONTEND_URL
-    ].filter(Boolean),
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
+    origin: allowedOrigins,
+    methods: [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS",
+    ],
+    allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+    ],
+    credentials: true,
 }));
-app.use(express_1.default.json({ limit: '50mb' }));
-app.use(express_1.default.urlencoded({ limit: '50mb', extended: true }));
-// 2. Request Logger
+app.use(express_1.default.json({
+    limit: "50mb",
+}));
+app.use(express_1.default.urlencoded({
+    limit: "50mb",
+    extended: true,
+}));
 app.use((req, res, next) => {
-    if (!req.originalUrl.includes('favicon')) {
-        console.log(`>>> ${req.method} ${req.originalUrl} | Referrer: ${req.get('Referer') || 'direct'}`);
+    if (!req.originalUrl.includes("favicon")) {
+        console.log(">>> " +
+            req.method +
+            " " +
+            req.originalUrl);
     }
     next();
 });
-// 3. Static Files (for serving uploaded images)
-app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '../uploads')));
-// 4. Routes
-app.use('/api/books', book_routes_1.default);
-app.use('/api/checkout', checkout_routes_1.default);
-app.use('/api', upload_routes_1.default);
-app.use('/api/invite', invitation_routes_1.default);
+app.use("/uploads", express_1.default.static(uploadsDir));
+app.use("/api/books", book_routes_1.default);
+app.use("/api/checkout", checkout_routes_1.default);
+app.use("/api", upload_routes_1.default);
+app.use("/api/invite", invitation_routes_1.default);
 app.use("/api/orders", order_routes_1.default);
-app.use('/api/payments', payment_routes_1.default);
-// 5. Health check endpoint
-app.get('/health', (req, res) => {
+app.use("/api/payments", payment_routes_1.default);
+app.get("/health", (req, res) => {
     res.json({
-        status: 'OK',
-        environment: process.env.NODE_ENV || 'development',
+        status: "OK",
+        environment: process.env.NODE_ENV || "development",
         auth_bypass: BYPASS_AUTH,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        database: process.env.DATABASE_URL
+            ? "configured"
+            : "missing",
+        services: {
+            openai: !!process.env.OPENAI_API_KEY,
+            stripe: !!process.env.STRIPE_SECRET_KEY,
+            mpesa: !!process.env.MPESA_CONSUMER_KEY,
+            paypal: !!process.env.PAYPAL_CLIENT_ID,
+            cloudinary: !!process.env.CLOUDINARY_CLOUD_NAME,
+            email: !!process.env.SMTP_HOST,
+        },
     });
 });
-// 6. Root endpoint
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
     res.json({
-        message: 'David Emuria API',
-        version: '1.0.0',
+        message: "Cozy Book Nook API",
+        version: "2.0.0",
+        status: "running",
         endpoints: {
-            books: '/api/books',
-            checkout: '/api/checkout/status',
-            upload: '/api/upload-cover',
-            invite: '/api/invite',
-            health: '/health'
-        }
+            books: "/api/books",
+            checkout: "/api/checkout/status",
+            uploadCover: "/api/upload-cover",
+            uploadPdf: "/api/upload-pdf",
+            payments: "/api/payments",
+            health: "/health",
+        },
     });
 });
-// 7. Error Handler
 app.use((err, req, res, next) => {
-    console.error('❌ Global Error caught:', err);
-    res.status(err.status || 500).json({
-        error: err.message || 'Internal Server Error',
-        ...(isDevelopment && { stack: err.stack })
+    console.error("Global Error:", err);
+    res
+        .status(err.status || 500)
+        .json({
+        error: err.message ||
+            "Internal Server Error",
+        ...(isDevelopment && {
+            stack: err.stack,
+        }),
     });
 });
-// Export for Vercel/Render
+const PORT = parseInt(process.env.PORT || "5000", 10);
+app.listen(PORT, "0.0.0.0", () => {
+    console.log("Server running on port " + PORT);
+    console.log("Environment: " +
+        (process.env.NODE_ENV ||
+            "development"));
+    console.log("Auth Bypass: " +
+        (BYPASS_AUTH
+            ? "ENABLED"
+            : "DISABLED"));
+    console.log("Books API: /api/books");
+    console.log("Checkout API: /api/checkout/status");
+    console.log("Upload Cover API: /api/upload-cover");
+    console.log("Upload PDF API: /api/upload-pdf");
+    console.log("Payments API: /api/payments");
+    console.log("Health Check: /health");
+    console.log("Uploads Directory: " +
+        uploadsDir);
+    console.log("");
+    console.log("Email Configuration");
+    console.log("SMTP Host:", process.env.SMTP_HOST ||
+        "Missing");
+    console.log("SMTP User:", process.env.SMTP_USER ||
+        "Missing");
+    console.log("Admin Email:", process.env.ADMIN_EMAIL ||
+        "Missing");
+    console.log("SMTP Password:", process.env.SMTP_PASS
+        ? "Loaded"
+        : "Missing");
+    if (BYPASS_AUTH) {
+        console.log("WARNING: Authentication is BYPASSED");
+    }
+});
 exports.default = app;
-// For local development only
-if (isDevelopment || process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-        console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-        console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`🔓 Auth Bypass: ${BYPASS_AUTH ? 'ENABLED' : 'DISABLED'}`);
-        console.log(`📚 Books API: http://localhost:${PORT}/api/books`);
-        console.log(`💳 Checkout API: http://localhost:${PORT}/api/checkout/status | POST /api/checkout/session`);
-        console.log(`🖼️  Upload API: http://localhost:${PORT}/api/upload-cover`);
-        console.log(`📧 Invite API: http://localhost:${PORT}/api/invite`);
-        console.log(`📁 Uploads served from: /uploads\n`);
-        if (BYPASS_AUTH) {
-            console.log('⚠️  DEVELOPMENT MODE: Authentication is BYPASSED');
-            console.log('   - All admin routes are accessible without tokens');
-            console.log('   - Use admin@example.com / admin123 to login\n');
-        }
-    });
-}

@@ -85,36 +85,59 @@ router.post('/upload-cover', authMiddleware_1.isAdmin, uploadImage.single('cover
     }
 });
 // Upload PDF to Cloudinary
-router.post('/upload-pdf', authMiddleware_1.isAdmin, uploadPdf.single('pdf'), async (req, res) => {
+router.post("/upload-pdf", authMiddleware_1.isAdmin, uploadPdf.single("pdf"), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'No PDF file uploaded' });
+            return res.status(400).json({
+                success: false,
+                error: "No PDF uploaded",
+            });
         }
         console.log(`📤 Uploading PDF: ${req.file.originalname} (${req.file.size} bytes)`);
-        const uploadPromise = new Promise((resolve, reject) => {
+        const result = await new Promise((resolve, reject) => {
             const uploadStream = cloudinary_1.v2.uploader.upload_stream({
-                folder: 'cozy-book-nook/pdfs',
-                resource_type: 'auto', // Cloudinary will detect it as PDF
-                format: 'pdf',
+                folder: "cozy-book-nook/pdfs",
+                // Upload as RAW (recommended for PDFs)
+                resource_type: "raw",
+                use_filename: true,
+                unique_filename: true,
+                overwrite: true,
             }, (error, result) => {
                 if (error)
-                    reject(error);
-                else
-                    resolve(result);
+                    return reject(error);
+                resolve(result);
             });
             uploadStream.end(req.file.buffer);
         });
-        const result = await uploadPromise;
-        console.log('✅ PDF uploaded:', result.secure_url);
-        res.json({
-            url: result.secure_url,
-            filename: result.public_id,
-            message: 'PDF upload successful'
+        console.log("✅ PDF Uploaded");
+        console.log(result.secure_url);
+        /**
+         * Convert first page of PDF into a JPG preview.
+         *
+         * Cloudinary can transform RAW PDFs into images.
+         */
+        const previewImage = cloudinary_1.v2.url(result.public_id, {
+            resource_type: "raw",
+            format: "jpg",
+            page: 1,
+            secure: true,
+        });
+        console.log("🖼 Preview:", previewImage);
+        return res.json({
+            success: true,
+            pdfUrl: result.secure_url,
+            pdfPreviewImage: previewImage,
+            publicId: result.public_id,
+            filename: result.original_filename,
+            message: "PDF uploaded successfully",
         });
     }
-    catch (error) {
-        console.error('PDF upload error:', error);
-        res.status(500).json({ error: 'PDF upload failed' });
+    catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            success: false,
+            error: err.message,
+        });
     }
 });
 // Test endpoint
