@@ -1,99 +1,157 @@
 // backend/src/routes/upload.routes.ts
-import { Router } from 'express';
-import multer from 'multer';
-import { v2 as cloudinary } from 'cloudinary';
-import { isAdmin } from '../middleware/authMiddleware';
+
+import { Router } from "express";
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
+import { isAdmin } from "../middleware/authMiddleware";
 
 const router = Router();
 
-// Configure cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure multer for memory storage
 const storage = multer.memoryStorage();
 
-// File filter for images
-const imageFilter = (req: any, file: any, cb: any) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
-  const extname = allowedTypes.test(file.originalname.split('.').pop()?.toLowerCase() || '');
-  const mimetype = allowedTypes.test(file.mimetype);
+const imageFilter = (
+  req: any,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  const allowedMimeTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+  ];
 
-  if (mimetype && extname) {
-    return cb(null, true);
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed'));
+    cb(new Error("Only JPG, PNG, WebP and GIF images are allowed."));
   }
 };
 
-// File filter for PDFs
-const pdfFilter = (req: any, file: any, cb: any) => {
-  if (file.mimetype === 'application/pdf') {
-    return cb(null, true);
+const pdfFilter = (
+  req: any,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  if (file.mimetype === "application/pdf") {
+    cb(null, true);
   } else {
-    cb(new Error('Only PDF files are allowed'));
+    cb(new Error("Only PDF files are allowed."));
   }
 };
 
 const uploadImage = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  fileFilter: imageFilter
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+  fileFilter: imageFilter,
 });
 
 const uploadPdf = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB for PDFs
-  fileFilter: pdfFilter
+  limits: {
+    fileSize: 50 * 1024 * 1024,
+  },
+  fileFilter: pdfFilter,
 });
 
-// Upload cover image to Cloudinary
-router.post('/upload-cover', isAdmin, uploadImage.single('cover'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
+/*
+|--------------------------------------------------------------------------
+| COVER IMAGE
+|--------------------------------------------------------------------------
+| POST /api/upload-cover
+|
+| IMPORTANT:
+| Frontend must send:
+| formData.append("cover", file)
+|--------------------------------------------------------------------------
+*/
 
-    console.log(`📤 Uploading cover: ${req.file.originalname} (${req.file.size} bytes)`);
+router.post(
+  "/upload-cover",
+  isAdmin,
+  uploadImage.single("cover"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: "No cover image uploaded.",
+        });
+      }
 
-    const uploadPromise = new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'cozy-book-nook/covers',
-          resource_type: 'auto',
-          quality: 'auto',
-          transformation: [
-            { width: 500, height: 750, crop: 'fill' }
-          ]
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
+      console.log(
+        `📤 Uploading cover: ${req.file.originalname} (${req.file.size} bytes)`
       );
 
-      uploadStream.end(req.file!.buffer);
-    });
+      const result: any = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "cozy-book-nook/covers",
+            resource_type: "image",
+            transformation: [
+              {
+                width: 500,
+                height: 750,
+                crop: "fill",
+              },
+            ],
+          },
+          (error, result) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(result);
+            }
+          }
+        );
 
-    const result = await uploadPromise as any;
+        stream.end(req.file!.buffer);
+      });
 
-    console.log('✅ Cover uploaded:', result.secure_url);
+      console.log("✅ Cover uploaded");
+      console.log("🖼 Cover URL:", result.secure_url);
 
-    res.json({
-      url: result.secure_url,
-      filename: result.public_id,
-      message: 'Upload successful'
-    });
-  } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ error: 'Upload failed' });
+      return res.status(200).json({
+        success: true,
+        url: result.secure_url,
+        secure_url: result.secure_url,
+        publicId: result.public_id,
+        filename: req.file.originalname,
+        message: "Cover uploaded successfully.",
+      });
+    } catch (error: any) {
+      console.error("❌ Cover upload failed:", error);
+
+      return res.status(500).json({
+        success: false,
+        error:
+          error?.message ||
+          "Failed to upload cover image.",
+      });
+    }
   }
-});
+);
 
-// Upload PDF to Cloudinary
+/*
+|--------------------------------------------------------------------------
+| PDF
+|--------------------------------------------------------------------------
+| POST /api/upload-pdf
+|
+| Frontend must send:
+| formData.append("pdf", file)
+|--------------------------------------------------------------------------
+*/
+
 router.post(
   "/upload-pdf",
   isAdmin,
@@ -103,7 +161,7 @@ router.post(
       if (!req.file) {
         return res.status(400).json({
           success: false,
-          error: "No PDF uploaded",
+          error: "No PDF uploaded.",
         });
       }
 
@@ -112,72 +170,71 @@ router.post(
       );
 
       const result: any = await new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
+        const stream = cloudinary.uploader.upload_stream(
           {
             folder: "cozy-book-nook/pdfs",
-
-            // Upload as RAW (recommended for PDFs)
             resource_type: "raw",
-
             use_filename: true,
             unique_filename: true,
             overwrite: true,
           },
           (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
+            if (error) {
+              reject(error);
+            } else {
+              resolve(result);
+            }
           }
         );
 
-        uploadStream.end(req.file!.buffer);
+        stream.end(req.file!.buffer);
       });
 
       console.log("✅ PDF Uploaded");
-      console.log(result.secure_url);
+      console.log("📕 PDF URL:", result.secure_url);
 
-      /**
-       * Convert first page of PDF into a JPG preview.
-       *
-       * Cloudinary can transform RAW PDFs into images.
-       */
-      const previewImage = cloudinary.url(result.public_id, {
-        resource_type: "raw",
-        format: "jpg",
-        page: 1,
-        secure: true,
-      });
+      const previewImage = cloudinary.url(
+        result.public_id,
+        {
+          resource_type: "raw",
+          format: "jpg",
+          page: 1,
+          secure: true,
+        }
+      );
 
-      console.log("🖼 Preview:", previewImage);
+      console.log(
+        "🖼 PDF Preview:",
+        previewImage
+      );
 
-      return res.json({
+      return res.status(200).json({
         success: true,
-
         pdfUrl: result.secure_url,
-
         pdfPreviewImage: previewImage,
-
         publicId: result.public_id,
-
-        filename: result.original_filename,
-
-        message: "PDF uploaded successfully",
+        filename: req.file.originalname,
+        message: "PDF uploaded successfully.",
       });
-    } catch (err: any) {
-      console.error(err);
+    } catch (error: any) {
+      console.error("❌ PDF upload failed:", error);
 
       return res.status(500).json({
         success: false,
-        error: err.message,
+        error:
+          error?.message ||
+          "Failed to upload PDF.",
       });
     }
   }
 );
 
-// Test endpoint
-router.get('/upload-test', (req, res) => {
+router.get("/upload-test", (req, res) => {
   res.json({
-    message: 'Upload routes are working!',
-    cloudinaryConfigured: !!process.env.CLOUDINARY_CLOUD_NAME
+    success: true,
+    message: "Upload routes are working.",
+    cloudinaryConfigured:
+      !!process.env.CLOUDINARY_CLOUD_NAME,
   });
 });
 

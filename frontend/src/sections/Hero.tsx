@@ -286,7 +286,7 @@ const Hero = () => {
                   sm:text-base
                 "
               >
-               <a href="/books" className="focus:outline-none">
+                <a href="/books" className="focus:outline-none">
                   Explore Books
                 </a>
 

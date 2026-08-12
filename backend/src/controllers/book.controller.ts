@@ -2,7 +2,6 @@
 
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
-import { generateBookSummary } from "../services/ai.service";
 
 /* -------------------------------------------------------------------------- */
 /* HELPERS                                                                    */
@@ -54,7 +53,97 @@ async function generateUniqueSlug(
 }
 
 /* -------------------------------------------------------------------------- */
-/* GET ALL BOOKS                                                              */
+/* PUBLIC BOOK RESPONSE                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Public response.
+ *
+ * IMPORTANT:
+ * pdfUrl is NEVER returned here.
+ */
+function sanitizePublicBook(book: any) {
+  return {
+    id: book.id,
+    slug: book.slug,
+    title: book.title,
+    author: book.author,
+
+    description: book.description,
+    genre: book.genre,
+
+    coverImage: book.coverImage,
+
+    publishedYear: book.publishedYear,
+    pages: book.pages,
+    rating: book.rating,
+    priceCents: book.priceCents,
+
+    createdAt: book.createdAt,
+    updatedAt: book.updatedAt,
+
+    pdfPreviewImage: book.pdfPreviewImage,
+
+    hasDigitalEdition: Boolean(book.pdfUrl),
+
+    aiSummary: book.aiSummary,
+    shortSummary: book.shortSummary,
+    keyThemes: book.keyThemes,
+    keywords: book.keywords,
+    readingTime: book.readingTime,
+    targetAudience: book.targetAudience,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* ADMIN BOOK RESPONSE                                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Admin response.
+ *
+ * This response includes pdfUrl because the admin dashboard
+ * needs to know which PDF is attached to the book.
+ *
+ * IMPORTANT:
+ * This endpoint MUST be protected by your admin middleware.
+ */
+function sanitizeAdminBook(book: any) {
+  return {
+    id: book.id,
+    slug: book.slug,
+    title: book.title,
+    author: book.author,
+
+    description: book.description,
+    genre: book.genre,
+
+    coverImage: book.coverImage,
+
+    publishedYear: book.publishedYear,
+    pages: book.pages,
+    rating: book.rating,
+    priceCents: book.priceCents,
+
+    pdfUrl: book.pdfUrl,
+    pdfPreviewImage: book.pdfPreviewImage,
+
+    hasDigitalEdition: Boolean(book.pdfUrl),
+
+    aiSummary: book.aiSummary,
+    shortSummary: book.shortSummary,
+    keyThemes: book.keyThemes,
+    keywords: book.keywords,
+    readingTime: book.readingTime,
+    targetAudience: book.targetAudience,
+
+    createdAt: book.createdAt,
+    updatedAt: book.updatedAt,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* GET ALL PUBLIC BOOKS                                                       */
 /* -------------------------------------------------------------------------- */
 
 const getBooks = async (
@@ -68,9 +157,16 @@ const getBooks = async (
       },
     });
 
-    return res.json(books);
+    const publicBooks = books.map(
+      sanitizePublicBook
+    );
+
+    return res.json(publicBooks);
   } catch (error: any) {
-    console.error("❌ Error fetching books:", error);
+    console.error(
+      "❌ Error fetching books:",
+      error
+    );
 
     return res.status(500).json({
       error: "Failed to fetch books",
@@ -80,7 +176,7 @@ const getBooks = async (
 };
 
 /* -------------------------------------------------------------------------- */
-/* GET ONE BOOK                                                               */
+/* GET ONE PUBLIC BOOK                                                        */
 /* -------------------------------------------------------------------------- */
 
 const getBook = async (
@@ -95,7 +191,8 @@ const getBook = async (
     const uuidPattern =
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-    const isUUID = uuidPattern.test(idOrSlug);
+    const isUUID =
+      uuidPattern.test(idOrSlug);
 
     const book = isUUID
       ? await prisma.book.findUnique({
@@ -115,7 +212,9 @@ const getBook = async (
       });
     }
 
-    return res.json(book);
+    return res.json(
+      sanitizePublicBook(book)
+    );
   } catch (error: any) {
     console.error(
       "❌ Error fetching book:",
@@ -124,6 +223,72 @@ const getBook = async (
 
     return res.status(500).json({
       error: "Failed to fetch book",
+      details: error?.message,
+    });
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/* GET ONE ADMIN BOOK                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * ADMIN ONLY
+ *
+ * This endpoint returns pdfUrl.
+ *
+ * Example:
+ *
+ * GET /api/admin/books/:id
+ */
+const getAdminBook = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const id = getSingleParam(
+      req.params.id
+    );
+
+    console.log(
+      "🔐 Admin fetching book:",
+      id
+    );
+
+    const book =
+      await prisma.book.findUnique({
+        where: {
+          id,
+        },
+      });
+
+    if (!book) {
+      return res.status(404).json({
+        error: "Book not found",
+      });
+    }
+
+    console.log(
+      "📕 Admin book PDF:",
+      Boolean(book.pdfUrl)
+    );
+
+    console.log(
+      "🖼️ Admin book cover:",
+      Boolean(book.coverImage)
+    );
+
+    return res.json(
+      sanitizeAdminBook(book)
+    );
+  } catch (error: any) {
+    console.error(
+      "❌ Error fetching admin book:",
+      error
+    );
+
+    return res.status(500).json({
+      error: "Failed to fetch admin book",
       details: error?.message,
     });
   }
@@ -154,13 +319,10 @@ const createBook = async (
 
     if (!title || !author) {
       return res.status(400).json({
-        error: "Title and author are required",
+        error:
+          "Title and author are required",
       });
     }
-
-    /* ---------------------------------------------------------------------- */
-    /* SLUG                                                                   */
-    /* ---------------------------------------------------------------------- */
 
     const slug = req.body.slug
       ? String(req.body.slug).trim()
@@ -168,11 +330,9 @@ const createBook = async (
           String(title)
         );
 
-    /* ---------------------------------------------------------------------- */
-    /* PRICE                                                                  */
-    /* ---------------------------------------------------------------------- */
-
-    let resolvedPrice: number | null = null;
+    let resolvedPrice:
+      | number
+      | null = null;
 
     if (
       priceCents !== undefined &&
@@ -181,171 +341,112 @@ const createBook = async (
     ) {
       const n = Number(priceCents);
 
-      resolvedPrice =
-        Number.isInteger(n) && n >= 0
-          ? n
-          : null;
+      if (
+        Number.isInteger(n) &&
+        n >= 0
+      ) {
+        resolvedPrice = n;
+      }
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* CREATE                                                                  */
-    /* ---------------------------------------------------------------------- */
+    const newBook =
+      await prisma.book.create({
+        data: {
+          title: String(title).trim(),
 
-    const newBook = await prisma.book.create({
-      data: {
-        title: String(title).trim(),
+          author: String(author).trim(),
 
-        author: String(author).trim(),
+          slug,
 
-        slug,
+          description:
+            description === null ||
+            description === ""
+              ? null
+              : String(description),
 
-        description:
-          description === null ||
-          description === ""
-            ? null
-            : String(description),
+          coverImage:
+            coverImage === null ||
+            coverImage === ""
+              ? null
+              : String(coverImage),
 
-        coverImage:
-          coverImage === null ||
-          coverImage === ""
-            ? null
-            : String(coverImage),
+          genre:
+            genre === null ||
+            genre === ""
+              ? null
+              : String(genre),
 
-        genre:
-          genre === null ||
-          genre === ""
-            ? null
-            : String(genre),
+          publishedYear:
+            publishedYear === null ||
+            publishedYear === ""
+              ? null
+              : Number(publishedYear),
 
-        publishedYear:
-          publishedYear === null ||
-          publishedYear === ""
-            ? null
-            : Number(publishedYear),
+          pages:
+            pages === null ||
+            pages === ""
+              ? null
+              : Number(pages),
 
-        pages:
-          pages === null ||
-          pages === ""
-            ? null
-            : Number(pages),
+          rating:
+            rating === undefined ||
+            rating === null ||
+            rating === ""
+              ? 0
+              : Number(rating),
 
-        rating:
-          rating === undefined ||
-          rating === null ||
-          rating === ""
-            ? 0
-            : Number(rating),
+          priceCents:
+            resolvedPrice,
 
-        priceCents: resolvedPrice,
+          pdfUrl:
+            pdfUrl === null ||
+            pdfUrl === ""
+              ? null
+              : String(pdfUrl),
 
-        pdfUrl:
-          pdfUrl === null ||
-          pdfUrl === ""
-            ? null
-            : String(pdfUrl),
+          pdfPreviewImage:
+            pdfPreviewImage === null ||
+            pdfPreviewImage === ""
+              ? null
+              : String(pdfPreviewImage),
+        },
+      });
 
-        pdfPreviewImage:
-          pdfPreviewImage === null ||
-          pdfPreviewImage === ""
-            ? null
-            : String(pdfPreviewImage),
-      },
-    });
+    console.log(
+      "✅ Book created:",
+      {
+        id: newBook.id,
+        title: newBook.title,
+        hasCover: Boolean(
+          newBook.coverImage
+        ),
+        hasPdf: Boolean(
+          newBook.pdfUrl
+        ),
+        hasPreview: Boolean(
+          newBook.pdfPreviewImage
+        ),
+      }
+    );
 
-    console.log("✅ Book created:", {
-      id: newBook.id,
-      title: newBook.title,
-      slug: newBook.slug,
-      pdfUrl: newBook.pdfUrl,
-      pdfPreviewImage:
-        newBook.pdfPreviewImage,
-    });
-
-    /* ---------------------------------------------------------------------- */
-    /* RETURN BOOK IMMEDIATELY                                                */
-    /* ---------------------------------------------------------------------- */
-
-    res.status(201).json(newBook);
-
-    /* ---------------------------------------------------------------------- */
-    /* AI ANALYSIS                                                            */
-    /* ---------------------------------------------------------------------- */
-
-    if (pdfUrl) {
-      void generateBookSummary(
-        String(pdfUrl)
-      )
-        .then(async (aiResult) => {
-          try {
-            await prisma.book.update({
-              where: {
-                id: newBook.id,
-              },
-
-              data: {
-                aiSummary:
-                  aiResult.summary,
-
-                shortSummary:
-                  aiResult.shortSummary,
-
-                keyThemes:
-                  aiResult.keyThemes,
-
-                keywords:
-                  aiResult.keywords,
-
-                readingTime:
-                  aiResult.readingTime,
-
-                targetAudience:
-                  aiResult.targetAudience,
-
-                /*
-                 * IMPORTANT:
-                 *
-                 * We do NOT save:
-                 *
-                 * summary: aiResult.summary
-                 *
-                 * because the current Prisma Book model
-                 * does not contain a "summary" field.
-                 *
-                 * The summary is stored in aiSummary instead.
-                 */
-              },
-            });
-
-            console.log(
-              `✅ AI analysis saved for "${newBook.title}"`
-            );
-          } catch (error) {
-            console.error(
-              `❌ Failed saving AI analysis for "${newBook.title}":`,
-              error
-            );
-          }
-        })
-        .catch((error) => {
-          console.error(
-            `❌ AI analysis failed for "${newBook.title}":`,
-            error
-          );
-        });
-    }
+    /*
+     * Return the admin version because this
+     * endpoint is used by the admin dashboard.
+     */
+    return res.status(201).json(
+      sanitizeAdminBook(newBook)
+    );
   } catch (error: any) {
     console.error(
       "❌ Error creating book:",
       error
     );
 
-    if (!res.headersSent) {
-      return res.status(500).json({
-        error: "Failed to create book",
-        details: error?.message,
-        code: error?.code,
-      });
-    }
+    return res.status(500).json({
+      error: "Failed to create book",
+      details: error?.message,
+      code: error?.code,
+    });
   }
 };
 
@@ -366,25 +467,17 @@ const updateBook = async (
     console.log(
       "========================================"
     );
-    console.log("📚 UPDATE BOOK");
+    console.log(
+      "📚 UPDATE BOOK"
+    );
     console.log(
       "========================================"
     );
 
-    console.log("Book ID:", id);
-
     console.log(
-      "Request body:",
-      JSON.stringify(
-        req.body,
-        null,
-        2
-      )
+      "Book ID:",
+      id
     );
-
-    /* ---------------------------------------------------------------------- */
-    /* CHECK EXISTING BOOK                                                    */
-    /* ---------------------------------------------------------------------- */
 
     const existingBook =
       await prisma.book.findUnique({
@@ -394,20 +487,11 @@ const updateBook = async (
       });
 
     if (!existingBook) {
-      console.error(
-        "❌ Book does not exist:",
-        id
-      );
-
       return res.status(404).json({
         error: "Book not found",
         id,
       });
     }
-
-    /* ---------------------------------------------------------------------- */
-    /* REQUEST DATA                                                            */
-    /* ---------------------------------------------------------------------- */
 
     const {
       title,
@@ -426,27 +510,21 @@ const updateBook = async (
 
     const updateData: any = {};
 
-    /* ---------------------------------------------------------------------- */
-    /* TITLE                                                                  */
-    /* ---------------------------------------------------------------------- */
+    /* ------------------------------- TITLE ------------------------------- */
 
     if (title !== undefined) {
       updateData.title =
         String(title).trim();
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* AUTHOR                                                                 */
-    /* ---------------------------------------------------------------------- */
+    /* ------------------------------- AUTHOR ------------------------------ */
 
     if (author !== undefined) {
       updateData.author =
         String(author).trim();
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* DESCRIPTION                                                            */
-    /* ---------------------------------------------------------------------- */
+    /* ----------------------------- DESCRIPTION --------------------------- */
 
     if (description !== undefined) {
       updateData.description =
@@ -456,9 +534,7 @@ const updateBook = async (
           : String(description);
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* COVER IMAGE                                                            */
-    /* ---------------------------------------------------------------------- */
+    /* ----------------------------- COVER IMAGE --------------------------- */
 
     if (coverImage !== undefined) {
       updateData.coverImage =
@@ -468,9 +544,7 @@ const updateBook = async (
           : String(coverImage);
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* GENRE                                                                  */
-    /* ---------------------------------------------------------------------- */
+    /* -------------------------------- GENRE ------------------------------- */
 
     if (genre !== undefined) {
       updateData.genre =
@@ -480,11 +554,11 @@ const updateBook = async (
           : String(genre);
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* PUBLISHED YEAR                                                         */
-    /* ---------------------------------------------------------------------- */
+    /* --------------------------- PUBLISHED YEAR -------------------------- */
 
-    if (publishedYear !== undefined) {
+    if (
+      publishedYear !== undefined
+    ) {
       updateData.publishedYear =
         publishedYear === null ||
         publishedYear === ""
@@ -492,9 +566,7 @@ const updateBook = async (
           : Number(publishedYear);
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* PAGES                                                                  */
-    /* ---------------------------------------------------------------------- */
+    /* -------------------------------- PAGES ------------------------------- */
 
     if (pages !== undefined) {
       updateData.pages =
@@ -504,9 +576,7 @@ const updateBook = async (
           : Number(pages);
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* RATING                                                                 */
-    /* ---------------------------------------------------------------------- */
+    /* ------------------------------- RATING ------------------------------ */
 
     if (rating !== undefined) {
       const parsedRating =
@@ -522,9 +592,7 @@ const updateBook = async (
       }
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* SLUG                                                                   */
-    /* ---------------------------------------------------------------------- */
+    /* -------------------------------- SLUG -------------------------------- */
 
     if (
       slug !== undefined &&
@@ -535,11 +603,11 @@ const updateBook = async (
         String(slug).trim();
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* PRICE                                                                  */
-    /* ---------------------------------------------------------------------- */
+    /* ------------------------------- PRICE ------------------------------- */
 
-    if (priceCents !== undefined) {
+    if (
+      priceCents !== undefined
+    ) {
       if (
         priceCents === null ||
         priceCents === ""
@@ -550,21 +618,15 @@ const updateBook = async (
         const n =
           Number(priceCents);
 
-        if (
+        updateData.priceCents =
           Number.isInteger(n) &&
           n >= 0
-        ) {
-          updateData.priceCents = n;
-        } else {
-          updateData.priceCents =
-            null;
-        }
+            ? n
+            : null;
       }
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* PDF URL                                                                */
-    /* ---------------------------------------------------------------------- */
+    /* ------------------------------- PDF --------------------------------- */
 
     if (pdfUrl !== undefined) {
       updateData.pdfUrl =
@@ -579,9 +641,7 @@ const updateBook = async (
       );
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* PDF PREVIEW IMAGE                                                      */
-    /* ---------------------------------------------------------------------- */
+    /* -------------------------- PDF PREVIEW ------------------------------ */
 
     if (
       pdfPreviewImage !==
@@ -594,43 +654,52 @@ const updateBook = async (
           : String(pdfPreviewImage);
 
       console.log(
-        "🖼️ PDF preview image:",
-        updateData.pdfPreviewImage
+        "🖼️ PDF preview received:",
+        Boolean(
+          updateData.pdfPreviewImage
+        )
       );
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* FINAL DATA                                                             */
-    /* ---------------------------------------------------------------------- */
+    /* -------------------------- DATABASE UPDATE -------------------------- */
 
     console.log(
-      "📦 FINAL PRISMA UPDATE DATA:"
+      "💾 Updating database with:"
     );
 
-    console.log(
-      JSON.stringify(
-        updateData,
-        null,
-        2
-      )
-    );
+    console.log({
+      hasCover:
+        updateData.coverImage !==
+        undefined
+          ? Boolean(
+              updateData.coverImage
+            )
+          : "unchanged",
 
-    /* ---------------------------------------------------------------------- */
-    /* UPDATE DATABASE                                                        */
-    /* ---------------------------------------------------------------------- */
+      hasPdf:
+        updateData.pdfUrl !==
+        undefined
+          ? Boolean(
+              updateData.pdfUrl
+            )
+          : "unchanged",
+
+      hasPreview:
+        updateData.pdfPreviewImage !==
+        undefined
+          ? Boolean(
+              updateData.pdfPreviewImage
+            )
+          : "unchanged",
+    });
 
     const updatedBook =
       await prisma.book.update({
         where: {
           id,
         },
-
         data: updateData,
       });
-
-    console.log(
-      "========================================"
-    );
 
     console.log(
       "✅ BOOK UPDATED SUCCESSFULLY"
@@ -639,64 +708,31 @@ const updateBook = async (
     console.log({
       id: updatedBook.id,
       title: updatedBook.title,
-      slug: updatedBook.slug,
-      coverImage:
-        updatedBook.coverImage,
-      pdfUrl:
-        updatedBook.pdfUrl,
-      pdfPreviewImage:
-        updatedBook.pdfPreviewImage,
+      hasCover: Boolean(
+        updatedBook.coverImage
+      ),
+      hasPdf: Boolean(
+        updatedBook.pdfUrl
+      ),
+      hasPreview: Boolean(
+        updatedBook.pdfPreviewImage
+      ),
     });
 
-    console.log(
-      "========================================"
-    );
-
-    console.log("");
-
+    /*
+     * This is an ADMIN endpoint,
+     * therefore return pdfUrl.
+     */
     return res.json(
-      updatedBook
+      sanitizeAdminBook(
+        updatedBook
+      )
     );
   } catch (error: any) {
-    console.error("");
-
     console.error(
-      "========================================"
+      "❌ ERROR UPDATING BOOK:",
+      error
     );
-
-    console.error(
-      "❌ ERROR UPDATING BOOK"
-    );
-
-    console.error(
-      "========================================"
-    );
-
-    console.error(
-      "Message:",
-      error?.message
-    );
-
-    console.error(
-      "Code:",
-      error?.code
-    );
-
-    console.error(
-      "Meta:",
-      error?.meta
-    );
-
-    console.error(
-      "Stack:",
-      error?.stack
-    );
-
-    console.error(
-      "========================================"
-    );
-
-    console.error("");
 
     return res.status(500).json({
       error:
@@ -727,15 +763,35 @@ const deleteBook = async (
       req.params.id
     );
 
+    const existingBook =
+      await prisma.book.findUnique({
+        where: {
+          id,
+        },
+      });
+
+    if (!existingBook) {
+      return res.status(404).json({
+        error: "Book not found",
+      });
+    }
+
     await prisma.book.delete({
       where: {
         id,
       },
     });
 
+    console.log(
+      "🗑️ Book deleted:",
+      id
+    );
+
     return res.json({
+      success: true,
       message:
         "Book deleted successfully",
+      id,
     });
   } catch (error: any) {
     console.error(
@@ -744,9 +800,9 @@ const deleteBook = async (
     );
 
     return res.status(500).json({
+      success: false,
       error:
         "Failed to delete book",
-
       details:
         error?.message,
     });
@@ -760,6 +816,7 @@ const deleteBook = async (
 export {
   getBooks,
   getBook,
+  getAdminBook,
   createBook,
   updateBook,
   deleteBook,
