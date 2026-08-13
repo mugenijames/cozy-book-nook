@@ -1,101 +1,216 @@
+// backend/src/services/bookPreview.service.ts
+
 import { prisma } from "../lib/prisma";
 import { PDFDocument } from "pdf-lib";
 import { v2 as cloudinary } from "cloudinary";
 import axios from "axios";
 import streamifier from "streamifier";
 
-/**
- * Number of pages customers can read before purchasing.
- */
+/* ==========================================================================
+   CONFIGURATION
+   ========================================================================== */
+
 const PREVIEW_PAGE_COUNT = 3;
 
-/**
- * Configure Cloudinary.
- *
- * These should already exist in your backend .env because
- * your existing upload system is already using Cloudinary.
- */
+const MAX_PDF_SIZE =
+  50 * 1024 * 1024;
+
+/* ==========================================================================
+   CLOUDINARY
+   ========================================================================== */
+
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name:
+    process.env.CLOUDINARY_CLOUD_NAME,
+
+  api_key:
+    process.env.CLOUDINARY_API_KEY,
+
+  api_secret:
+    process.env.CLOUDINARY_API_SECRET,
 });
 
-/**
- * Upload a generated PDF buffer to Cloudinary.
- */
+/* ==========================================================================
+   UPLOAD PREVIEW PDF
+   ========================================================================== */
+
 async function uploadPreviewToCloudinary(
   buffer: Buffer,
   bookId: string
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
+  return new Promise(
+    (resolve, reject) => {
+      const uploadStream =
+        cloudinary.uploader.upload_stream(
+          {
+            resource_type: "raw",
+
+            folder:
+              "cozy-book-nook/previews",
+
+            public_id:
+              `book-preview-${bookId}`,
+
+            format: "pdf",
+
+            overwrite: true,
+          },
+
+          (error, result) => {
+            if (error) {
+              console.error(
+                "❌ Cloudinary preview upload error:",
+                error
+              );
+
+              reject(error);
+              return;
+            }
+
+            if (
+              !result ||
+              !result.secure_url
+            ) {
+              reject(
+                new Error(
+                  "Cloudinary did not return a preview URL."
+                )
+              );
+
+              return;
+            }
+
+            resolve(
+              result.secure_url
+            );
+          }
+        );
+
+      streamifier
+        .createReadStream(buffer)
+        .pipe(uploadStream);
+    }
+  );
+}
+
+/* ==========================================================================
+   DOWNLOAD PDF
+   ========================================================================== */
+
+/**
+ * Downloads the original PDF from Cloudinary.
+ *
+ * We explicitly type the returned data as ArrayBuffer
+ * so TypeScript does not treat response.data as unknown.
+ */
+async function downloadPdf(
+  pdfUrl: string
+): Promise<Buffer> {
+  console.log(
+    "📥 Downloading original PDF..."
+  );
+
+  const response =
+    await axios.get<ArrayBuffer>(
+      pdfUrl,
       {
-        resource_type: "raw",
-        folder: "cozy-book-nook/previews",
-        public_id: `book-preview-${bookId}`,
-        format: "pdf",
-        overwrite: true,
-      },
-      (error, result) => {
-        if (error) {
-          reject(error);
-          return;
-        }
+        responseType:
+          "arraybuffer",
 
-        if (!result?.secure_url) {
-          reject(
-            new Error(
-              "Cloudinary did not return a preview URL."
-            )
-          );
-          return;
-        }
-
-        resolve(result.secure_url);
+        timeout:
+          120000,
       }
     );
 
-    streamifier.createReadStream(buffer).pipe(uploadStream);
-  });
+  /*
+   * Axios in your current project is returning
+   * response.data as unknown despite the generic.
+   *
+   * Explicitly cast it here.
+   */
+  const data =
+    response.data as ArrayBuffer;
+
+  if (!data) {
+    throw new Error(
+      "Downloaded PDF data is empty."
+    );
+  }
+
+  const buffer =
+    Buffer.from(data);
+
+  console.log(
+    "📄 Downloaded PDF size:",
+    (
+      buffer.length /
+      1024 /
+      1024
+    ).toFixed(2),
+    "MB"
+  );
+
+  if (
+    buffer.length >
+    MAX_PDF_SIZE
+  ) {
+    throw new Error(
+      "The PDF is too large. Maximum allowed size is 50 MB."
+    );
+  }
+
+  return buffer;
 }
 
-/**
- * Generate a limited PDF preview.
- *
- * IMPORTANT:
- * This does NOT expose the original full PDF.
- *
- * Only the first PREVIEW_PAGE_COUNT pages are copied
- * into a completely separate PDF file.
- */
+/* ==========================================================================
+   GENERATE BOOK PREVIEW
+   ========================================================================== */
+
 export async function generateBookPreview(
   bookId: string
 ): Promise<string> {
   console.log(
-    "🖼️ Starting protected preview generation:",
+    "========================================"
+  );
+
+  console.log(
+    "🖼️ STARTING BOOK PREVIEW GENERATION"
+  );
+
+  console.log(
+    "Book ID:",
     bookId
   );
 
-  // ---------------------------------------------------------
-  // 1. Find the book
-  // ---------------------------------------------------------
+  console.log(
+    "========================================"
+  );
 
-  const book = await prisma.book.findUnique({
-    where: {
-      id: bookId,
-    },
-  });
+  /* ------------------------------------------------------------------------
+     1. FIND BOOK
+     ------------------------------------------------------------------------ */
+
+  const book =
+    await prisma.book.findUnique({
+      where: {
+        id: bookId,
+      },
+    });
 
   if (!book) {
-    throw new Error("Book not found.");
+    throw new Error(
+      "Book not found."
+    );
   }
 
-  console.log("📚 Book found:", book.title);
+  console.log(
+    "📚 Book found:",
+    book.title
+  );
 
-  // ---------------------------------------------------------
-  // 2. Make sure the book has a PDF
-  // ---------------------------------------------------------
+  /* ------------------------------------------------------------------------
+     2. CHECK PDF
+     ------------------------------------------------------------------------ */
 
   if (!book.pdfUrl) {
     throw new Error(
@@ -103,55 +218,73 @@ export async function generateBookPreview(
     );
   }
 
-  console.log("📕 Full PDF exists.");
-
-  // ---------------------------------------------------------
-  // 3. If preview already exists, reuse it
-  // ---------------------------------------------------------
-
-  if (book.pdfPreviewImage) {
-    console.log(
-      "✅ Existing preview found:",
-      book.pdfPreviewImage
-    );
-
-    return book.pdfPreviewImage;
-  }
-
-  // ---------------------------------------------------------
-  // 4. Download the original PDF
-  // ---------------------------------------------------------
-
-  console.log("📥 Downloading original PDF...");
-
-  const response = await axios.get<ArrayBuffer>(
-    book.pdfUrl,
-    {
-      responseType: "arraybuffer",
-      timeout: 120000,
-    }
-  );
-
-  const originalPdfBuffer = Buffer.from(
-    response.data
+  console.log(
+    "📕 Full PDF exists."
   );
 
   console.log(
-    `📄 Downloaded ${(
-      originalPdfBuffer.length /
-      1024 /
-      1024
-    ).toFixed(2)} MB`
+    "PDF URL:",
+    book.pdfUrl
   );
 
-  // ---------------------------------------------------------
-  // 5. Load original PDF
-  // ---------------------------------------------------------
+  /* ------------------------------------------------------------------------
+     3. CHECK CLOUDINARY
+     ------------------------------------------------------------------------ */
 
-  console.log("📖 Reading PDF...");
+  if (
+    !process.env.CLOUDINARY_CLOUD_NAME ||
+    !process.env.CLOUDINARY_API_KEY ||
+    !process.env.CLOUDINARY_API_SECRET
+  ) {
+    throw new Error(
+      "Cloudinary environment variables are missing."
+    );
+  }
+
+  /* ------------------------------------------------------------------------
+     4. EXISTING PREVIEW
+     ------------------------------------------------------------------------ */
+
+  if (book.pdfPreviewImage) {
+    console.log(
+      "⚠️ Existing preview found:"
+    );
+
+    console.log(
+      book.pdfPreviewImage
+    );
+
+    /*
+     * We deliberately reuse it.
+     *
+     * If you have an old broken preview URL
+     * in the database, delete it before generating
+     * a new preview.
+     */
+    return book.pdfPreviewImage;
+  }
+
+  /* ------------------------------------------------------------------------
+     5. DOWNLOAD ORIGINAL PDF
+     ------------------------------------------------------------------------ */
+
+  const originalPdfBuffer =
+    await downloadPdf(
+      book.pdfUrl
+    );
+
+  /* ------------------------------------------------------------------------
+     6. READ ORIGINAL PDF
+     ------------------------------------------------------------------------ */
+
+  console.log(
+    "📖 Reading PDF..."
+  );
 
   const originalPdf =
-    await PDFDocument.load(originalPdfBuffer);
+    await PDFDocument.load(
+      originalPdfBuffer
+    );
 
   const totalPages =
     originalPdf.getPageCount();
@@ -160,36 +293,45 @@ export async function generateBookPreview(
     `📚 Original PDF contains ${totalPages} pages.`
   );
 
-  if (totalPages === 0) {
+  if (
+    totalPages === 0
+  ) {
     throw new Error(
-      "The PDF does not contain any pages."
+      "The PDF contains no pages."
     );
   }
 
-  // ---------------------------------------------------------
-  // 6. Determine number of preview pages
-  // ---------------------------------------------------------
+  /* ------------------------------------------------------------------------
+     7. DETERMINE PREVIEW PAGES
+     ------------------------------------------------------------------------ */
 
-  const previewPages = Math.min(
-    PREVIEW_PAGE_COUNT,
-    totalPages
-  );
+  const previewPages =
+    Math.min(
+      PREVIEW_PAGE_COUNT,
+      totalPages
+    );
 
   console.log(
-    `👀 Creating preview with ${previewPages} page(s)...`
+    `👀 Creating ${previewPages}-page preview...`
   );
 
-  // ---------------------------------------------------------
-  // 7. Create a completely NEW PDF
-  // ---------------------------------------------------------
+  /* ------------------------------------------------------------------------
+     8. CREATE NEW PDF
+     ------------------------------------------------------------------------ */
 
   const previewPdf =
     await PDFDocument.create();
 
-  const pageIndexes = Array.from(
-    { length: previewPages },
-    (_, index) => index
-  );
+  const pageIndexes =
+    Array.from(
+      {
+        length:
+          previewPages,
+      },
+
+      (_, index) =>
+        index
+    );
 
   const copiedPages =
     await previewPdf.copyPages(
@@ -197,30 +339,40 @@ export async function generateBookPreview(
       pageIndexes
     );
 
-  copiedPages.forEach((page) => {
+  for (
+    const page of copiedPages
+  ) {
     previewPdf.addPage(page);
-  });
+  }
 
-  // ---------------------------------------------------------
-  // 8. Save preview PDF
-  // ---------------------------------------------------------
+  /* ------------------------------------------------------------------------
+     9. SAVE PREVIEW PDF
+     ------------------------------------------------------------------------ */
 
   const previewBytes =
     await previewPdf.save();
 
   const previewBuffer =
-    Buffer.from(previewBytes);
+    Buffer.from(
+      previewBytes
+    );
 
   console.log(
-    `✅ Preview PDF created (${(
-      previewBuffer.length /
-      1024
-    ).toFixed(1)} KB)`
+    "✅ Preview PDF created."
   );
 
-  // ---------------------------------------------------------
-  // 9. Upload preview to Cloudinary
-  // ---------------------------------------------------------
+  console.log(
+    "Preview size:",
+    (
+      previewBuffer.length /
+      1024
+    ).toFixed(1),
+    "KB"
+  );
+
+  /* ------------------------------------------------------------------------
+     10. UPLOAD PREVIEW
+     ------------------------------------------------------------------------ */
 
   console.log(
     "☁️ Uploading preview to Cloudinary..."
@@ -233,13 +385,20 @@ export async function generateBookPreview(
     );
 
   console.log(
-    "✅ Preview uploaded:",
+    "✅ Preview uploaded:"
+  );
+
+  console.log(
     previewUrl
   );
 
-  // ---------------------------------------------------------
-  // 10. Save preview URL
-  // ---------------------------------------------------------
+  /* ------------------------------------------------------------------------
+     11. SAVE DATABASE
+     ------------------------------------------------------------------------ */
+
+  console.log(
+    "💾 Saving preview URL..."
+  );
 
   await prisma.book.update({
     where: {
@@ -247,12 +406,25 @@ export async function generateBookPreview(
     },
 
     data: {
-      pdfPreviewImage: previewUrl,
+      pdfPreviewImage:
+        previewUrl,
     },
   });
 
   console.log(
-    "💾 Preview URL saved to database."
+    "✅ Preview URL saved to database."
+  );
+
+  console.log(
+    "========================================"
+  );
+
+  console.log(
+    "🎉 PREVIEW GENERATION COMPLETE"
+  );
+
+  console.log(
+    "========================================"
   );
 
   return previewUrl;

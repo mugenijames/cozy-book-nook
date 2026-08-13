@@ -1,57 +1,90 @@
 // backend/src/routes/bookPreview.routes.ts
 
-import { Router, Request, Response } from "express";
+import {
+  Router,
+  Request,
+  Response,
+} from "express";
+
 import { prisma } from "../lib/prisma";
-import { generateBookPreview } from "../services/bookPreview.service";
 
-const router = Router();
+import {
+  generateBookPreview,
+} from "../services/bookPreview.service";
 
-/* -------------------------------------------------------------------------- */
-/* HELPER                                                                     */
-/* -------------------------------------------------------------------------- */
+const router =
+  Router();
 
-/**
- * Express can type route parameters as string | string[].
- * We only want the first value as a string.
- */
+/* ==========================================================================
+   HELPER
+   ========================================================================== */
+
 function getSingleParam(
-  value: string | string[] | undefined
+  value:
+    | string
+    | string[]
+    | undefined
 ): string {
   if (!value) {
-    throw new Error("Missing required parameter");
+    throw new Error(
+      "Missing required parameter"
+    );
   }
 
-  return Array.isArray(value) ? value[0] : value;
+  return Array.isArray(value)
+    ? value[0]
+    : value;
 }
 
-/* -------------------------------------------------------------------------- */
-/* GENERATE BOOK PREVIEW                                                      */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   GENERATE PREVIEW
+   ========================================================================== */
 
 /**
- * POST /api/books/:id/generate-preview
+ * POST
  *
- * Generates the protected/limited preview for a book.
- *
- * This endpoint does NOT expose the full PDF.
+ * /api/books/:id/generate-preview
  */
 router.post(
   "/books/:id/generate-preview",
-  async (req: Request, res: Response) => {
+
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
-      const bookId = getSingleParam(req.params.id);
+      const bookId =
+        getSingleParam(
+          req.params.id
+        );
 
       console.log(
-        "🖼️ Generating protected preview:",
+        "========================================"
+      );
+
+      console.log(
+        "🖼️ GENERATE PREVIEW REQUEST"
+      );
+
+      console.log(
+        "Book ID:",
         bookId
       );
 
+      console.log(
+        "========================================"
+      );
+
       const previewUrl =
-        await generateBookPreview(bookId);
+        await generateBookPreview(
+          bookId
+        );
 
       return res.status(200).json({
         success: true,
+
         bookId,
+
         previewUrl,
       });
     } catch (error: any) {
@@ -62,6 +95,7 @@ router.post(
 
       return res.status(500).json({
         success: false,
+
         error:
           error?.message ||
           "Failed to generate book preview.",
@@ -70,29 +104,38 @@ router.post(
   }
 );
 
-/* -------------------------------------------------------------------------- */
-/* GET BOOK PREVIEW                                                           */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   GET PREVIEW
+   ========================================================================== */
 
 /**
- * GET /api/books/:id/preview
+ * GET
  *
- * Returns the limited preview URL.
+ * /api/books/:id/preview
  *
- * IMPORTANT:
- * This does NOT return book.pdfUrl.
+ * Returns ONLY the protected 3-page preview.
+ *
+ * NEVER returns the original pdfUrl.
  */
 router.get(
   "/books/:id/preview",
-  async (req: Request, res: Response) => {
+
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
-      const bookId = getSingleParam(req.params.id);
+      const bookId =
+        getSingleParam(
+          req.params.id
+        );
 
       const book =
         await prisma.book.findUnique({
           where: {
             id: bookId,
           },
+
           select: {
             id: true,
             title: true,
@@ -102,12 +145,17 @@ router.get(
 
       if (!book) {
         return res.status(404).json({
+          success: false,
           error: "Book not found.",
         });
       }
 
-      if (!book.pdfPreviewImage) {
+      if (
+        !book.pdfPreviewImage
+      ) {
         return res.status(404).json({
+          success: false,
+
           error:
             "Preview has not been generated for this book yet.",
         });
@@ -115,17 +163,25 @@ router.get(
 
       return res.status(200).json({
         success: true,
-        bookId: book.id,
-        title: book.title,
-        previewUrl: book.pdfPreviewImage,
+
+        bookId:
+          book.id,
+
+        title:
+          book.title,
+
+        previewUrl:
+          book.pdfPreviewImage,
       });
     } catch (error: any) {
       console.error(
-        "❌ Failed to get book preview:",
+        "❌ Failed to retrieve preview:",
         error
       );
 
       return res.status(500).json({
+        success: false,
+
         error:
           error?.message ||
           "Failed to retrieve book preview.",
@@ -134,43 +190,51 @@ router.get(
   }
 );
 
-/* -------------------------------------------------------------------------- */
-/* GET FULL BOOK AFTER PURCHASE                                               */
-/* -------------------------------------------------------------------------- */
+/* ==========================================================================
+   FULL PDF ACCESS
+   ========================================================================== */
 
 /**
- * GET /api/books/:id/access?transactionCode=XXXX
+ * GET
  *
- * Verifies that the book was purchased before
- * providing access to the full PDF.
+ * /api/books/:id/access?transactionCode=XXXX
  *
- * The public books endpoints NEVER expose pdfUrl.
+ * Only verified purchasers receive the original PDF.
  */
 router.get(
   "/books/:id/access",
-  async (req: Request, res: Response) => {
+
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
-      const bookId = getSingleParam(req.params.id);
+      const bookId =
+        getSingleParam(
+          req.params.id
+        );
 
       const transactionCode =
-        typeof req.query.transactionCode === "string"
-          ? req.query.transactionCode.trim()
+        typeof req.query
+          .transactionCode ===
+        "string"
+          ? req.query
+              .transactionCode
+              .trim()
           : "";
-
-      /* -------------------------------------------------------------------- */
-      /* VALIDATE REQUEST                                                     */
-      /* -------------------------------------------------------------------- */
 
       if (!transactionCode) {
         return res.status(401).json({
+          success: false,
+
           error:
             "Purchase verification is required.",
         });
       }
 
-      /* -------------------------------------------------------------------- */
-      /* VERIFY PURCHASE                                                      */
-      /* -------------------------------------------------------------------- */
+      /* --------------------------------------------------------------------
+         VERIFY ORDER
+         -------------------------------------------------------------------- */
 
       const order =
         await prisma.order.findFirst({
@@ -201,14 +265,16 @@ router.get(
 
       if (!order) {
         return res.status(403).json({
+          success: false,
+
           error:
             "This book has not been purchased or the purchase could not be verified.",
         });
       }
 
-      /* -------------------------------------------------------------------- */
-      /* GET PRIVATE PDF                                                      */
-      /* -------------------------------------------------------------------- */
+      /* --------------------------------------------------------------------
+         GET ORIGINAL PDF
+         -------------------------------------------------------------------- */
 
       const book =
         await prisma.book.findUnique({
@@ -225,35 +291,46 @@ router.get(
 
       if (!book) {
         return res.status(404).json({
-          error: "Book not found.",
+          success: false,
+
+          error:
+            "Book not found.",
         });
       }
 
       if (!book.pdfUrl) {
         return res.status(404).json({
+          success: false,
+
           error:
             "The full PDF is not available.",
         });
       }
 
-      /* -------------------------------------------------------------------- */
-      /* PURCHASE VERIFIED                                                    */
-      /* -------------------------------------------------------------------- */
-
       console.log(
         "🔓 Full PDF access granted:",
         {
-          bookId: book.id,
-          title: book.title,
+          bookId:
+            book.id,
+
+          title:
+            book.title,
+
           transactionCode,
         }
       );
 
       return res.status(200).json({
         success: true,
-        bookId: book.id,
-        title: book.title,
-        pdfUrl: book.pdfUrl,
+
+        bookId:
+          book.id,
+
+        title:
+          book.title,
+
+        pdfUrl:
+          book.pdfUrl,
       });
     } catch (error: any) {
       console.error(
@@ -262,6 +339,8 @@ router.get(
       );
 
       return res.status(500).json({
+        success: false,
+
         error:
           error?.message ||
           "Failed to verify book purchase.",
@@ -269,9 +348,5 @@ router.get(
     }
   }
 );
-
-/* -------------------------------------------------------------------------- */
-/* EXPORT                                                                     */
-/* -------------------------------------------------------------------------- */
 
 export default router;
