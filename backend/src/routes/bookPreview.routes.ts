@@ -1,147 +1,88 @@
 // backend/src/routes/bookPreview.routes.ts
 
-import {
-  Router,
-  Request,
-  Response,
-} from "express";
-
+import { Router, Request, Response } from "express";
+import axios from "axios";
 import { prisma } from "../lib/prisma";
 
-import {
-  generateBookPreview,
-} from "../services/bookPreview.service";
-
-const router =
-  Router();
+const router = Router();
 
 /* ==========================================================================
-   HELPER
+   HELPERS
    ========================================================================== */
 
 function getSingleParam(
-  value:
-    | string
-    | string[]
-    | undefined
+  value: string | string[] | undefined
 ): string {
   if (!value) {
-    throw new Error(
-      "Missing required parameter"
-    );
+    throw new Error("Missing required parameter.");
   }
 
-  return Array.isArray(value)
-    ? value[0]
-    : value;
+  return Array.isArray(value) ? value[0] : value;
 }
 
 /* ==========================================================================
-   GENERATE PREVIEW
+   FREE BOOK INFORMATION
    ========================================================================== */
 
 /**
- * POST
+ * GET /api/books/:id/preview
  *
- * /api/books/:id/generate-preview
- */
-router.post(
-  "/books/:id/generate-preview",
-
-  async (
-    req: Request,
-    res: Response
-  ) => {
-    try {
-      const bookId =
-        getSingleParam(
-          req.params.id
-        );
-
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "🖼️ GENERATE PREVIEW REQUEST"
-      );
-
-      console.log(
-        "Book ID:",
-        bookId
-      );
-
-      console.log(
-        "========================================"
-      );
-
-      const previewUrl =
-        await generateBookPreview(
-          bookId
-        );
-
-      return res.status(200).json({
-        success: true,
-
-        bookId,
-
-        previewUrl,
-      });
-    } catch (error: any) {
-      console.error(
-        "❌ Preview generation failed:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-
-        error:
-          error?.message ||
-          "Failed to generate book preview.",
-      });
-    }
-  }
-);
-
-/* ==========================================================================
-   GET PREVIEW
-   ========================================================================== */
-
-/**
- * GET
+ * IMPORTANT:
+ * This endpoint NO LONGER generates or downloads a PDF.
  *
- * /api/books/:id/preview
- *
- * Returns ONLY the protected 3-page preview.
- *
- * NEVER returns the original pdfUrl.
+ * Unpaid users receive only basic book information and summaries.
  */
 router.get(
   "/books/:id/preview",
-
-  async (
-    req: Request,
-    res: Response
-  ) => {
+  async (req: Request, res: Response) => {
     try {
-      const bookId =
-        getSingleParam(
-          req.params.id
-        );
+      const bookId = getSingleParam(req.params.id);
 
-      const book =
-        await prisma.book.findUnique({
-          where: {
-            id: bookId,
-          },
+      console.log("========================================");
+      console.log("📖 FREE BOOK INFORMATION REQUEST");
+      console.log("Book ID:", bookId);
+      console.log("========================================");
 
-          select: {
-            id: true,
-            title: true,
-            pdfPreviewImage: true,
-          },
-        });
+      const book = await prisma.book.findUnique({
+        where: {
+          id: bookId,
+        },
+
+        select: {
+          id: true,
+          title: true,
+          author: true,
+          description: true,
+          genre: true,
+          publishedYear: true,
+          pages: true,
+          rating: true,
+
+          /*
+           * These are text fields and are safe to
+           * expose before purchase.
+           */
+          shortSummary: true,
+          pdfSummary: true,
+          aiSummary: true,
+          keyThemes: true,
+          keywords: true,
+          readingTime: true,
+          targetAudience: true,
+
+          /*
+           * Cover is public.
+           */
+          coverImage: true,
+
+          /*
+           * DO NOT return:
+           *
+           * pdfUrl
+           * pdfPreviewImage
+           */
+        },
+      });
 
       if (!book) {
         return res.status(404).json({
@@ -150,41 +91,50 @@ router.get(
         });
       }
 
-      if (
-        !book.pdfPreviewImage
-      ) {
-        return res.status(404).json({
-          success: false,
-
-          error:
-            "Preview has not been generated for this book yet.",
-        });
-      }
+      console.log("✅ Book information returned.");
 
       return res.status(200).json({
         success: true,
 
-        bookId:
-          book.id,
+        book: {
+          id: book.id,
+          title: book.title,
+          author: book.author,
+          description: book.description,
+          genre: book.genre,
+          publishedYear: book.publishedYear,
+          pages: book.pages,
+          rating: book.rating,
+          coverImage: book.coverImage,
 
-        title:
-          book.title,
+          /*
+           * Free reading information.
+           */
+          shortSummary: book.shortSummary,
+          pdfSummary: book.pdfSummary,
+          aiSummary: book.aiSummary,
+          keyThemes: book.keyThemes,
+          keywords: book.keywords,
+          readingTime: book.readingTime,
+          targetAudience: book.targetAudience,
+        },
 
-        previewUrl:
-          book.pdfPreviewImage,
+        access: {
+          purchased: false,
+          fullPdfAvailableAfterPurchase: true,
+        },
       });
     } catch (error: any) {
       console.error(
-        "❌ Failed to retrieve preview:",
+        "❌ Failed to get free book information:",
         error
       );
 
       return res.status(500).json({
         success: false,
-
         error:
           error?.message ||
-          "Failed to retrieve book preview.",
+          "Unable to retrieve book information.",
       });
     }
   }
@@ -195,158 +145,257 @@ router.get(
    ========================================================================== */
 
 /**
- * GET
+ * GET /api/books/:id/access?transactionCode=XXXX
  *
- * /api/books/:id/access?transactionCode=XXXX
- *
- * Only verified purchasers receive the original PDF.
+ * Full PDF access is ONLY granted after successful
+ * purchase verification.
  */
 router.get(
   "/books/:id/access",
-
-  async (
-    req: Request,
-    res: Response
-  ) => {
+  async (req: Request, res: Response) => {
     try {
-      const bookId =
-        getSingleParam(
-          req.params.id
-        );
+      const bookId = getSingleParam(req.params.id);
 
       const transactionCode =
-        typeof req.query
-          .transactionCode ===
-        "string"
-          ? req.query
-              .transactionCode
-              .trim()
+        typeof req.query.transactionCode === "string"
+          ? req.query.transactionCode.trim()
           : "";
+
+      console.log("========================================");
+      console.log("🔐 FULL BOOK ACCESS REQUEST");
+      console.log("Book ID:", bookId);
+      console.log(
+        "Transaction:",
+        transactionCode ? "PROVIDED" : "MISSING"
+      );
+      console.log("========================================");
+
+      /* ----------------------------------------------------------------------
+         1. Validate transaction code
+         ---------------------------------------------------------------------- */
 
       if (!transactionCode) {
         return res.status(401).json({
           success: false,
-
-          error:
-            "Purchase verification is required.",
+          error: "Purchase verification is required.",
         });
       }
 
-      /* --------------------------------------------------------------------
-         VERIFY ORDER
-         -------------------------------------------------------------------- */
+      /* ----------------------------------------------------------------------
+         2. Verify purchase
+         ---------------------------------------------------------------------- */
 
-      const order =
-        await prisma.order.findFirst({
-          where: {
-            bookId,
+      const order = await prisma.order.findFirst({
+        where: {
+          bookId,
 
-            transactionCode,
+          transactionCode,
 
-            status: {
-              in: [
-                "PAID",
-                "paid",
-                "COMPLETED",
-                "completed",
-                "SUCCESS",
-                "success",
-              ],
-            },
+          status: {
+            in: [
+              "PAID",
+              "paid",
+              "COMPLETED",
+              "completed",
+              "SUCCESS",
+              "success",
+            ],
           },
+        },
 
-          select: {
-            id: true,
-            bookId: true,
-            transactionCode: true,
-            status: true,
-          },
-        });
+        select: {
+          id: true,
+          bookId: true,
+          transactionCode: true,
+          status: true,
+        },
+      });
 
       if (!order) {
+        console.log(
+          "❌ Purchase verification failed."
+        );
+
         return res.status(403).json({
           success: false,
-
           error:
             "This book has not been purchased or the purchase could not be verified.",
         });
       }
 
-      /* --------------------------------------------------------------------
-         GET ORIGINAL PDF
-         -------------------------------------------------------------------- */
+      console.log("✅ Purchase verified.");
+      console.log("Order ID:", order.id);
 
-      const book =
-        await prisma.book.findUnique({
-          where: {
-            id: bookId,
-          },
+      /* ----------------------------------------------------------------------
+         3. Find book
+         ---------------------------------------------------------------------- */
 
-          select: {
-            id: true,
-            title: true,
-            pdfUrl: true,
-          },
-        });
+      const book = await prisma.book.findUnique({
+        where: {
+          id: bookId,
+        },
+
+        select: {
+          id: true,
+          title: true,
+          author: true,
+          pdfUrl: true,
+        },
+      });
 
       if (!book) {
         return res.status(404).json({
           success: false,
-
-          error:
-            "Book not found.",
+          error: "Book not found.",
         });
       }
 
       if (!book.pdfUrl) {
         return res.status(404).json({
           success: false,
-
-          error:
-            "The full PDF is not available.",
+          error: "Full PDF is not available.",
         });
       }
 
+      /* ----------------------------------------------------------------------
+         4. Download PDF from Cloudinary
+         ---------------------------------------------------------------------- */
+
       console.log(
-        "🔓 Full PDF access granted:",
-        {
-          bookId:
-            book.id,
-
-          title:
-            book.title,
-
-          transactionCode,
-        }
+        "📥 Downloading purchased PDF..."
       );
 
-      return res.status(200).json({
-        success: true,
+      console.log(
+        "PDF URL:",
+        book.pdfUrl
+      );
 
-        bookId:
-          book.id,
-
-        title:
-          book.title,
-
-        pdfUrl:
+      const response =
+        await axios.get<ArrayBuffer>(
           book.pdfUrl,
-      });
+          {
+            responseType: "arraybuffer",
+            timeout: 120000,
+
+            /*
+             * These options are intentionally kept
+             * compatible with Axios versions that
+             * may be installed in the project.
+             */
+            validateStatus: (status) =>
+              status >= 200 && status < 300,
+          }
+        );
+
+      const pdfBuffer = Buffer.from(
+        response.data as ArrayBuffer
+      );
+
+      if (!pdfBuffer.length) {
+        throw new Error(
+          "Downloaded PDF is empty."
+        );
+      }
+
+      console.log(
+        "✅ PDF downloaded successfully."
+      );
+
+      console.log(
+        "PDF size:",
+        (
+          pdfBuffer.length /
+          1024 /
+          1024
+        ).toFixed(2),
+        "MB"
+      );
+
+      /* ----------------------------------------------------------------------
+         5. Send FULL PDF
+         ---------------------------------------------------------------------- */
+
+      console.log(
+        "🔓 Sending full PDF to verified customer."
+      );
+
+      res.setHeader(
+        "Content-Type",
+        "application/pdf"
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${sanitizeFilename(
+          book.title
+        )}.pdf"`
+      );
+
+      res.setHeader(
+        "Content-Length",
+        pdfBuffer.length
+      );
+
+      /*
+       * Prevent browser/proxy caching.
+       */
+      res.setHeader(
+        "Cache-Control",
+        "private, no-store, max-age=0"
+      );
+
+      res.setHeader(
+        "Pragma",
+        "no-cache"
+      );
+
+      return res.send(pdfBuffer);
     } catch (error: any) {
       console.error(
-        "❌ Full book access failed:",
-        error
+        "❌ Full PDF access failed:",
+        error?.response?.status ||
+          error?.message ||
+          error
       );
+
+      if (error?.response) {
+        console.error(
+          "Cloudinary response status:",
+          error.response.status
+        );
+
+        console.error(
+          "Cloudinary response headers:",
+          error.response.headers
+        );
+      }
 
       return res.status(500).json({
         success: false,
-
         error:
           error?.message ||
-          "Failed to verify book purchase.",
+          "Unable to provide full book access.",
       });
     }
   }
 );
+
+/* ==========================================================================
+   FILE NAME HELPER
+   ========================================================================== */
+
+function sanitizeFilename(
+  filename: string
+): string {
+  return filename
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 150) || "book";
+}
+
+/* ==========================================================================
+   EXPORT
+   ========================================================================== */
 
 export default router;
