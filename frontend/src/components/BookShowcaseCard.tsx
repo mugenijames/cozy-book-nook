@@ -398,10 +398,9 @@ export function BookShowcaseCard({
                   className={`
                     h-3.5
                     w-3.5
-                    ${
-                      filled
-                        ? "fill-[#D4A017] text-[#D4A017]"
-                        : "text-gray-300"
+                    ${filled
+                      ? "fill-[#D4A017] text-[#D4A017]"
+                      : "text-gray-300"
                     }
                   `}
                   aria-hidden="true"
@@ -464,7 +463,7 @@ export function BookShowcaseCard({
 
         <div className="mt-3">
           {priceCents != null &&
-          Number(priceCents) > 0 ? (
+            Number(priceCents) > 0 ? (
             <span
               className="
                 text-base
@@ -609,9 +608,9 @@ export function BookShowcaseCard({
               href={buyHref}
               {...(isExternalBuy
                 ? {
-                    target: "_blank",
-                    rel: "noopener noreferrer",
-                  }
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                }
                 : {})}
               className="
                 inline-flex
