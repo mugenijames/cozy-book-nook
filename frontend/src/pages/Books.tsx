@@ -94,7 +94,7 @@ const Books = () => {
       const matchesGenre =
         genre === "all" ||
         book.genre?.toLowerCase() ===
-          genre.toLowerCase();
+        genre.toLowerCase();
 
       const rating = Number(book.rating || 0);
 
@@ -447,10 +447,9 @@ const Books = () => {
                         h-4
                         w-4
                         transition-transform
-                        ${
-                          showFilters
-                            ? "rotate-180"
-                            : ""
+                        ${showFilters
+                          ? "rotate-180"
+                          : ""
                         }
                       `}
                     />
@@ -464,10 +463,9 @@ const Books = () => {
                     mt-4
                     grid
                     gap-4
-                    ${
-                      showFilters
-                        ? "grid"
-                        : "hidden lg:grid"
+                    ${showFilters
+                      ? "grid"
+                      : "hidden lg:grid"
                     }
                     sm:grid-cols-2
                     lg:grid-cols-3
@@ -901,9 +899,8 @@ const Books = () => {
                 >
                   {filteredBooks.map(
                     (book, index) => {
-                      const bookHref = `/book/${
-                        book.slug || book.id
-                      }`;
+                      const bookHref = `/book/${book.slug || book.id
+                        }`;
 
                       const rating = Number(
                         book.rating || 0
@@ -1092,13 +1089,12 @@ const Books = () => {
                                         className={`
                                           h-3.5
                                           w-3.5
-                                          ${
-                                            starIndex <
+                                          ${starIndex <
                                             Math.round(
                                               rating
                                             )
-                                              ? "fill-[#D4A017] text-[#D4A017]"
-                                              : "text-gray-300"
+                                            ? "fill-[#D4A017] text-[#D4A017]"
+                                            : "text-gray-300"
                                           }
                                         `}
                                       />
@@ -1149,20 +1145,139 @@ const Books = () => {
 
                             {/* Description */}
 
-                            {book.description && (
+                            {/* Information */}
+
+                            <div
+                              className="
+    flex
+    flex-1
+    flex-col
+    p-3
+    sm:p-4
+  "
+                            >
+                              {/* Rating */}
+
+                              {rating > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <div className="flex">
+                                    {Array.from({
+                                      length: 5,
+                                    }).map((_, starIndex) => (
+                                      <Star
+                                        key={starIndex}
+                                        className={`
+              h-3.5
+              w-3.5
+              ${starIndex < Math.round(rating)
+                                            ? "fill-[#D4A017] text-[#D4A017]"
+                                            : "text-gray-300"
+                                          }
+            `}
+                                      />
+                                    ))}
+                                  </div>
+
+                                  <span className="ml-1 text-[11px] text-gray-500">
+                                    {rating.toFixed(1)}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Title */}
+
+                              <Link
+                                to={bookHref}
+                                className="
+      mt-2
+      line-clamp-2
+      text-sm
+      font-bold
+      leading-snug
+      text-[#2E1208]
+      transition
+      hover:text-[#C17B4F]
+      sm:text-base
+    "
+                              >
+                                {book.title}
+                              </Link>
+
+                              {/* Author */}
+
                               <p
                                 className="
-                                  mt-2
-                                  line-clamp-2
-                                  text-xs
-                                  leading-5
-                                  text-gray-500
-                                  sm:text-sm
-                                "
+      mt-1
+      line-clamp-1
+      text-xs
+      font-medium
+      text-[#C17B4F]
+      sm:text-sm
+    "
                               >
-                                {book.description}
+                                {book.author}
                               </p>
-                            )}
+
+                              {/* Bottom */}
+
+                              <div className="mt-auto pt-4">
+                                <div
+                                  className="
+        flex
+        items-center
+        justify-between
+        gap-2
+        border-t
+        border-gray-100
+        pt-3
+      "
+                                >
+                                  <LocalizedPrice
+                                    priceCents={book.priceCents}
+                                    className="
+          min-w-0
+          text-xs
+          font-bold
+          text-[#4A1F0E]
+          sm:text-sm
+        "
+                                  />
+
+                                  <Link
+                                    to={bookHref}
+                                    className="
+          inline-flex
+          shrink-0
+          items-center
+          justify-center
+          gap-1
+          rounded-full
+          bg-[#4A1F0E]
+          px-3
+          py-2
+          text-[11px]
+          font-semibold
+          text-white
+          shadow-sm
+          transition-all
+          duration-300
+          hover:-translate-y-0.5
+          hover:bg-[#D4A017]
+          hover:shadow-md
+          focus:outline-none
+          focus:ring-2
+          focus:ring-[#D4A017]
+          focus:ring-offset-2
+          sm:px-3.5
+          sm:text-xs
+        "
+                                  >
+                                    <BookOpen className="h-3 w-3" />
+                                    View
+                                  </Link>
+                                </div>
+                              </div>
+                            </div>
 
                             {/* Price + Action */}
 
