@@ -1,5 +1,6 @@
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+
 import {
   Star,
   Calendar,
@@ -9,10 +10,6 @@ import {
   Loader2,
   ShoppingBag,
   Download,
-  ChevronDown,
-  ChevronUp,
-  Eye,
-  X,
   BookOpen,
   FileText,
   Clock,
@@ -23,13 +20,6 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 import { resolveBookCoverUrl } from "@/lib/resolveBookCover";
 
@@ -100,16 +90,10 @@ const BookDetail = () => {
   const [downloading, setDownloading] =
     useState(false);
 
-  const [descExpanded, setDescExpanded] =
-    useState(false);
-
   const [purchased, setPurchased] =
     useState(false);
 
   const [showPayment, setShowPayment] =
-    useState(false);
-
-  const [showPdfPreview, setShowPdfPreview] =
     useState(false);
 
   /*
@@ -316,12 +300,6 @@ const BookDetail = () => {
   |--------------------------------------------------------------------------
   | PDF availability
   |--------------------------------------------------------------------------
-  |
-  | IMPORTANT:
-  |
-  | Preview is ONLY available when a PDF has
-  | actually been uploaded.
-  |
   */
 
   const hasPdf =
@@ -329,26 +307,6 @@ const BookDetail = () => {
       book?.pdfUrl &&
       book.pdfUrl.trim()
     );
-
-  /*
-  |--------------------------------------------------------------------------
-  | AI Preview availability
-  |--------------------------------------------------------------------------
-  |
-  | We deliberately DO NOT use description here.
-  |
-  | The preview must come from the AI analysis
-  | associated with the uploaded PDF.
-  */
-
-  const aiPreviewText =
-    book?.summary?.trim() ||
-    book?.aiSummary?.trim() ||
-    book?.shortSummary?.trim() ||
-    null;
-
-  const hasAiPreview =
-    Boolean(aiPreviewText);
 
   /*
   |--------------------------------------------------------------------------
@@ -447,29 +405,6 @@ const BookDetail = () => {
     } finally {
       setDownloading(false);
     }
-  };
-
-  /*
-  |--------------------------------------------------------------------------
-  | Text-based PDF Preview
-  |--------------------------------------------------------------------------
-  |
-  | The PDF itself is NOT displayed.
-  |
-  | We only show the AI-generated analysis of
-  | the uploaded PDF.
-  */
-
-  const handlePreviewPdf = () => {
-    if (!book?.pdfUrl) {
-      toast.error(
-        "Preview is only available when a PDF has been uploaded."
-      );
-
-      return;
-    }
-
-    setShowPdfPreview(true);
   };
 
   /*
@@ -583,11 +518,13 @@ const BookDetail = () => {
     return (
       <div className="min-h-[70vh] bg-[#EEF2F7] flex items-center justify-center px-6">
         <div className="flex flex-col items-center text-center">
+
           <Loader2 className="h-10 w-10 animate-spin text-[#C17B4F]" />
 
           <p className="mt-4 text-sm text-gray-600">
             Loading book...
           </p>
+
         </div>
       </div>
     );
@@ -602,10 +539,13 @@ const BookDetail = () => {
   if (error || !book) {
     return (
       <div className="min-h-[70vh] bg-[#EEF2F7] flex items-center justify-center px-6">
+
         <div className="max-w-md text-center">
 
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#C17B4F]/10">
+
             <BookOpen className="h-8 w-8 text-[#C17B4F]" />
+
           </div>
 
           <h1 className="mt-6 text-2xl font-bold text-[#2E1208]">
@@ -635,14 +575,16 @@ const BookDetail = () => {
             </Link>
 
           </div>
+
         </div>
+
       </div>
     );
   }
 
   /*
   |--------------------------------------------------------------------------
-  | Description
+  | Purchase / Inquiry
   |--------------------------------------------------------------------------
   */
 
@@ -656,20 +598,11 @@ const BookDetail = () => {
       "http"
     );
 
-  const DESC_LIMIT = 220;
-
-  const longDesc =
-    (book.description?.length ?? 0) >
-    DESC_LIMIT;
-
-  const visibleDesc =
-    longDesc &&
-    !descExpanded
-      ? `${book.description!.slice(
-          0,
-          DESC_LIMIT
-        )}…`
-      : book.description;
+  /*
+  |--------------------------------------------------------------------------
+  | Cover
+  |--------------------------------------------------------------------------
+  */
 
   const coverSrc =
     resolveBookCoverUrl(
@@ -678,7 +611,7 @@ const BookDetail = () => {
 
   /*
   |--------------------------------------------------------------------------
-  | AI Preview data
+  | AI information
   |--------------------------------------------------------------------------
   */
 
@@ -700,395 +633,6 @@ const BookDetail = () => {
 
   return (
     <>
-      {/* =========================================================
-          TEXT-BASED BOOK PREVIEW MODAL
-      ========================================================== */}
-
-      <Dialog
-        open={showPdfPreview}
-        onOpenChange={
-          setShowPdfPreview
-        }
-      >
-        <DialogContent
-          className="
-            max-w-4xl
-            w-[95vw]
-            max-h-[90vh]
-            overflow-hidden
-            rounded-2xl
-            p-0
-          "
-        >
-
-          {/* Header */}
-
-          <DialogHeader
-            className="
-              border-b
-              bg-white
-              px-6
-              py-5
-              pr-12
-            "
-          >
-
-            <div className="flex items-start gap-3">
-
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#C17B4F]/10">
-                <BookOpen className="h-5 w-5 text-[#C17B4F]" />
-              </div>
-
-              <div className="min-w-0">
-
-                <DialogTitle className="text-xl font-bold text-[#2E1208] sm:text-2xl">
-                  Book Preview
-                </DialogTitle>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  {book.title}
-                </p>
-
-              </div>
-
-            </div>
-
-          </DialogHeader>
-
-          {/* Preview content */}
-
-          <div className="max-h-[calc(90vh-100px)] overflow-y-auto bg-[#F8FAFC] px-5 py-6 sm:px-8">
-
-            {/* Book heading */}
-
-            <div className="rounded-2xl border border-[#E8DED5] bg-white p-6 shadow-sm">
-
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-
-                {coverSrc && (
-                  <img
-                    src={coverSrc}
-                    alt={`${book.title} cover`}
-                    className="
-                      h-28
-                      w-20
-                      rounded-lg
-                      object-cover
-                      shadow-md
-                    "
-                    onError={(
-                      event
-                    ) => {
-                      event.currentTarget.onerror =
-                        null;
-
-                      event.currentTarget.src =
-                        "/placeholder.svg";
-                    }}
-                  />
-                )}
-
-                <div>
-
-                  <h2 className="text-2xl font-bold text-[#2E1208] sm:text-3xl">
-                    {book.title}
-                  </h2>
-
-                  <p className="mt-2 flex items-center gap-2 text-gray-600">
-                    <User className="h-4 w-4 text-[#C17B4F]" />
-
-                    by{" "}
-
-                    <strong className="text-[#2E1208]">
-                      {book.author}
-                    </strong>
-                  </p>
-
-                  {book.genre && (
-                    <span className="mt-3 inline-flex rounded-full bg-[#C17B4F]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#C17B4F]">
-                      {book.genre}
-                    </span>
-                  )}
-
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* AI summary */}
-
-            <div className="mt-5 rounded-2xl border border-[#E8DED5] bg-white p-6 shadow-sm">
-
-              <div className="flex items-center gap-2">
-
-                <BookOpen className="h-5 w-5 text-[#C17B4F]" />
-
-                <h3 className="text-xl font-bold text-[#2E1208]">
-                  About this book
-                </h3>
-
-              </div>
-
-              {hasAiPreview ? (
-                <div className="mt-5">
-
-                  <p className="whitespace-pre-line text-[15px] leading-8 text-gray-700 sm:text-base">
-                    {aiPreviewText}
-                  </p>
-
-                  <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
-
-                    <p className="text-sm leading-6 text-blue-700">
-                      This preview is based on the
-                      uploaded PDF and its AI-generated
-                      analysis.
-                    </p>
-
-                  </div>
-
-                </div>
-              ) : (
-                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-5">
-
-                  <div className="flex items-start gap-3">
-
-                    <FileText className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-
-                    <div>
-
-                      <p className="font-semibold text-amber-800">
-                        Preview is being prepared
-                      </p>
-
-                      <p className="mt-1 text-sm leading-6 text-amber-700">
-                        The PDF has been uploaded,
-                        but the AI-generated book
-                        summary is not available yet.
-                        Please check again shortly.
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                </div>
-              )}
-
-            </div>
-
-            {/* Book information */}
-
-            {(book.pages != null ||
-              book.publishedYear != null ||
-              book.readingTime ||
-              book.targetAudience) && (
-
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-
-                {book.pages != null && (
-                  <div className="rounded-xl bg-[#EEF2F7] p-5">
-
-                    <div className="flex items-center gap-3">
-
-                      <FileText className="h-5 w-5 text-[#C17B4F]" />
-
-                      <div>
-
-                        <p className="text-sm text-gray-500">
-                          Length
-                        </p>
-
-                        <p className="mt-1 font-bold text-[#2E1208]">
-                          {book.pages} pages
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-                )}
-
-                {book.publishedYear != null && (
-                  <div className="rounded-xl bg-[#EEF2F7] p-5">
-
-                    <div className="flex items-center gap-3">
-
-                      <Calendar className="h-5 w-5 text-[#C17B4F]" />
-
-                      <div>
-
-                        <p className="text-sm text-gray-500">
-                          Published
-                        </p>
-
-                        <p className="mt-1 font-bold text-[#2E1208]">
-                          {book.publishedYear}
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-                )}
-
-                {book.readingTime && (
-                  <div className="rounded-xl bg-[#EEF2F7] p-5">
-
-                    <div className="flex items-center gap-3">
-
-                      <Clock className="h-5 w-5 text-[#C17B4F]" />
-
-                      <div>
-
-                        <p className="text-sm text-gray-500">
-                          Reading time
-                        </p>
-
-                        <p className="mt-1 font-bold text-[#2E1208]">
-                          {book.readingTime}
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-                )}
-
-                {book.targetAudience && (
-                  <div className="rounded-xl bg-[#EEF2F7] p-5">
-
-                    <div className="flex items-center gap-3">
-
-                      <Users className="h-5 w-5 text-[#C17B4F]" />
-
-                      <div>
-
-                        <p className="text-sm text-gray-500">
-                          Ideal for
-                        </p>
-
-                        <p className="mt-1 font-bold text-[#2E1208]">
-                          {book.targetAudience}
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-                )}
-
-              </div>
-            )}
-
-            {/* Key themes */}
-
-            {themes.length > 0 && (
-              <div className="mt-5 rounded-2xl border border-[#E8DED5] bg-white p-6 shadow-sm">
-
-                <div className="flex items-center gap-2">
-
-                  <Tag className="h-5 w-5 text-[#C17B4F]" />
-
-                  <h3 className="text-lg font-bold text-[#2E1208]">
-                    Key Themes
-                  </h3>
-
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-
-                  {themes.map(
-                    (
-                      theme,
-                      index
-                    ) => (
-                      <span
-                        key={`${theme}-${index}`}
-                        className="
-                          rounded-full
-                          bg-[#C17B4F]/10
-                          px-3
-                          py-1.5
-                          text-sm
-                          font-medium
-                          text-[#8B4F2F]
-                        "
-                      >
-                        {theme}
-                      </span>
-                    )
-                  )}
-
-                </div>
-
-              </div>
-            )}
-
-            {/* Keywords */}
-
-            {keywords.length > 0 && (
-              <div className="mt-5 rounded-2xl border border-[#E8DED5] bg-white p-6 shadow-sm">
-
-                <h3 className="text-lg font-bold text-[#2E1208]">
-                  Keywords
-                </h3>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-
-                  {keywords.map(
-                    (
-                      keyword,
-                      index
-                    ) => (
-                      <span
-                        key={`${keyword}-${index}`}
-                        className="
-                          rounded-full
-                          border
-                          border-gray-200
-                          bg-gray-50
-                          px-3
-                          py-1.5
-                          text-sm
-                          text-gray-600
-                        "
-                      >
-                        {keyword}
-                      </span>
-                    )
-                  )}
-
-                </div>
-
-              </div>
-            )}
-
-            {/* Preview note */}
-
-            <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4">
-
-              <p className="text-sm leading-6 text-green-700">
-
-                <strong>Preview:</strong>{" "}
-                This preview is generated from the
-                uploaded PDF. The complete PDF is
-                available after purchase or where the
-                book is offered for free.
-
-              </p>
-
-            </div>
-
-          </div>
-
-        </DialogContent>
-      </Dialog>
-
       {/* =========================================================
           PAYMENT MODAL
       ========================================================== */}
@@ -1119,7 +663,9 @@ const BookDetail = () => {
 
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
 
-          {/* Navigation */}
+          {/* =====================================================
+              NAVIGATION
+          ===================================================== */}
 
           <div className="mb-7 flex flex-wrap items-center gap-2">
 
@@ -1160,7 +706,9 @@ const BookDetail = () => {
 
           </div>
 
-          {/* Book container */}
+          {/* =====================================================
+              BOOK CONTAINER
+          ===================================================== */}
 
           <section
             className="
@@ -1186,11 +734,15 @@ const BookDetail = () => {
               "
             >
 
-              {/* Book cover */}
+              {/* =================================================
+                  BOOK COVER
+              ================================================= */}
 
               <div className="flex items-start justify-center">
 
                 <div className="relative w-full max-w-[330px]">
+
+                  {/* Shadow */}
 
                   <div
                     className="
@@ -1203,6 +755,8 @@ const BookDetail = () => {
                       blur-2xl
                     "
                   />
+
+                  {/* Book */}
 
                   <div
                     className="
@@ -1283,13 +837,16 @@ const BookDetail = () => {
                   </p>
 
                 </div>
+
               </div>
 
-              {/* Book information */}
+              {/* =================================================
+                  BOOK INFORMATION
+              ================================================= */}
 
               <div className="flex min-w-0 flex-col">
 
-                {/* Category */}
+                {/* Genre */}
 
                 {book.genre && (
                   <span
@@ -1342,6 +899,7 @@ const BookDetail = () => {
                     sm:text-lg
                   "
                 >
+
                   <User className="h-5 w-5 text-[#C17B4F]" />
 
                   <span>
@@ -1351,6 +909,7 @@ const BookDetail = () => {
                       {book.author}
                     </strong>
                   </span>
+
                 </p>
 
                 {/* Rating */}
@@ -1425,13 +984,27 @@ const BookDetail = () => {
 
                 </div>
 
-                {/* Metadata */}
+                {/* =================================================
+                    METADATA
+                ================================================== */}
 
                 <div className="mt-6 flex flex-wrap gap-2">
 
                   {book.publishedYear !=
                     null && (
-                    <div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-2 text-sm text-gray-700">
+                    <div
+                      className="
+                        flex
+                        items-center
+                        gap-2
+                        rounded-full
+                        bg-gray-100
+                        px-3
+                        py-2
+                        text-sm
+                        text-gray-700
+                      "
+                    >
 
                       <Calendar className="h-4 w-4 text-gray-500" />
 
@@ -1441,7 +1014,19 @@ const BookDetail = () => {
                   )}
 
                   {book.pages != null && (
-                    <div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-2 text-sm text-gray-700">
+                    <div
+                      className="
+                        flex
+                        items-center
+                        gap-2
+                        rounded-full
+                        bg-gray-100
+                        px-3
+                        py-2
+                        text-sm
+                        text-gray-700
+                      "
+                    >
 
                       <Book className="h-4 w-4 text-gray-500" />
 
@@ -1450,10 +1035,43 @@ const BookDetail = () => {
                     </div>
                   )}
 
-                  {/* PDF indicator */}
+                  {book.readingTime && (
+                    <div
+                      className="
+                        flex
+                        items-center
+                        gap-2
+                        rounded-full
+                        bg-gray-100
+                        px-3
+                        py-2
+                        text-sm
+                        text-gray-700
+                      "
+                    >
+
+                      <Clock className="h-4 w-4 text-gray-500" />
+
+                      {book.readingTime}
+
+                    </div>
+                  )}
 
                   {hasPdf && (
-                    <div className="flex items-center gap-2 rounded-full bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600">
+                    <div
+                      className="
+                        flex
+                        items-center
+                        gap-2
+                        rounded-full
+                        bg-blue-50
+                        px-3
+                        py-2
+                        text-sm
+                        font-medium
+                        text-blue-600
+                      "
+                    >
 
                       <FileText className="h-4 w-4" />
 
@@ -1466,7 +1084,9 @@ const BookDetail = () => {
 
                 <div className="my-7 h-px bg-gray-100" />
 
-                {/* Description */}
+                {/* =================================================
+                    FULL BOOK DESCRIPTION
+                ================================================== */}
 
                 {book.description && (
                   <div>
@@ -1485,47 +1105,127 @@ const BookDetail = () => {
                         sm:text-base
                       "
                     >
-                      {visibleDesc}
+                      {book.description}
                     </p>
 
-                    {longDesc && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDescExpanded(
-                            (value) =>
-                              !value
-                          )
-                        }
-                        className="
-                          mt-3
-                          inline-flex
-                          items-center
-                          gap-1
-                          text-sm
-                          font-semibold
-                          text-[#C17B4F]
-                          transition
-                          hover:text-[#A55E36]
-                        "
-                      >
+                  </div>
+                )}
 
-                        {descExpanded ? (
-                          <>
-                            <ChevronUp className="h-4 w-4" />
+                {/* =================================================
+                    TARGET AUDIENCE
+                ================================================== */}
 
-                            Show less
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="h-4 w-4" />
+                {book.targetAudience && (
+                  <div className="mt-7">
 
-                            Read more
-                          </>
-                        )}
+                    <div className="flex items-center gap-2">
 
-                      </button>
-                    )}
+                      <Users className="h-5 w-5 text-[#C17B4F]" />
+
+                      <h2 className="text-xl font-bold text-[#2E1208]">
+                        Who this book is for
+                      </h2>
+
+                    </div>
+
+                    <p
+                      className="
+                        mt-3
+                        text-sm
+                        leading-7
+                        text-gray-600
+                        sm:text-base
+                      "
+                    >
+                      {book.targetAudience}
+                    </p>
+
+                  </div>
+                )}
+
+                {/* =================================================
+                    KEY THEMES
+                ================================================== */}
+
+                {themes.length > 0 && (
+                  <div className="mt-7">
+
+                    <div className="flex items-center gap-2">
+
+                      <Tag className="h-5 w-5 text-[#C17B4F]" />
+
+                      <h2 className="text-xl font-bold text-[#2E1208]">
+                        Key Themes
+                      </h2>
+
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+
+                      {themes.map(
+                        (
+                          theme,
+                          index
+                        ) => (
+                          <span
+                            key={`${theme}-${index}`}
+                            className="
+                              rounded-full
+                              bg-[#C17B4F]/10
+                              px-3
+                              py-1.5
+                              text-sm
+                              font-medium
+                              text-[#8B4F2F]
+                            "
+                          >
+                            {theme}
+                          </span>
+                        )
+                      )}
+
+                    </div>
+
+                  </div>
+                )}
+
+                {/* =================================================
+                    KEYWORDS
+                ================================================== */}
+
+                {keywords.length > 0 && (
+                  <div className="mt-7">
+
+                    <h2 className="text-xl font-bold text-[#2E1208]">
+                      Keywords
+                    </h2>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+
+                      {keywords.map(
+                        (
+                          keyword,
+                          index
+                        ) => (
+                          <span
+                            key={`${keyword}-${index}`}
+                            className="
+                              rounded-full
+                              border
+                              border-gray-200
+                              bg-gray-50
+                              px-3
+                              py-1.5
+                              text-sm
+                              text-gray-600
+                            "
+                          >
+                            {keyword}
+                          </span>
+                        )
+                      )}
+
+                    </div>
 
                   </div>
                 )}
@@ -1544,39 +1244,6 @@ const BookDetail = () => {
                     sm:flex-wrap
                   "
                 >
-
-                  {/* =================================================
-                      PREVIEW BUTTON
-                  =================================================
-                  
-                      IMPORTANT:
-                      This button ONLY appears when pdfUrl exists.
-                  */}
-
-                  {hasPdf && (
-                    <Button
-                      type="button"
-                      onClick={
-                        handlePreviewPdf
-                      }
-                      variant="outline"
-                      className="
-                        min-h-[52px]
-                        rounded-full
-                        border-[#C9B8A8]
-                        px-6
-                        text-[#2E1208]
-                        hover:border-[#C17B4F]
-                        hover:text-[#C17B4F]
-                      "
-                    >
-
-                      <Eye className="mr-2 h-5 w-5" />
-
-                      Preview
-
-                    </Button>
-                  )}
 
                   {/* Buy / Download */}
 
@@ -1762,18 +1429,22 @@ const BookDetail = () => {
                       "
                     >
 
-                      📚 This book is free. You
-                      can preview or download the
+                      📚 This book is free.
+                      You can download the
                       PDF at no cost.
 
                     </div>
                   )}
 
               </div>
+
             </div>
+
           </section>
 
-          {/* Back to books */}
+          {/* =====================================================
+              BACK TO BOOKS
+          ===================================================== */}
 
           <div className="mt-8 flex justify-center">
 
@@ -1804,6 +1475,7 @@ const BookDetail = () => {
           </div>
 
         </div>
+
       </main>
     </>
   );
