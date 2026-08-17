@@ -1,3 +1,5 @@
+// frontend/src/pages/BookDetail.tsx
+
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 
@@ -12,9 +14,6 @@ import {
   Download,
   BookOpen,
   FileText,
-  Clock,
-  Users,
-  Tag,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -39,7 +38,11 @@ import {
 
 import { PaymentModal } from "@/components/PaymentModal";
 
-interface Book {
+/* =========================================================
+   BOOK TYPE
+========================================================= */
+
+interface BookData {
   id: string;
   title: string;
   author: string;
@@ -50,7 +53,6 @@ interface Book {
   coverImage?: string | null;
 
   pdfUrl?: string | null;
-  pdfPreviewImage?: string | null;
 
   genre?: string | null;
 
@@ -58,34 +60,22 @@ interface Book {
   pages?: number | null;
   rating?: number | null;
   priceCents?: number | null;
-
-  /*
-   * AI-generated book analysis
-   */
-  aiSummary?: string | null;
-  summary?: string | null;
-  shortSummary?: string | null;
-
-  keyThemes?: unknown;
-  keywords?: unknown;
-
-  readingTime?: string | null;
-  targetAudience?: string | null;
 }
+
+/* =========================================================
+   BOOK DETAIL PAGE
+========================================================= */
 
 const BookDetail = () => {
   const { slug } = useParams<{ slug: string }>();
 
-  const [searchParams, setSearchParams] =
-    useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(true);
 
-  const [book, setBook] =
-    useState<Book | null>(null);
+  const [book, setBook] = useState<BookData | null>(null);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const [downloading, setDownloading] =
     useState(false);
@@ -96,11 +86,9 @@ const BookDetail = () => {
   const [showPayment, setShowPayment] =
     useState(false);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Fetch book
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     FETCH BOOK
+  ========================================================= */
 
   useEffect(() => {
     if (slug) {
@@ -128,7 +116,7 @@ const BookDetail = () => {
         return;
       }
 
-      const mapped: Book = {
+      const mapped: BookData = {
         id: String(foundBook.id),
 
         title: foundBook.title,
@@ -151,10 +139,6 @@ const BookDetail = () => {
           foundBook.pdfUrl ??
           undefined,
 
-        pdfPreviewImage:
-          foundBook.pdfPreviewImage ??
-          undefined,
-
         genre:
           foundBook.genre ??
           undefined,
@@ -173,37 +157,6 @@ const BookDetail = () => {
 
         priceCents:
           foundBook.priceCents ??
-          undefined,
-
-        /*
-         * AI-generated fields
-         */
-        aiSummary:
-          foundBook.aiSummary ??
-          undefined,
-
-        summary:
-          foundBook.summary ??
-          undefined,
-
-        shortSummary:
-          foundBook.shortSummary ??
-          undefined,
-
-        keyThemes:
-          foundBook.keyThemes ??
-          undefined,
-
-        keywords:
-          foundBook.keywords ??
-          undefined,
-
-        readingTime:
-          foundBook.readingTime ??
-          undefined,
-
-        targetAudience:
-          foundBook.targetAudience ??
           undefined,
       };
 
@@ -226,11 +179,9 @@ const BookDetail = () => {
     }
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Checkout result
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     CHECKOUT RESULT
+  ========================================================= */
 
   useEffect(() => {
     const status =
@@ -281,11 +232,9 @@ const BookDetail = () => {
     book,
   ]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Book pricing
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     BOOK PRICE
+  ========================================================= */
 
   const price =
     book?.priceCents != null
@@ -296,11 +245,9 @@ const BookDetail = () => {
     price == null ||
     price === 0;
 
-  /*
-  |--------------------------------------------------------------------------
-  | PDF availability
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     PDF AVAILABILITY
+  ========================================================= */
 
   const hasPdf =
     Boolean(
@@ -308,11 +255,9 @@ const BookDetail = () => {
       book.pdfUrl.trim()
     );
 
-  /*
-  |--------------------------------------------------------------------------
-  | PDF Download
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     DOWNLOAD BOOK
+  ========================================================= */
 
   const handleDownload = async () => {
     if (!book) return;
@@ -407,14 +352,17 @@ const BookDetail = () => {
     }
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Buy / Download
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     BUY / DOWNLOAD BUTTON
+  ========================================================= */
 
   const handleBuyClick = () => {
     if (!book) return;
+
+    /*
+     * If there is no PDF, don't allow
+     * a digital download.
+     */
 
     if (!hasPdf) {
       toast.error(
@@ -451,11 +399,9 @@ const BookDetail = () => {
     setShowPayment(true);
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Payment submitted
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     PAYMENT SUBMITTED
+  ========================================================= */
 
   const handlePaymentSubmitted = () => {
     if (!book) return;
@@ -473,53 +419,23 @@ const BookDetail = () => {
     setShowPayment(false);
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | Normalize AI JSON fields
-  |--------------------------------------------------------------------------
-  */
-
-  const getStringArray = (
-    value: unknown
-  ): string[] => {
-    if (Array.isArray(value)) {
-      return value
-        .filter(
-          (item) =>
-            typeof item === "string"
-        )
-        .map((item) =>
-          item.trim()
-        )
-        .filter(Boolean);
-    }
-
-    if (
-      typeof value === "string"
-    ) {
-      return value
-        .split(",")
-        .map((item) =>
-          item.trim()
-        )
-        .filter(Boolean);
-    }
-
-    return [];
-  };
-
-  /*
-  |--------------------------------------------------------------------------
-  | Loading
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     LOADING STATE
+  ========================================================= */
 
   if (loading) {
     return (
-      <div className="min-h-[70vh] bg-[#EEF2F7] flex items-center justify-center px-6">
+      <div className="flex min-h-[70vh] items-center justify-center bg-[#EEF2F7] px-6">
         <div className="flex flex-col items-center text-center">
 
-          <Loader2 className="h-10 w-10 animate-spin text-[#C17B4F]" />
+          <Loader2
+            className="
+              h-10
+              w-10
+              animate-spin
+              text-[#C17B4F]
+            "
+          />
 
           <p className="mt-4 text-sm text-gray-600">
             Loading book...
@@ -530,25 +446,45 @@ const BookDetail = () => {
     );
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Error
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     ERROR STATE
+  ========================================================= */
 
   if (error || !book) {
     return (
-      <div className="min-h-[70vh] bg-[#EEF2F7] flex items-center justify-center px-6">
+      <div className="flex min-h-[70vh] items-center justify-center bg-[#EEF2F7] px-6">
 
         <div className="max-w-md text-center">
 
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#C17B4F]/10">
-
-            <BookOpen className="h-8 w-8 text-[#C17B4F]" />
-
+          <div
+            className="
+              mx-auto
+              flex
+              h-16
+              w-16
+              items-center
+              justify-center
+              rounded-full
+              bg-[#C17B4F]/10
+            "
+          >
+            <BookOpen
+              className="
+                h-8
+                w-8
+                text-[#C17B4F]
+              "
+            />
           </div>
 
-          <h1 className="mt-6 text-2xl font-bold text-[#2E1208]">
+          <h1
+            className="
+              mt-6
+              text-2xl
+              font-bold
+              text-[#2E1208]
+            "
+          >
             {error || "Book not found"}
           </h1>
 
@@ -557,10 +493,24 @@ const BookDetail = () => {
             exist or may have been removed.
           </p>
 
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <div
+            className="
+              mt-7
+              flex
+              flex-wrap
+              justify-center
+              gap-3
+            "
+          >
 
             <Link to="/">
-              <Button className="rounded-full bg-[#2E1208] px-6">
+              <Button
+                className="
+                  rounded-full
+                  bg-[#2E1208]
+                  px-6
+                "
+              >
                 Back to Home
               </Button>
             </Link>
@@ -568,7 +518,10 @@ const BookDetail = () => {
             <Link to="/books">
               <Button
                 variant="outline"
-                className="rounded-full px-6"
+                className="
+                  rounded-full
+                  px-6
+                "
               >
                 Browse Books
               </Button>
@@ -582,11 +535,9 @@ const BookDetail = () => {
     );
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Purchase / Inquiry
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     PURCHASE / INQUIRY LINK
+  ========================================================= */
 
   const inquireHref =
     bookPurchaseHref(
@@ -598,44 +549,24 @@ const BookDetail = () => {
       "http"
     );
 
-  /*
-  |--------------------------------------------------------------------------
-  | Cover
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     COVER
+  ========================================================= */
 
   const coverSrc =
     resolveBookCoverUrl(
       book.coverImage
     );
 
-  /*
-  |--------------------------------------------------------------------------
-  | AI information
-  |--------------------------------------------------------------------------
-  */
-
-  const themes =
-    getStringArray(
-      book.keyThemes
-    );
-
-  const keywords =
-    getStringArray(
-      book.keywords
-    );
-
-  /*
-  |--------------------------------------------------------------------------
-  | Render
-  |--------------------------------------------------------------------------
-  */
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
     <>
-      {/* =========================================================
+      {/* =====================================================
           PAYMENT MODAL
-      ========================================================== */}
+      ===================================================== */}
 
       {showPayment &&
         price != null && (
@@ -655,19 +586,44 @@ const BookDetail = () => {
           />
         )}
 
-      {/* =========================================================
+      {/* =====================================================
           MAIN PAGE
-      ========================================================== */}
+      ===================================================== */}
 
-      <main className="min-h-screen overflow-x-hidden bg-[#EEF2F7] py-8 sm:py-12">
+      <main
+        className="
+          min-h-screen
+          overflow-x-hidden
+          bg-[#EEF2F7]
+          py-8
+          sm:py-12
+        "
+      >
 
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div
+          className="
+            mx-auto
+            w-full
+            max-w-7xl
+            px-4
+            sm:px-6
+            lg:px-8
+          "
+        >
 
-          {/* =====================================================
+          {/* =================================================
               NAVIGATION
-          ===================================================== */}
+          ================================================= */}
 
-          <div className="mb-7 flex flex-wrap items-center gap-2">
+          <div
+            className="
+              mb-7
+              flex
+              flex-wrap
+              items-center
+              gap-2
+            "
+          >
 
             <Link to="/">
               <Button
@@ -706,9 +662,9 @@ const BookDetail = () => {
 
           </div>
 
-          {/* =====================================================
+          {/* =================================================
               BOOK CONTAINER
-          ===================================================== */}
+          ================================================= */}
 
           <section
             className="
@@ -738,9 +694,21 @@ const BookDetail = () => {
                   BOOK COVER
               ================================================= */}
 
-              <div className="flex items-start justify-center">
+              <div
+                className="
+                  flex
+                  items-start
+                  justify-center
+                "
+              >
 
-                <div className="relative w-full max-w-[330px]">
+                <div
+                  className="
+                    relative
+                    w-full
+                    max-w-[330px]
+                  "
+                >
 
                   {/* Shadow */}
 
@@ -771,6 +739,8 @@ const BookDetail = () => {
                       hover:-translate-y-1
                     "
                   >
+
+                    {/* Spine */}
 
                     <div
                       className="
@@ -822,13 +792,28 @@ const BookDetail = () => {
                           to-[#E2D2C2]
                         "
                       >
-                        <Book className="h-20 w-20 text-[#C17B4F]" />
+                        <Book
+                          className="
+                            h-20
+                            w-20
+                            text-[#C17B4F]
+                          "
+                        />
                       </div>
                     )}
 
                   </div>
 
-                  <p className="mt-5 text-center text-xs text-gray-500">
+                  {/* Ownership / availability */}
+
+                  <p
+                    className="
+                      mt-5
+                      text-center
+                      text-xs
+                      text-gray-500
+                    "
+                  >
                     {purchased
                       ? "You own this book"
                       : isFree
@@ -844,9 +829,17 @@ const BookDetail = () => {
                   BOOK INFORMATION
               ================================================= */}
 
-              <div className="flex min-w-0 flex-col">
+              <div
+                className="
+                  flex
+                  min-w-0
+                  flex-col
+                "
+              >
 
-                {/* Genre */}
+                {/* =================================================
+                    GENRE
+                ================================================= */}
 
                 {book.genre && (
                   <span
@@ -869,7 +862,9 @@ const BookDetail = () => {
                   </span>
                 )}
 
-                {/* Title */}
+                {/* =================================================
+                    TITLE
+                ================================================= */}
 
                 <h1
                   className="
@@ -886,7 +881,9 @@ const BookDetail = () => {
                   {book.title}
                 </h1>
 
-                {/* Author */}
+                {/* =================================================
+                    AUTHOR
+                ================================================= */}
 
                 <p
                   className="
@@ -900,23 +897,42 @@ const BookDetail = () => {
                   "
                 >
 
-                  <User className="h-5 w-5 text-[#C17B4F]" />
+                  <User
+                    className="
+                      h-5
+                      w-5
+                      text-[#C17B4F]
+                    "
+                  />
 
                   <span>
                     by{" "}
 
-                    <strong className="text-[#2E1208]">
+                    <strong
+                      className="
+                        text-[#2E1208]
+                      "
+                    >
                       {book.author}
                     </strong>
                   </span>
 
                 </p>
 
-                {/* Rating */}
+                {/* =================================================
+                    RATING
+                ================================================= */}
 
                 {book.rating != null &&
                   book.rating > 0 && (
-                    <div className="mt-5 flex items-center gap-1">
+                    <div
+                      className="
+                        mt-5
+                        flex
+                        items-center
+                        gap-1
+                      "
+                    >
 
                       {Array.from({
                         length: 5,
@@ -940,7 +956,14 @@ const BookDetail = () => {
                         )
                       )}
 
-                      <span className="ml-2 text-sm font-semibold text-gray-600">
+                      <span
+                        className="
+                          ml-2
+                          text-sm
+                          font-semibold
+                          text-gray-600
+                        "
+                      >
                         {book.rating.toFixed(
                           1
                         )}{" "}
@@ -950,18 +973,32 @@ const BookDetail = () => {
                     </div>
                   )}
 
-                {/* Price */}
+                {/* =================================================
+                    PRICE
+                ================================================= */}
 
                 <div className="mt-6">
 
                   {isFree ? (
                     <div>
 
-                      <span className="text-sm text-gray-500">
+                      <span
+                        className="
+                          text-sm
+                          text-gray-500
+                        "
+                      >
                         Digital edition
                       </span>
 
-                      <p className="mt-1 text-2xl font-bold text-green-600">
+                      <p
+                        className="
+                          mt-1
+                          text-2xl
+                          font-bold
+                          text-green-600
+                        "
+                      >
                         Free Download
                       </p>
 
@@ -969,11 +1006,23 @@ const BookDetail = () => {
                   ) : (
                     <div>
 
-                      <span className="text-sm text-gray-500">
+                      <span
+                        className="
+                          text-sm
+                          text-gray-500
+                        "
+                      >
                         Price
                       </span>
 
-                      <p className="mt-1 text-3xl font-bold text-[#2E1208]">
+                      <p
+                        className="
+                          mt-1
+                          text-3xl
+                          font-bold
+                          text-[#2E1208]
+                        "
+                      >
                         {formatPrice(
                           price!
                         )}
@@ -986,9 +1035,16 @@ const BookDetail = () => {
 
                 {/* =================================================
                     METADATA
-                ================================================== */}
+                ================================================= */}
 
-                <div className="mt-6 flex flex-wrap gap-2">
+                <div
+                  className="
+                    mt-6
+                    flex
+                    flex-wrap
+                    gap-2
+                  "
+                >
 
                   {book.publishedYear !=
                     null && (
@@ -1006,7 +1062,13 @@ const BookDetail = () => {
                       "
                     >
 
-                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <Calendar
+                        className="
+                          h-4
+                          w-4
+                          text-gray-500
+                        "
+                      />
 
                       {book.publishedYear}
 
@@ -1028,31 +1090,15 @@ const BookDetail = () => {
                       "
                     >
 
-                      <Book className="h-4 w-4 text-gray-500" />
+                      <Book
+                        className="
+                          h-4
+                          w-4
+                          text-gray-500
+                        "
+                      />
 
                       {book.pages} pages
-
-                    </div>
-                  )}
-
-                  {book.readingTime && (
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                        rounded-full
-                        bg-gray-100
-                        px-3
-                        py-2
-                        text-sm
-                        text-gray-700
-                      "
-                    >
-
-                      <Clock className="h-4 w-4 text-gray-500" />
-
-                      {book.readingTime}
 
                     </div>
                   )}
@@ -1073,7 +1119,12 @@ const BookDetail = () => {
                       "
                     >
 
-                      <FileText className="h-4 w-4" />
+                      <FileText
+                        className="
+                          h-4
+                          w-4
+                        "
+                      />
 
                       PDF Available
 
@@ -1082,16 +1133,30 @@ const BookDetail = () => {
 
                 </div>
 
-                <div className="my-7 h-px bg-gray-100" />
+                {/* Divider */}
+
+                <div
+                  className="
+                    my-7
+                    h-px
+                    bg-gray-100
+                  "
+                />
 
                 {/* =================================================
                     FULL BOOK DESCRIPTION
-                ================================================== */}
+                ================================================= */}
 
                 {book.description && (
                   <div>
 
-                    <h2 className="text-xl font-bold text-[#2E1208]">
+                    <h2
+                      className="
+                        text-xl
+                        font-bold
+                        text-[#2E1208]
+                      "
+                    >
                       About this book
                     </h2>
 
@@ -1112,127 +1177,8 @@ const BookDetail = () => {
                 )}
 
                 {/* =================================================
-                    TARGET AUDIENCE
-                ================================================== */}
-
-                {book.targetAudience && (
-                  <div className="mt-7">
-
-                    <div className="flex items-center gap-2">
-
-                      <Users className="h-5 w-5 text-[#C17B4F]" />
-
-                      <h2 className="text-xl font-bold text-[#2E1208]">
-                        Who this book is for
-                      </h2>
-
-                    </div>
-
-                    <p
-                      className="
-                        mt-3
-                        text-sm
-                        leading-7
-                        text-gray-600
-                        sm:text-base
-                      "
-                    >
-                      {book.targetAudience}
-                    </p>
-
-                  </div>
-                )}
-
-                {/* =================================================
-                    KEY THEMES
-                ================================================== */}
-
-                {themes.length > 0 && (
-                  <div className="mt-7">
-
-                    <div className="flex items-center gap-2">
-
-                      <Tag className="h-5 w-5 text-[#C17B4F]" />
-
-                      <h2 className="text-xl font-bold text-[#2E1208]">
-                        Key Themes
-                      </h2>
-
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-
-                      {themes.map(
-                        (
-                          theme,
-                          index
-                        ) => (
-                          <span
-                            key={`${theme}-${index}`}
-                            className="
-                              rounded-full
-                              bg-[#C17B4F]/10
-                              px-3
-                              py-1.5
-                              text-sm
-                              font-medium
-                              text-[#8B4F2F]
-                            "
-                          >
-                            {theme}
-                          </span>
-                        )
-                      )}
-
-                    </div>
-
-                  </div>
-                )}
-
-                {/* =================================================
-                    KEYWORDS
-                ================================================== */}
-
-                {keywords.length > 0 && (
-                  <div className="mt-7">
-
-                    <h2 className="text-xl font-bold text-[#2E1208]">
-                      Keywords
-                    </h2>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-
-                      {keywords.map(
-                        (
-                          keyword,
-                          index
-                        ) => (
-                          <span
-                            key={`${keyword}-${index}`}
-                            className="
-                              rounded-full
-                              border
-                              border-gray-200
-                              bg-gray-50
-                              px-3
-                              py-1.5
-                              text-sm
-                              text-gray-600
-                            "
-                          >
-                            {keyword}
-                          </span>
-                        )
-                      )}
-
-                    </div>
-
-                  </div>
-                )}
-
-                {/* =================================================
                     ACTIONS
-                ================================================== */}
+                ================================================= */}
 
                 <div
                   className="
@@ -1274,9 +1220,22 @@ const BookDetail = () => {
                   >
 
                     {downloading ? (
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      <Loader2
+                        className="
+                          mr-2
+                          h-5
+                          w-5
+                          animate-spin
+                        "
+                      />
                     ) : (
-                      <Download className="mr-2 h-5 w-5" />
+                      <Download
+                        className="
+                          mr-2
+                          h-5
+                          w-5
+                        "
+                      />
                     )}
 
                     {purchased
@@ -1319,7 +1278,13 @@ const BookDetail = () => {
                             : {})}
                         >
 
-                          <ShoppingBag className="mr-2 h-5 w-5" />
+                          <ShoppingBag
+                            className="
+                              mr-2
+                              h-5
+                              w-5
+                            "
+                          />
 
                           {bookPurchaseLabel()}
 
@@ -1331,8 +1296,8 @@ const BookDetail = () => {
                 </div>
 
                 {/* =================================================
-                    STATUS MESSAGES
-                ================================================== */}
+                    STATUS: PDF NOT AVAILABLE
+                ================================================= */}
 
                 {!hasPdf && (
                   <div
@@ -1352,11 +1317,15 @@ const BookDetail = () => {
                       PDF coming soon.
                     </strong>{" "}
 
-                    The digital copy for this title
-                    is not available yet.
+                    The digital copy for this
+                    title is not available yet.
 
                   </div>
                 )}
+
+                {/* =================================================
+                    STATUS: PAID BOOK
+                ================================================= */}
 
                 {!purchased &&
                   !isFree &&
@@ -1387,6 +1356,10 @@ const BookDetail = () => {
                     </div>
                   )}
 
+                {/* =================================================
+                    STATUS: PURCHASED
+                ================================================= */}
+
                 {purchased &&
                   hasPdf && (
                     <div
@@ -1402,8 +1375,8 @@ const BookDetail = () => {
                       "
                     >
 
-                      ✓ You have purchased this
-                      book. Click{" "}
+                      ✓ You have purchased
+                      this book. Click{" "}
 
                       <strong>
                         Download Now
@@ -1413,6 +1386,10 @@ const BookDetail = () => {
 
                     </div>
                   )}
+
+                {/* =================================================
+                    STATUS: FREE
+                ================================================= */}
 
                 {isFree &&
                   hasPdf && (
@@ -1442,11 +1419,17 @@ const BookDetail = () => {
 
           </section>
 
-          {/* =====================================================
+          {/* =================================================
               BACK TO BOOKS
-          ===================================================== */}
+          ================================================= */}
 
-          <div className="mt-8 flex justify-center">
+          <div
+            className="
+              mt-8
+              flex
+              justify-center
+            "
+          >
 
             <Link
               to="/books"
@@ -1466,7 +1449,12 @@ const BookDetail = () => {
               "
             >
 
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft
+                className="
+                  h-4
+                  w-4
+                "
+              />
 
               Browse all books
 
