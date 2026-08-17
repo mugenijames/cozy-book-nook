@@ -21,14 +21,23 @@ model Book {
   publishedYear Int?
   pages         Int?
   rating        Float?
-  priceCents    Int?    // ← make nullable (was Int)
+  priceCents    Int?
 
+  // =========================================================
+  // BOOK AVAILABILITY
+  // =========================================================
+
+  // Whether a physical/hardcopy version can be ordered
+  hasHardcopy Boolean @default(false)
+
+  // Digital book
   pdfUrl          String?
   pdfPreviewImage String?
 
-  aiSummary      String?
-  shortSummary   String?
-  pdfSummary     String?
+  // AI-generated book information
+  aiSummary   String?
+  shortSummary String?
+  pdfSummary  String?
 
   keyThemes      Json?
   keywords       Json?
@@ -42,17 +51,69 @@ model Book {
   orders          Order[]
   pendingPayments PendingPayment[]
 
-  @@map("books")   // ← add this line
+  @@map("books")
 }
+
+
 model Order {
   id              String   @id @default(uuid())
+
+  // =========================================================
+  // BOOK
+  // =========================================================
+
   bookId          String
   bookTitle       String
+
+  // =========================================================
+  // ORDER TYPE
+  // =========================================================
+
+  // DIGITAL = PDF purchase
+  // HARDCOPY = physical book order
+  orderType       String   @default("DIGITAL")
+
+  // =========================================================
+  // CUSTOMER
+  // =========================================================
+
+  customerName    String?
+  email           String
+  phoneNumber     String?
+
+  // =========================================================
+  // HARDCOPY DELIVERY INFORMATION
+  // =========================================================
+
+  deliveryLocation String?
+  notes            String?
+
+  // =========================================================
+  // QUANTITY
+  // =========================================================
+
+  quantity        Int      @default(1)
+
+  // =========================================================
+  // PAYMENT
+  // =========================================================
+
   paymentMethod   String
   transactionCode String   @unique
-  email           String
   amountCents     Int
-  status          String   @default("approved")
+
+  // =========================================================
+  // ORDER STATUS
+  // =========================================================
+
+  // pending
+  // confirmed
+  // processing
+  // shipped
+  // delivered
+  // cancelled
+  status          String   @default("pending")
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -60,23 +121,35 @@ model Order {
 
   @@index([email])
   @@index([status])
+  @@index([orderType])
   @@index([transactionCode])
+  @@index([createdAt])
+
   @@map("orders")
 }
 
+
 model PendingPayment {
   id                 String   @id @default(uuid())
+
   checkoutRequestID  String?  @unique
   paypalOrderId      String?  @unique
+
   bookId             String
   bookTitle          String
+
   email              String
   phoneNumber        String?
+
   amount             Float
+
   status             String   @default("pending")
+
   mpesaReceiptNumber String?
   paypalCaptureId    String?
+
   errorMessage       String?
+
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -86,8 +159,10 @@ model PendingPayment {
   @@index([status])
   @@index([checkoutRequestID])
   @@index([paypalOrderId])
+
   @@map("pending_payments")
 }
+
 
 model Testimonial {
   id        String   @id @default(uuid())
@@ -107,5 +182,6 @@ model Testimonial {
   @@index([approved])
   @@index([featured])
   @@index([createdAt])
+
   @@map("testimonials")
 }

@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  CalendarDays,
+  CalendarCheck2,
   ChevronDown,
   Menu,
   X,
   BookOpen,
   UserRound,
-  MessageCircle,
+  Quote,
   Mic2,
-  Sparkles,
+  GraduationCap,
 } from "lucide-react";
 
 import BookingModal from "@/components/BookingModal";
@@ -471,7 +471,7 @@ export default function Header() {
                 aria-expanded={programsOpen}
                 aria-haspopup="menu"
               >
-                <Sparkles className="h-4 w-4" />
+                <GraduationCap className="h-4 w-4" />
 
                 Programs
 
@@ -598,7 +598,7 @@ export default function Header() {
                           text-white
                         "
                       >
-                        <Sparkles className="h-4 w-4" />
+                        <GraduationCap className="h-4 w-4" />
                       </div>
 
                       <div>
@@ -647,7 +647,7 @@ export default function Header() {
                                 text-[#8B4513]
                               "
                             >
-                              <Sparkles className="h-4 w-4" />
+                              <GraduationCap className="h-4 w-4" />
                             </div>
 
                             <div className="min-w-0">
@@ -704,7 +704,7 @@ export default function Header() {
                 }
               `}
             >
-              <MessageCircle className="h-4 w-4" />
+              <Quote className="h-4 w-4" />
 
               Testimonials
 
@@ -795,7 +795,7 @@ export default function Header() {
                 active:scale-95
               "
             >
-              <CalendarDays className="h-4 w-4" />
+              <CalendarCheck2 className="h-4 w-4" />
 
               Book David
             </button>
@@ -958,7 +958,7 @@ export default function Header() {
                     `}
                   >
                     <span className="flex items-center gap-3">
-                      <Sparkles className="h-4 w-4" />
+                      <GraduationCap className="h-4 w-4" />
 
                       Programs
                     </span>
@@ -1071,7 +1071,7 @@ export default function Header() {
                     }
                   `}
                 >
-                  <MessageCircle className="h-4 w-4" />
+                  <Quote className="h-4 w-4" />
 
                   Testimonials
                 </a>
@@ -1138,7 +1138,7 @@ export default function Header() {
                     active:scale-[0.98]
                   "
                 >
-                  <CalendarDays className="h-4 w-4" />
+                  <CalendarCheck2 className="h-4 w-4" />
 
                   Book David to Speak
                 </button>
@@ -1152,8 +1152,6 @@ export default function Header() {
           SPACER
       =========================================================
       
-      When the header becomes fixed, this prevents the page content
-      from jumping upward.
       */}
 
       {isSticky && (
