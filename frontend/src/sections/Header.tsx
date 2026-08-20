@@ -544,22 +544,7 @@ export default function Header() {
                     {/* Dropdown Header */}
 
                     <div className="px-4 pb-3 pt-3">
-                      <p
-                        className="
-                          text-[10px]
-                          font-bold
-                          uppercase
-                          tracking-[0.2em]
-                          text-[#C17B4F]
-                        "
-                      >
-                        What David Does
-                      </p>
-
-                      <p className="mt-1 text-sm text-gray-500">
-                        Explore his work and community
-                        initiatives.
-                      </p>
+                      
                     </div>
 
                     <div className="h-px bg-[#E8DDD4]" />
@@ -797,7 +782,7 @@ export default function Header() {
             >
               <CalendarCheck2 className="h-4 w-4" />
 
-              Book David
+             Donate
             </button>
           </nav>
 

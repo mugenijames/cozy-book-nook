@@ -10,8 +10,8 @@ datasource db {
 }
 
 model Book {
-  id          String   @id @default(uuid())
-  slug        String   @unique
+  id          String  @id @default(uuid())
+  slug        String  @unique
   title       String
   author      String
   description String?
@@ -23,24 +23,15 @@ model Book {
   rating        Float?
   priceCents    Int?
 
-  // =========================================================
-  // BOOK AVAILABILITY
-  // =========================================================
-
-  // Whether a physical/hardcopy version can be ordered
-  hasHardcopy Boolean @default(false)
-
-  // Digital book
   pdfUrl          String?
   pdfPreviewImage String?
 
-  // AI-generated book information
-  aiSummary   String?
+  aiSummary    String?
   shortSummary String?
-  pdfSummary  String?
+  pdfSummary   String?
 
-  keyThemes      Json?
-  keywords       Json?
+  keyThemes Json?
+  keywords  Json?
 
   readingTime    String?
   targetAudience String?
@@ -50,131 +41,127 @@ model Book {
 
   orders          Order[]
   pendingPayments PendingPayment[]
+  orderItems      OrderItem[]
 
   @@map("books")
 }
 
-
 model Order {
-  id              String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  // =========================================================
-  // BOOK
-  // =========================================================
+  bookId    String?
+  bookTitle String?
 
-  bookId          String
-  bookTitle       String
+  orderType String @default("DIGITAL")
 
-  // =========================================================
-  // ORDER TYPE
-  // =========================================================
+  customerName String?
+  email        String
+  phoneNumber  String?
 
-  // DIGITAL = PDF purchase
-  // HARDCOPY = physical book order
-  orderType       String   @default("DIGITAL")
+  deliveryMethod  String?
+  deliveryAddress String?
+  deliveryTown    String?
+  deliveryNotes   String?
 
-  // =========================================================
-  // CUSTOMER
-  // =========================================================
+  paymentMethod   String?
+  transactionCode String? @unique
 
-  customerName    String?
-  email           String
-  phoneNumber     String?
+  amountCents Int
 
-  // =========================================================
-  // HARDCOPY DELIVERY INFORMATION
-  // =========================================================
+  status        String @default("PENDING")
+  paymentStatus String @default("UNPAID")
 
-  deliveryLocation String?
-  notes            String?
+  notes String?
 
-  // =========================================================
-  // QUANTITY
-  // =========================================================
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  quantity        Int      @default(1)
+  book Book? @relation(fields: [bookId], references: [id])
 
-  // =========================================================
-  // PAYMENT
-  // =========================================================
-
-  paymentMethod   String
-  transactionCode String   @unique
-  amountCents     Int
-
-  // =========================================================
-  // ORDER STATUS
-  // =========================================================
-
-  // pending
-  // confirmed
-  // processing
-  // shipped
-  // delivered
-  // cancelled
-  status          String   @default("pending")
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  book            Book     @relation(fields: [bookId], references: [id])
+  items OrderItem[]
 
   @@index([email])
   @@index([status])
   @@index([orderType])
-  @@index([transactionCode])
+  @@index([paymentStatus])
   @@index([createdAt])
-
+  @@index([bookId])
   @@map("orders")
 }
 
+model OrderItem {
+  id String @id @default(uuid())
+
+  orderId String
+  bookId  String
+
+  bookTitle String
+
+  quantity Int @default(1)
+
+  unitPriceCents Int
+  totalCents     Int
+
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  book Book @relation(fields: [bookId], references: [id])
+
+  @@index([orderId])
+  @@index([bookId])
+  @@map("order_items")
+}
 
 model PendingPayment {
-  id                 String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  checkoutRequestID  String?  @unique
-  paypalOrderId      String?  @unique
+  checkoutRequestID String? @unique
+  paypalOrderId     String? @unique
 
-  bookId             String
-  bookTitle          String
+  bookId    String
+  bookTitle String
 
-  email              String
-  phoneNumber        String?
+  email       String
+  phoneNumber String?
 
-  amount             Float
+  amount Float
 
-  status             String   @default("pending")
+  status String @default("pending")
 
   mpesaReceiptNumber String?
   paypalCaptureId    String?
 
-  errorMessage       String?
+  errorMessage String?
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  book               Book     @relation(fields: [bookId], references: [id])
+  book Book @relation(fields: [bookId], references: [id])
 
   @@index([email])
   @@index([status])
   @@index([checkoutRequestID])
   @@index([paypalOrderId])
-
   @@map("pending_payments")
 }
 
-
 model Testimonial {
-  id        String   @id @default(uuid())
-  name      String
-  role      String?
-  company   String?
-  message   String   @db.Text
-  rating    Int      @default(5)
-  photoUrl  String?
+  id String @id @default(uuid())
 
-  approved  Boolean  @default(false)
-  featured  Boolean  @default(false)
+  name String
+
+  role    String?
+  company String?
+
+  message String @db.Text
+
+  rating Int @default(5)
+
+  photoUrl String?
+
+  approved Boolean @default(false)
+  featured Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -182,6 +169,5 @@ model Testimonial {
   @@index([approved])
   @@index([featured])
   @@index([createdAt])
-
   @@map("testimonials")
 }
