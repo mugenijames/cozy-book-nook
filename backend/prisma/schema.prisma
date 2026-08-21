@@ -10,39 +10,35 @@ datasource db {
 }
 
 model Book {
-  id          String  @id @default(uuid())
-  slug        String  @unique
-  title       String
-  author      String
-  description String?
-  genre       String?
-  coverImage  String?
-
-  publishedYear Int?
-  pages         Int?
-  rating        Float?
-  priceCents    Int?
-
+  id              String           @id @default(uuid())
+  slug            String           @unique
+  title           String
+  author          String
+  description     String?
+  genre           String?
+  coverImage      String?
+  publishedYear   Int?
+  pages           Int?
+  rating          Float?
+  priceCents      Int?
   pdfUrl          String?
   pdfPreviewImage String?
-
-  aiSummary    String?
-  shortSummary String?
-  pdfSummary   String?
-
-  keyThemes Json?
-  keywords  Json?
-
-  readingTime    String?
-  targetAudience String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  aiSummary       String?
+  shortSummary    String?
+  pdfSummary      String?
+  keyThemes       Json?
+  keywords        Json?
+  readingTime     String?
+  targetAudience  String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   orders          Order[]
   pendingPayments PendingPayment[]
   orderItems      OrderItem[]
 
+  @@index([author])
+  @@index([title])
   @@map("books")
 }
 
@@ -56,7 +52,7 @@ model Order {
 
   customerName String?
   email        String
-  phoneNumber  String?
+  phoneNumber String?
 
   deliveryMethod  String?
   deliveryAddress String?
@@ -76,8 +72,7 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  book Book? @relation(fields: [bookId], references: [id])
-
+  book  Book?       @relation(fields: [bookId], references: [id])
   items OrderItem[]
 
   @@index([email])
@@ -105,8 +100,7 @@ model OrderItem {
   createdAt DateTime @default(now())
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  book Book @relation(fields: [bookId], references: [id])
+  book  Book  @relation(fields: [bookId], references: [id])
 
   @@index([orderId])
   @@index([bookId])
@@ -114,28 +108,20 @@ model OrderItem {
 }
 
 model PendingPayment {
-  id String @id @default(uuid())
-
-  checkoutRequestID String? @unique
-  paypalOrderId     String? @unique
-
-  bookId    String
-  bookTitle String
-
-  email       String
-  phoneNumber String?
-
-  amount Float
-
-  status String @default("pending")
-
+  id                 String   @id @default(uuid())
+  checkoutRequestID  String?  @unique
+  paypalOrderId      String?  @unique
+  bookId             String
+  bookTitle          String
+  email              String
+  phoneNumber        String?
+  amount             Float
+  status             String   @default("pending")
   mpesaReceiptNumber String?
   paypalCaptureId    String?
-
-  errorMessage String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  errorMessage       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   book Book @relation(fields: [bookId], references: [id])
 
@@ -147,22 +133,15 @@ model PendingPayment {
 }
 
 model Testimonial {
-  id String @id @default(uuid())
-
-  name String
-
-  role    String?
-  company String?
-
-  message String @db.Text
-
-  rating Int @default(5)
-
-  photoUrl String?
-
-  approved Boolean @default(false)
-  featured Boolean @default(false)
-
+  id        String   @id @default(uuid())
+  name      String
+  role      String?
+  company   String?
+  message   String
+  rating    Int      @default(5)
+  photoUrl  String?
+  approved  Boolean  @default(false)
+  featured  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
