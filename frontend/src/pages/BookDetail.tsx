@@ -34,7 +34,6 @@ import {
 import { PaymentModal } from "@/components/PaymentModal";
 import HardcopyOrderModal from "@/components/HardcopyOrderModal";
 import InquiryModal from "@/components/InquiryModal";
-import BookAccessManager from "@/components/BookAccessManager";
 import { rememberBuyerEmail, getRememberedBuyerEmail } from "@/services/bookAccess";
 
 /* =========================================================
@@ -93,9 +92,6 @@ const BookDetail = () => {
     useState(false);
 
   const [showInquiry, setShowInquiry] =
-    useState(false);
-
-  const [showAccessManager, setShowAccessManager] =
     useState(false);
 
   const [buyerEmail, setBuyerEmail] =
@@ -637,21 +633,6 @@ const BookDetail = () => {
           }}
           onClose={() =>
             setShowInquiry(false)
-          }
-        />
-      )}
-
-      {/* =====================================================
-          BOOK ACCESS MANAGER
-      ===================================================== */}
-
-      {showAccessManager && buyerEmail && (
-        <BookAccessManager
-          bookId={book.id}
-          bookTitle={book.title}
-          buyerEmail={buyerEmail}
-          onClose={() =>
-            setShowAccessManager(false)
           }
         />
       )}
@@ -1452,26 +1433,6 @@ const BookDetail = () => {
                       </strong>{" "}
 
                       to access your PDF copy.
-
-                      {buyerEmail && !isFree && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setShowAccessManager(true)
-                          }
-                          className="
-                            mt-3
-                            block
-                            font-semibold
-                            text-green-800
-                            underline
-                            underline-offset-2
-                            hover:text-green-900
-                          "
-                        >
-                          Manage who else has access
-                        </button>
-                      )}
 
                     </div>
                   )}
