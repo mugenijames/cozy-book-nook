@@ -45,15 +45,13 @@ export const getOrders = async (
 */
 
 export const getOrderById = async (
-  req: Request,
+  req: Request<{ id: string }>,
   res: Response
 ) => {
   try {
     const { id } = req.params;
 
-    const idValue = Array.isArray(id) ? id[0] : id;
-
-    if (!idValue) {
+    if (!id) {
       return res.status(400).json({
         error: "Order ID is required",
       });
@@ -61,7 +59,7 @@ export const getOrderById = async (
 
     const order = await prisma.order.findUnique({
       where: {
-        id: idValue,
+        id,
       },
       include: {
         book: true,
@@ -102,11 +100,12 @@ export const getOrdersByEmail = async (
   try {
     const emailValue = req.query.email;
 
-    const email = Array.isArray(emailValue)
-      ? emailValue[0]
-      : typeof emailValue === "string"
+    const email =
+      typeof emailValue === "string"
         ? emailValue
-        : "";
+        : Array.isArray(emailValue)
+          ? String(emailValue[0] || "")
+          : "";
 
     if (!email.trim()) {
       return res.status(400).json({
@@ -253,6 +252,16 @@ export const createHardcopyOrder = async (
       });
     }
 
+    if (
+      deliveryMethod === "DELIVERY" &&
+      (typeof deliveryTown !== "string" ||
+        !deliveryTown.trim())
+    ) {
+      return res.status(400).json({
+        error: "Delivery town is required",
+      });
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Validate order items
@@ -292,8 +301,7 @@ export const createHardcopyOrder = async (
         quantity < 1
       ) {
         return res.status(400).json({
-          error:
-            "Book quantity must be at least 1",
+          error: "Book quantity must be at least 1",
         });
       }
     }
@@ -302,11 +310,6 @@ export const createHardcopyOrder = async (
     |--------------------------------------------------------------------------
     | Combine duplicate books
     |--------------------------------------------------------------------------
-    |
-    | If the frontend sends the same book more than once,
-    | combine the quantities instead of creating duplicate
-    | OrderItem records.
-    |
     */
 
     const quantityMap =
@@ -314,15 +317,11 @@ export const createHardcopyOrder = async (
 
     for (const item of items) {
       const bookId = item.bookId.trim();
-
-      const quantity = Number(
-        item.quantity
-      );
+      const quantity = Number(item.quantity);
 
       quantityMap.set(
         bookId,
-        (quantityMap.get(bookId) || 0) +
-          quantity
+        (quantityMap.get(bookId) || 0) + quantity
       );
     }
 
@@ -385,14 +384,7 @@ export const createHardcopyOrder = async (
     const orderItems = books.map(
       (book) => {
         const quantity =
-          quantityMap.get(
-            book.id
-          ) || 1;
-
-        /*
-         * Hardcopy orders use the book's
-         * priceCents.
-         */
+          quantityMap.get(book.id) || 1;
 
         const unitPriceCents =
           Number(book.priceCents || 0);
@@ -416,10 +408,6 @@ export const createHardcopyOrder = async (
     |--------------------------------------------------------------------------
     | Backward compatibility
     |--------------------------------------------------------------------------
-    |
-    | The Order model still has bookId/bookTitle because
-    | older digital orders may use those fields.
-    |
     */
 
     const firstBook =
@@ -449,13 +437,12 @@ export const createHardcopyOrder = async (
               : `${books.length} books`,
 
           /*
-           * Explicitly identify this as
-           * a hardcopy order.
+           * Identify as hardcopy order.
            */
           orderType: "HARDCOPY",
 
           /*
-           * Customer information
+           * Customer information.
            */
           customerName:
             customerName.trim(),
@@ -467,44 +454,50 @@ export const createHardcopyOrder = async (
             phoneNumber.trim(),
 
           /*
-           * Delivery information
+           * Delivery information.
            */
           deliveryMethod,
 
           deliveryAddress:
-            deliveryAddress?.trim() ||
-            null,
+            typeof deliveryAddress === "string" &&
+            deliveryAddress.trim()
+              ? deliveryAddress.trim()
+              : null,
 
           deliveryTown:
-            deliveryTown?.trim() ||
-            null,
+            typeof deliveryTown === "string" &&
+            deliveryTown.trim()
+              ? deliveryTown.trim()
+              : null,
 
           deliveryNotes:
-            deliveryNotes?.trim() ||
-            null,
+            typeof deliveryNotes === "string" &&
+            deliveryNotes.trim()
+              ? deliveryNotes.trim()
+              : null,
 
           /*
-           * Payment has not happened
-           * at order creation.
+           * Payment has not happened yet.
            */
           paymentMethod: "PENDING",
 
-          amountCents:
-            totalCents,
+          amountCents: totalCents,
 
           /*
-           * Initial order state
+           * Initial order state.
            */
           status: "PENDING",
 
           paymentStatus: "UNPAID",
 
           /*
-           * Keep notes for compatibility.
+           * Compatibility notes.
            */
           notes:
-            deliveryNotes?.trim() ||
-            null,
+            typeof deliveryNotes === "string" &&
+            deliveryNotes.trim()
+              ? deliveryNotes.trim()
+              : null,
 
           /*
            * Create individual order items.
@@ -544,7 +537,7 @@ export const createHardcopyOrder = async (
     );
 
     /*
-     * Prisma unique constraint
+     * Prisma unique constraint.
      */
     if (error?.code === "P2002") {
       return res.status(409).json({
@@ -579,20 +572,14 @@ export const createHardcopyOrder = async (
 */
 
 export const updateOrderStatus = async (
-  req: Request,
+  req: Request<{ id: string }>,
   res: Response
 ) => {
   try {
     const { id } = req.params;
-
     const { status } = req.body;
 
-    const idValue =
-      Array.isArray(id)
-        ? id[0]
-        : id;
-
-    if (!idValue) {
+    if (!id) {
       return res.status(400).json({
         error: "Order ID is required",
       });
@@ -648,12 +635,11 @@ export const updateOrderStatus = async (
     const order =
       await prisma.order.update({
         where: {
-          id: idValue,
+          id,
         },
 
         data: {
-          status:
-            normalizedStatus,
+          status: normalizedStatus,
         },
 
         include: {
@@ -675,7 +661,7 @@ export const updateOrderStatus = async (
     );
 
     /*
-     * Order does not exist
+     * Order does not exist.
      */
     if (error?.code === "P2025") {
       return res.status(404).json({
@@ -708,12 +694,11 @@ export const updateOrderStatus = async (
 
 export const updatePaymentStatus =
   async (
-    req: Request,
+    req: Request<{ id: string }>,
     res: Response
   ) => {
     try {
-      const { id } =
-        req.params;
+      const { id } = req.params;
 
       const {
         paymentStatus,
@@ -721,12 +706,7 @@ export const updatePaymentStatus =
         transactionCode,
       } = req.body;
 
-      const idValue =
-        Array.isArray(id)
-          ? id[0]
-          : id;
-
-      if (!idValue) {
+      if (!id) {
         return res.status(400).json({
           error:
             "Order ID is required",
@@ -734,8 +714,7 @@ export const updatePaymentStatus =
       }
 
       if (
-        typeof paymentStatus !==
-          "string" ||
+        typeof paymentStatus !== "string" ||
         !paymentStatus.trim()
       ) {
         return res.status(400).json({
@@ -770,7 +749,7 @@ export const updatePaymentStatus =
       ) {
         return res.status(400).json({
           error:
-            `Invalid payment status. Allowed statuses: ${allowedPaymentStatuses.join(
+            `Invalid payment status. Allowed payment statuses: ${allowedPaymentStatuses.join(
               ", "
             )}`,
         });
@@ -792,8 +771,7 @@ export const updatePaymentStatus =
       };
 
       if (
-        typeof paymentMethod ===
-          "string" &&
+        typeof paymentMethod === "string" &&
         paymentMethod.trim()
       ) {
         updateData.paymentMethod =
@@ -803,8 +781,7 @@ export const updatePaymentStatus =
       }
 
       if (
-        typeof transactionCode ===
-          "string" &&
+        typeof transactionCode === "string" &&
         transactionCode.trim()
       ) {
         updateData.transactionCode =
@@ -820,7 +797,7 @@ export const updatePaymentStatus =
       const order =
         await prisma.order.update({
           where: {
-            id: idValue,
+            id,
           },
 
           data: updateData,
@@ -844,7 +821,7 @@ export const updatePaymentStatus =
       );
 
       /*
-       * Order not found
+       * Order not found.
        */
       if (error?.code === "P2025") {
         return res.status(404).json({
@@ -853,7 +830,7 @@ export const updatePaymentStatus =
       }
 
       /*
-       * Duplicate transaction code
+       * Duplicate transaction code.
        */
       if (error?.code === "P2002") {
         return res.status(409).json({
