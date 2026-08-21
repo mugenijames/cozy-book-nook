@@ -1130,33 +1130,7 @@ const BookDetail = () => {
                     </div>
                   )}
 
-                  {hasPdf && (
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                        rounded-full
-                        bg-blue-50
-                        px-3
-                        py-2
-                        text-sm
-                        font-medium
-                        text-blue-600
-                      "
-                    >
-
-                      <FileText
-                        className="
-                          h-4
-                          w-4
-                        "
-                      />
-
-                      PDF Available
-
-                    </div>
-                  )}
+                  {/*  */}
 
                 </div>
 
