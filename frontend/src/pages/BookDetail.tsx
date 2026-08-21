@@ -37,6 +37,7 @@ import {
 } from "@/services/api";
 
 import { PaymentModal } from "@/components/PaymentModal";
+import HardcopyOrderModal from "@/components/HardcopyOrderModal";
 
 /* =========================================================
    BOOK TYPE
@@ -69,13 +70,17 @@ interface BookData {
 const BookDetail = () => {
   const { slug } = useParams<{ slug: string }>();
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] =
+    useSearchParams();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [book, setBook] = useState<BookData | null>(null);
+  const [book, setBook] =
+    useState<BookData | null>(null);
 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] =
+    useState<string | null>(null);
 
   const [downloading, setDownloading] =
     useState(false);
@@ -84,6 +89,9 @@ const BookDetail = () => {
     useState(false);
 
   const [showPayment, setShowPayment] =
+    useState(false);
+
+  const [showHardcopyOrder, setShowHardcopyOrder] =
     useState(false);
 
   /* =========================================================
@@ -344,7 +352,7 @@ const BookDetail = () => {
       } else {
         toast.error(
           message ||
-            "Failed to download PDF."
+          "Failed to download PDF."
         );
       }
     } finally {
@@ -587,6 +595,25 @@ const BookDetail = () => {
         )}
 
       {/* =====================================================
+          HARDCOPY ORDER MODAL
+      ===================================================== */}
+
+      {showHardcopyOrder && (
+        <HardcopyOrderModal
+          book={{
+            id: book.id,
+            title: book.title,
+            author: book.author,
+            priceCents: price ?? 0,
+            coverImage: book.coverImage,
+          }}
+          onClose={() =>
+            setShowHardcopyOrder(false)
+          }
+        />
+      )}
+
+      {/* =====================================================
           MAIN PAGE
       ===================================================== */}
 
@@ -817,8 +844,8 @@ const BookDetail = () => {
                     {purchased
                       ? "You own this book"
                       : isFree
-                      ? "Available as a free digital copy"
-                      : "Digital edition available"}
+                        ? "Available as a free digital copy"
+                        : "Digital edition available"}
                   </p>
 
                 </div>
@@ -1048,32 +1075,32 @@ const BookDetail = () => {
 
                   {book.publishedYear !=
                     null && (
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                        rounded-full
-                        bg-gray-100
-                        px-3
-                        py-2
-                        text-sm
-                        text-gray-700
-                      "
-                    >
-
-                      <Calendar
+                      <div
                         className="
-                          h-4
-                          w-4
-                          text-gray-500
+                          flex
+                          items-center
+                          gap-2
+                          rounded-full
+                          bg-gray-100
+                          px-3
+                          py-2
+                          text-sm
+                          text-gray-700
                         "
-                      />
+                      >
 
-                      {book.publishedYear}
+                        <Calendar
+                          className="
+                            h-4
+                            w-4
+                            text-gray-500
+                          "
+                        />
 
-                    </div>
-                  )}
+                        {book.publishedYear}
+
+                      </div>
+                    )}
 
                   {book.pages != null && (
                     <div
@@ -1133,7 +1160,9 @@ const BookDetail = () => {
 
                 </div>
 
-                {/* Divider */}
+                {/* =================================================
+                    DIVIDER
+                ================================================= */}
 
                 <div
                   className="
@@ -1191,7 +1220,9 @@ const BookDetail = () => {
                   "
                 >
 
-                  {/* Buy / Download */}
+                  {/* =================================================
+                      BUY / DOWNLOAD
+                  ================================================= */}
 
                   <Button
                     type="button"
@@ -1241,57 +1272,92 @@ const BookDetail = () => {
                     {purchased
                       ? "Download Now"
                       : isFree
-                      ? "Download Free"
-                      : "Buy & Download"}
+                        ? "Download Free"
+                        : "Buy & Download"}
 
                   </Button>
 
-                  {/* Inquiry */}
+                  {/* =================================================
+                      ORDER HARD COPY
+                  ================================================= */}
 
-                  {!isFree &&
-                    !purchased && (
-                      <Button
-                        asChild
-                        variant="outline"
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      setShowHardcopyOrder(true)
+                    }
+                    className="
+                      min-h-[52px]
+                      rounded-full
+                      bg-[#2E1208]
+                      px-7
+                      font-semibold
+                      text-white
+                      shadow-md
+                      transition-all
+                      hover:bg-[#4A2112]
+                    "
+                  >
+
+                    <ShoppingBag
+                      className="
+                        mr-2
+                        h-5
+                        w-5
+                      "
+                    />
+
+                    Order Hard Copy
+
+                  </Button>
+
+                  {/* =================================================
+                      INQUIRY
+                  ================================================= */}
+
+                  <Button
+                    asChild
+                    type="button"
+                    variant="outline"
+                    className="
+                      min-h-[52px]
+                      rounded-full
+                      border-[#C9B8A8]
+                      px-7
+                      font-semibold
+                      text-[#2E1208]
+                      hover:border-[#D4A017]
+                      hover:bg-[#D4A017]/10
+                    "
+                  >
+
+                    <a
+                      href={inquireHref}
+                      {...(
+                        inquireExternal
+                          ? {
+                              target:
+                                "_blank",
+                              rel:
+                                "noopener noreferrer",
+                            }
+                          : {}
+                      )}
+                    >
+
+                      <FileText
                         className="
-                          min-h-[52px]
-                          rounded-full
-                          border-[#C9B8A8]
-                          px-7
-                          text-[#2E1208]
-                          hover:border-[#D4A017]
-                          hover:bg-[#D4A017]/10
+                          mr-2
+                          h-5
+                          w-5
                         "
-                      >
+                      />
 
-                        <a
-                          href={
-                            inquireHref
-                          }
-                          {...(inquireExternal
-                            ? {
-                                target:
-                                  "_blank",
-                                rel:
-                                  "noopener noreferrer",
-                              }
-                            : {})}
-                        >
+                      Inquiry
 
-                          <ShoppingBag
-                            className="
-                              mr-2
-                              h-5
-                              w-5
-                            "
-                          />
+                    </a>
 
-                          {bookPurchaseLabel()}
-
-                        </a>
-
-                      </Button>
-                    )}
+                  </Button>
 
                 </div>
 

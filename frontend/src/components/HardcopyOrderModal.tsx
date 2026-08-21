@@ -1,5 +1,3 @@
-// frontend/src/components/HardcopyOrderModal.tsx
-
 import { FormEvent, useEffect, useState } from "react";
 import {
   X,
@@ -8,267 +6,208 @@ import {
   Mail,
   Phone,
   MapPin,
-  MessageSquare,
-  Loader2,
   Package,
+  MessageSquare,
+  Minus,
+  Plus,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 
-import type { Book } from "@/services/api";
-
-export type HardcopyOrderData = {
-  bookId: string;
-  bookTitle: string;
-
-  customerName: string;
-  email: string;
-  phoneNumber: string;
-
-  quantity: number;
-
-  deliveryMethod: string;
-  deliveryAddress: string;
-  deliveryTown: string;
-  deliveryNotes: string;
-
-  paymentMethod: string;
-
-  amountCents: number;
-};
+interface Book {
+  id: string;
+  title: string;
+  author?: string;
+  coverImage?: string | null;
+  priceCents?: number | null;
+}
 
 interface HardcopyOrderModalProps {
   isOpen: boolean;
-  book: Book | null;
-
   onClose: () => void;
-
-  onSubmit: (
-    data: HardcopyOrderData
-  ) => Promise<void> | void;
+  book: Book;
 }
 
-const HardcopyOrderModal = ({
+interface OrderFormData {
+  customerName: string;
+  email: string;
+  phoneNumber: string;
+  quantity: number;
+  deliveryMethod: string;
+  deliveryTown: string;
+  deliveryAddress: string;
+  deliveryNotes: string;
+}
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const formatPrice = (priceCents?: number | null) => {
+  if (priceCents == null) return "Price on inquiry";
+
+  return new Intl.NumberFormat("en-KE", {
+    style: "currency",
+    currency: "KES",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(priceCents / 100);
+};
+
+const initialForm: OrderFormData = {
+  customerName: "",
+  email: "",
+  phoneNumber: "",
+  quantity: 1,
+  deliveryMethod: "Pickup",
+  deliveryTown: "",
+  deliveryAddress: "",
+  deliveryNotes: "",
+};
+
+export default function HardcopyOrderModal({
   isOpen,
-  book,
   onClose,
-  onSubmit,
-}: HardcopyOrderModalProps) => {
-  const [customerName, setCustomerName] =
-    useState("");
+  book,
+}: HardcopyOrderModalProps) {
+  const [form, setForm] = useState<OrderFormData>(initialForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  const [email, setEmail] =
-    useState("");
+  const unitPriceCents = book.priceCents ?? 0;
 
-  const [phoneNumber, setPhoneNumber] =
-    useState("");
-
-  const [quantity, setQuantity] =
-    useState(1);
-
-  const [deliveryMethod, setDeliveryMethod] =
-    useState("DELIVERY");
-
-  const [deliveryAddress, setDeliveryAddress] =
-    useState("");
-
-  const [deliveryTown, setDeliveryTown] =
-    useState("");
-
-  const [deliveryNotes, setDeliveryNotes] =
-    useState("");
-
-  const [paymentMethod, setPaymentMethod] =
-    useState("MPESA");
-
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  /* =========================================================
-     RESET WHEN MODAL OPENS
-  ========================================================= */
+  const totalCents = unitPriceCents * form.quantity;
 
   useEffect(() => {
-    if (!isOpen) return;
-
-    setError("");
-    setIsSubmitting(false);
+    if (!isOpen) {
+      setForm(initialForm);
+      setError("");
+      setSuccess(false);
+      setOrderNumber(null);
+      setIsSubmitting(false);
+    }
   }, [isOpen]);
 
-  /* =========================================================
-     CLOSE ON ESCAPE
-  ========================================================= */
+  if (!isOpen) return null;
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !isSubmitting) {
-        onClose();
-      }
-    };
-
-    window.addEventListener(
-      "keydown",
-      handleEscape
-    );
-
-    return () => {
-      window.removeEventListener(
-        "keydown",
-        handleEscape
-      );
-    };
-  }, [isOpen, isSubmitting, onClose]);
-
-  /* =========================================================
-     TOTAL
-  ========================================================= */
-
-  const unitPrice =
-    Number(book?.priceCents || 0);
-
-  const totalAmount =
-    unitPrice * quantity;
-
-  const formatPrice = (
-    cents: number
+  const updateField = (
+    field: keyof OrderFormData,
+    value: string | number
   ) => {
-    return new Intl.NumberFormat(
-      "en-KE",
-      {
-        style: "currency",
-        currency: "KES",
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }
-    ).format(cents / 100);
+    setForm((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
   };
 
-  /* =========================================================
-     SUBMIT
-  ========================================================= */
+  const decreaseQuantity = () => {
+    setForm((previous) => ({
+      ...previous,
+      quantity: Math.max(1, previous.quantity - 1),
+    }));
+  };
 
-  const handleSubmit = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
+  const increaseQuantity = () => {
+    setForm((previous) => ({
+      ...previous,
+      quantity: previous.quantity + 1,
+    }));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (!book) {
-      setError(
-        "No book has been selected."
-      );
-
-      return;
-    }
 
     setError("");
 
-    if (!customerName.trim()) {
-      setError(
-        "Please enter your full name."
-      );
-
+    if (!form.customerName.trim()) {
+      setError("Please enter your name.");
       return;
     }
 
-    if (!email.trim()) {
-      setError(
-        "Please enter your email address."
-      );
-
+    if (!form.email.trim()) {
+      setError("Please enter your email address.");
       return;
     }
 
-    if (!phoneNumber.trim()) {
-      setError(
-        "Please enter your phone number."
-      );
+    if (!form.phoneNumber.trim()) {
+      setError("Please enter your phone number.");
+      return;
+    }
 
+    if (form.quantity < 1) {
+      setError("Quantity must be at least 1.");
       return;
     }
 
     if (
-      deliveryMethod === "DELIVERY" &&
-      !deliveryTown.trim()
+      form.deliveryMethod !== "Pickup" &&
+      !form.deliveryTown.trim()
     ) {
-      setError(
-        "Please enter your town or delivery location."
-      );
-
+      setError("Please enter your delivery town.");
       return;
     }
 
     if (
-      deliveryMethod === "DELIVERY" &&
-      !deliveryAddress.trim()
+      form.deliveryMethod !== "Pickup" &&
+      !form.deliveryAddress.trim()
     ) {
-      setError(
-        "Please enter your delivery address."
-      );
-
-      return;
-    }
-
-    if (quantity < 1) {
-      setError(
-        "Quantity must be at least 1."
-      );
-
+      setError("Please enter your delivery address.");
       return;
     }
 
     try {
       setIsSubmitting(true);
 
-      await onSubmit({
-        bookId: book.id,
+      const response = await fetch(`${API_BASE_URL}/orders/hardcopy`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customerName: form.customerName.trim(),
+          email: form.email.trim(),
+          phoneNumber: form.phoneNumber.trim(),
 
-        bookTitle: book.title,
+          deliveryMethod: form.deliveryMethod,
 
-        customerName:
-          customerName.trim(),
+          deliveryTown:
+            form.deliveryMethod === "Pickup"
+              ? null
+              : form.deliveryTown.trim(),
 
-        email:
-          email.trim(),
+          deliveryAddress:
+            form.deliveryMethod === "Pickup"
+              ? null
+              : form.deliveryAddress.trim(),
 
-        phoneNumber:
-          phoneNumber.trim(),
+          deliveryNotes: form.deliveryNotes.trim() || null,
 
-        quantity,
-
-        deliveryMethod,
-
-        deliveryAddress:
-          deliveryAddress.trim(),
-
-        deliveryTown:
-          deliveryTown.trim(),
-
-        deliveryNotes:
-          deliveryNotes.trim(),
-
-        paymentMethod,
-
-        amountCents:
-          totalAmount,
+          items: [
+            {
+              bookId: book.id,
+              quantity: form.quantity,
+            },
+          ],
+        }),
       });
 
-      /*
-       * Parent component is responsible for
-       * closing the modal after successful
-       * submission.
-       */
-    } catch (submitError) {
-      console.error(
-        "Hardcopy order error:",
-        submitError
-      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "Unable to place your order. Please try again."
+        );
+      }
+
+      setOrderNumber(data.order?.id || data.id || null);
+      setSuccess(true);
+    } catch (err) {
+      console.error("Hardcopy order error:", err);
 
       setError(
-        submitError instanceof Error
-          ? submitError.message
+        err instanceof Error
+          ? err.message
           : "Something went wrong while placing your order."
       );
     } finally {
@@ -276,1013 +215,447 @@ const HardcopyOrderModal = ({
     }
   };
 
-  /* =========================================================
-     DO NOT RENDER
-  ========================================================= */
+  const handleClose = () => {
+    if (isSubmitting) return;
 
-  if (!isOpen || !book) {
-    return null;
-  }
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
+    onClose();
+  };
 
   return (
     <div
-      className="
-        fixed
-        inset-0
-        z-[100]
-        flex
-        items-center
-        justify-center
-        bg-black/60
-        p-4
-        backdrop-blur-sm
-      "
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
-        if (
-          event.target === event.currentTarget &&
-          !isSubmitting
-        ) {
-          onClose();
+        if (event.target === event.currentTarget) {
+          handleClose();
         }
       }}
     >
-      <div
-        className="
-          relative
-          flex
-          max-h-[92vh]
-          w-full
-          max-w-2xl
-          flex-col
-          overflow-hidden
-          rounded-3xl
-          bg-[#F9F6EF]
-          shadow-2xl
-        "
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="hardcopy-order-title"
-      >
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
-        <div
-          className="
-            flex
-            items-start
-            justify-between
-            border-b
-            border-[#E8DDD4]
-            bg-white
-            px-5
-            py-5
-            sm:px-7
-          "
-        >
-          <div className="flex items-start gap-3">
-            <div
-              className="
-                flex
-                h-11
-                w-11
-                shrink-0
-                items-center
-                justify-center
-                rounded-2xl
-                bg-[#4A1F0E]
-                text-white
-              "
-            >
-              <ShoppingBag className="h-5 w-5" />
+      <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+              {success ? (
+                <CheckCircle2 size={22} />
+              ) : (
+                <ShoppingBag size={22} />
+              )}
             </div>
 
             <div>
-              <h2
-                id="hardcopy-order-title"
-                className="
-                  text-xl
-                  font-bold
-                  text-[#3A180C]
-                  sm:text-2xl
-                "
-              >
-                Order Hard Copy
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                {success ? "Order Received" : "Order Hardcopy Book"}
               </h2>
 
-              <p className="mt-1 text-sm text-gray-500">
-                Complete the details below to
-                order your physical copy.
-              </p>
+              {!success && (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Fill in your details to place an order or inquiry.
+                </p>
+              )}
             </div>
           </div>
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isSubmitting}
-            className="
-              rounded-full
-              p-2
-              text-gray-400
-              transition
-              hover:bg-gray-100
-              hover:text-gray-700
-              disabled:cursor-not-allowed
-              disabled:opacity-50
-            "
-            aria-label="Close modal"
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-white"
+            aria-label="Close"
           >
-            <X className="h-5 w-5" />
+            <X size={22} />
           </button>
         </div>
 
-        {/* =================================================
-            CONTENT
-        ================================================= */}
-
-        <form
-          onSubmit={handleSubmit}
-          className="overflow-y-auto"
-        >
-          <div className="space-y-6 p-5 sm:p-7">
-
-            {/* =================================================
-                BOOK SUMMARY
-            ================================================= */}
-
-            <div
-              className="
-                flex
-                gap-4
-                rounded-2xl
-                border
-                border-[#E8DDD4]
-                bg-white
-                p-4
-              "
-            >
-              <div
-                className="
-                  h-24
-                  w-16
-                  shrink-0
-                  overflow-hidden
-                  rounded-lg
-                  bg-[#4A1F0E]
-                  shadow-sm
-                "
-              >
-                {book.coverImage ? (
-                  <img
-                    src={book.coverImage}
-                    alt={book.title}
-                    className="
-                      h-full
-                      w-full
-                      object-cover
-                    "
-                  />
-                ) : (
-                  <div
-                    className="
-                      flex
-                      h-full
-                      items-center
-                      justify-center
-                    "
-                  >
-                    <Package className="h-6 w-6 text-[#D4A017]" />
-                  </div>
-                )}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p
-                  className="
-                    text-xs
-                    font-semibold
-                    uppercase
-                    tracking-wide
-                    text-[#C17B4F]
-                  "
-                >
-                  Hard Copy
-                </p>
-
-                <h3
-                  className="
-                    mt-1
-                    line-clamp-2
-                    text-base
-                    font-bold
-                    text-[#3A180C]
-                  "
-                >
-                  {book.title}
-                </h3>
-
-                {book.author && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    by {book.author}
-                  </p>
-                )}
-
-                <p
-                  className="
-                    mt-2
-                    text-sm
-                    font-bold
-                    text-[#4A1F0E]
-                  "
-                >
-                  {formatPrice(unitPrice)}{" "}
-                  <span className="font-normal text-gray-400">
-                    per copy
-                  </span>
-                </p>
-              </div>
+        {/* Success */}
+        {success ? (
+          <div className="px-6 py-10 text-center">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+              <CheckCircle2 size={34} />
             </div>
 
-            {/* =================================================
-                CUSTOMER DETAILS
-            ================================================= */}
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+              Thank you!
+            </h3>
 
-            <section>
-              <div className="mb-4">
-                <h3 className="text-sm font-bold text-[#3A180C]">
-                  Customer Information
-                </h3>
+            <p className="mx-auto mt-3 max-w-md text-slate-600 dark:text-slate-300">
+              Your hardcopy book order has been received. We will contact you
+              using the details you provided to confirm availability, payment,
+              and delivery arrangements.
+            </p>
 
-                <p className="mt-1 text-xs text-gray-500">
-                  Tell us how we can contact you.
+            {orderNumber && (
+              <div className="mx-auto mt-5 max-w-md rounded-xl bg-slate-100 p-4 dark:bg-slate-800">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  Order Reference
+                </p>
+
+                <p className="mt-1 break-all font-mono text-sm font-semibold text-slate-900 dark:text-white">
+                  {orderNumber}
                 </p>
               </div>
+            )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
-
-                {/* Name */}
-
-                <div className="sm:col-span-2">
-                  <label
-                    htmlFor="customerName"
-                    className="
-                      mb-1.5
-                      block
-                      text-xs
-                      font-semibold
-                      text-gray-600
-                    "
-                  >
-                    Full Name
-                  </label>
-
-                  <div className="relative">
-                    <User
-                      className="
-                        pointer-events-none
-                        absolute
-                        left-3.5
-                        top-1/2
-                        h-4
-                        w-4
-                        -translate-y-1/2
-                        text-gray-400
-                      "
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-7 rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-6 p-5 sm:p-6">
+              {/* Book summary */}
+              <div className="flex gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-200 dark:bg-slate-700">
+                  {book.coverImage ? (
+                    <img
+                      src={book.coverImage}
+                      alt={book.title}
+                      className="h-full w-full object-cover"
                     />
-
-                    <input
-                      id="customerName"
-                      type="text"
-                      value={customerName}
-                      onChange={(event) =>
-                        setCustomerName(
-                          event.target.value
-                        )
-                      }
-                      placeholder="Your full name"
-                      autoComplete="name"
-                      className="
-                        h-11
-                        w-full
-                        rounded-xl
-                        border
-                        border-[#E8DDD4]
-                        bg-white
-                        pl-10
-                        pr-3
-                        text-sm
-                        text-[#2E1208]
-                        outline-none
-                        transition
-                        focus:border-[#C17B4F]
-                        focus:ring-2
-                        focus:ring-[#C17B4F]/20
-                      "
-                      required
-                    />
-                  </div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <Package
+                        size={22}
+                        className="text-slate-400"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {/* Email */}
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                    {book.title}
+                  </h3>
 
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="
-                      mb-1.5
-                      block
-                      text-xs
-                      font-semibold
-                      text-gray-600
-                    "
-                  >
-                    Email Address
-                  </label>
+                  {book.author && (
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      by {book.author}
+                    </p>
+                  )}
 
-                  <div className="relative">
-                    <Mail
-                      className="
-                        pointer-events-none
-                        absolute
-                        left-3.5
-                        top-1/2
-                        h-4
-                        w-4
-                        -translate-y-1/2
-                        text-gray-400
-                      "
-                    />
-
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(event) =>
-                        setEmail(
-                          event.target.value
-                        )
-                      }
-                      placeholder="you@example.com"
-                      autoComplete="email"
-                      className="
-                        h-11
-                        w-full
-                        rounded-xl
-                        border
-                        border-[#E8DDD4]
-                        bg-white
-                        pl-10
-                        pr-3
-                        text-sm
-                        text-[#2E1208]
-                        outline-none
-                        transition
-                        focus:border-[#C17B4F]
-                        focus:ring-2
-                        focus:ring-[#C17B4F]/20
-                      "
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Phone */}
-
-                <div>
-                  <label
-                    htmlFor="phoneNumber"
-                    className="
-                      mb-1.5
-                      block
-                      text-xs
-                      font-semibold
-                      text-gray-600
-                    "
-                  >
-                    Phone Number
-                  </label>
-
-                  <div className="relative">
-                    <Phone
-                      className="
-                        pointer-events-none
-                        absolute
-                        left-3.5
-                        top-1/2
-                        h-4
-                        w-4
-                        -translate-y-1/2
-                        text-gray-400
-                      "
-                    />
-
-                    <input
-                      id="phoneNumber"
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={(event) =>
-                        setPhoneNumber(
-                          event.target.value
-                        )
-                      }
-                      placeholder="07XX XXX XXX"
-                      autoComplete="tel"
-                      className="
-                        h-11
-                        w-full
-                        rounded-xl
-                        border
-                        border-[#E8DDD4]
-                        bg-white
-                        pl-10
-                        pr-3
-                        text-sm
-                        text-[#2E1208]
-                        outline-none
-                        transition
-                        focus:border-[#C17B4F]
-                        focus:ring-2
-                        focus:ring-[#C17B4F]/20
-                      "
-                      required
-                    />
-                  </div>
+                  <p className="mt-2 font-semibold text-amber-700 dark:text-amber-400">
+                    {formatPrice(book.priceCents)} per copy
+                  </p>
                 </div>
               </div>
-            </section>
 
-            {/* =================================================
-                QUANTITY
-            ================================================= */}
-
-            <section>
-              <label
-                htmlFor="quantity"
-                className="
-                  mb-1.5
-                  block
-                  text-xs
-                  font-semibold
-                  text-gray-600
-                "
-              >
-                Quantity
-              </label>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  disabled={quantity <= 1}
-                  onClick={() =>
-                    setQuantity(
-                      (value) =>
-                        Math.max(
-                          1,
-                          value - 1
-                        )
-                    )
-                  }
-                  className="
-                    flex
-                    h-11
-                    w-11
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-[#E8DDD4]
-                    bg-white
-                    text-lg
-                    font-bold
-                    text-[#4A1F0E]
-                    transition
-                    hover:border-[#C17B4F]
-                    disabled:cursor-not-allowed
-                    disabled:opacity-40
-                  "
-                  aria-label="Decrease quantity"
-                >
-                  −
-                </button>
-
-                <input
-                  id="quantity"
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={quantity}
-                  onChange={(event) => {
-                    const value =
-                      Number(
-                        event.target.value
-                      );
-
-                    setQuantity(
-                      Number.isFinite(value) &&
-                        value > 0
-                        ? Math.min(
-                            value,
-                            100
-                          )
-                        : 1
-                    );
-                  }}
-                  className="
-                    h-11
-                    w-20
-                    rounded-xl
-                    border
-                    border-[#E8DDD4]
-                    bg-white
-                    text-center
-                    text-sm
-                    font-bold
-                    text-[#2E1208]
-                    outline-none
-                    focus:border-[#C17B4F]
-                    focus:ring-2
-                    focus:ring-[#C17B4F]/20
-                  "
-                />
-
-                <button
-                  type="button"
-                  disabled={quantity >= 100}
-                  onClick={() =>
-                    setQuantity(
-                      (value) =>
-                        Math.min(
-                          100,
-                          value + 1
-                        )
-                    )
-                  }
-                  className="
-                    flex
-                    h-11
-                    w-11
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-[#E8DDD4]
-                    bg-white
-                    text-lg
-                    font-bold
-                    text-[#4A1F0E]
-                    transition
-                    hover:border-[#C17B4F]
-                    disabled:cursor-not-allowed
-                    disabled:opacity-40
-                  "
-                  aria-label="Increase quantity"
-                >
-                  +
-                </button>
-
-                <span className="text-xs text-gray-500">
-                  {quantity === 1
-                    ? "1 copy"
-                    : `${quantity} copies`}
-                </span>
-              </div>
-            </section>
-
-            {/* =================================================
-                DELIVERY
-            ================================================= */}
-
-            <section>
-              <div className="mb-4">
-                <h3 className="text-sm font-bold text-[#3A180C]">
-                  Delivery
+              {/* Customer information */}
+              <section>
+                <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
+                  Your Information
                 </h3>
-              </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-
-                {/* Delivery Method */}
-
-                <div className="sm:col-span-2">
-                  <label
-                    htmlFor="deliveryMethod"
-                    className="
-                      mb-1.5
-                      block
-                      text-xs
-                      font-semibold
-                      text-gray-600
-                    "
-                  >
-                    Delivery Method
-                  </label>
-
-                  <select
-                    id="deliveryMethod"
-                    value={deliveryMethod}
-                    onChange={(event) =>
-                      setDeliveryMethod(
-                        event.target.value
-                      )
-                    }
-                    className="
-                      h-11
-                      w-full
-                      rounded-xl
-                      border
-                      border-[#E8DDD4]
-                      bg-white
-                      px-3
-                      text-sm
-                      text-[#2E1208]
-                      outline-none
-                      focus:border-[#C17B4F]
-                      focus:ring-2
-                      focus:ring-[#C17B4F]/20
-                    "
-                  >
-                    <option value="DELIVERY">
-                      Deliver to me
-                    </option>
-
-                    <option value="PICKUP">
-                      Pick up
-                    </option>
-                  </select>
-                </div>
-
-                {/* Town */}
-
-                {deliveryMethod ===
-                  "DELIVERY" && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Name */}
                   <div>
-                    <label
-                      htmlFor="deliveryTown"
-                      className="
-                        mb-1.5
-                        block
-                        text-xs
-                        font-semibold
-                        text-gray-600
-                      "
-                    >
-                      Town / Area
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Full Name *
                     </label>
 
                     <div className="relative">
-                      <MapPin
-                        className="
-                          pointer-events-none
-                          absolute
-                          left-3.5
-                          top-1/2
-                          h-4
-                          w-4
-                          -translate-y-1/2
-                          text-gray-400
-                        "
+                      <User
+                        size={18}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                       />
 
                       <input
-                        id="deliveryTown"
                         type="text"
-                        value={deliveryTown}
+                        value={form.customerName}
                         onChange={(event) =>
-                          setDeliveryTown(
+                          updateField(
+                            "customerName",
                             event.target.value
                           )
                         }
-                        placeholder="e.g. Nairobi"
-                        className="
-                          h-11
-                          w-full
-                          rounded-xl
-                          border
-                          border-[#E8DDD4]
-                          bg-white
-                          pl-10
-                          pr-3
-                          text-sm
-                          text-[#2E1208]
-                          outline-none
-                          focus:border-[#C17B4F]
-                          focus:ring-2
-                          focus:ring-[#C17B4F]/20
-                        "
+                        placeholder="Your full name"
+                        className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                         required
                       />
                     </div>
                   </div>
-                )}
 
-                {/* Address */}
-
-                {deliveryMethod ===
-                  "DELIVERY" && (
+                  {/* Email */}
                   <div>
-                    <label
-                      htmlFor="deliveryAddress"
-                      className="
-                        mb-1.5
-                        block
-                        text-xs
-                        font-semibold
-                        text-gray-600
-                      "
-                    >
-                      Delivery Address
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Email Address *
                     </label>
 
-                    <input
-                      id="deliveryAddress"
-                      type="text"
-                      value={deliveryAddress}
+                    <div className="relative">
+                      <Mail
+                        size={18}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
+
+                      <input
+                        type="email"
+                        value={form.email}
+                        onChange={(event) =>
+                          updateField("email", event.target.value)
+                        }
+                        placeholder="you@example.com"
+                        className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Phone */}
+                  <div className="sm:col-span-2">
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Phone Number *
+                    </label>
+
+                    <div className="relative">
+                      <Phone
+                        size={18}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
+
+                      <input
+                        type="tel"
+                        value={form.phoneNumber}
+                        onChange={(event) =>
+                          updateField(
+                            "phoneNumber",
+                            event.target.value
+                          )
+                        }
+                        placeholder="e.g. 0712 345 678"
+                        className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Quantity */}
+              <section>
+                <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
+                  Order Details
+                </h3>
+
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      Quantity
+                    </p>
+
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      Number of copies
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={decreaseQuantity}
+                      disabled={form.quantity <= 1}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white dark:hover:bg-slate-800"
+                    >
+                      <Minus size={16} />
+                    </button>
+
+                    <span className="min-w-8 text-center font-semibold text-slate-900 dark:text-white">
+                      {form.quantity}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={increaseQuantity}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-white dark:hover:bg-slate-800"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Delivery */}
+              <section>
+                <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
+                  Delivery / Collection
+                </h3>
+
+                <div className="space-y-4">
+                  {/* Delivery method */}
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Preferred Method *
+                    </label>
+
+                    <select
+                      value={form.deliveryMethod}
                       onChange={(event) =>
-                        setDeliveryAddress(
+                        updateField(
+                          "deliveryMethod",
                           event.target.value
                         )
                       }
-                      placeholder="Street, building, estate..."
-                      className="
-                        h-11
-                        w-full
-                        rounded-xl
-                        border
-                        border-[#E8DDD4]
-                        bg-white
-                        px-3
-                        text-sm
-                        text-[#2E1208]
-                        outline-none
-                        focus:border-[#C17B4F]
-                        focus:ring-2
-                        focus:ring-[#C17B4F]/20
-                      "
-                      required
-                    />
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                    >
+                      <option value="Pickup">
+                        Pickup / Collection
+                      </option>
+
+                      <option value="Delivery">
+                        Delivery
+                      </option>
+                    </select>
                   </div>
-                )}
-              </div>
-            </section>
 
-            {/* =================================================
-                PAYMENT
-            ================================================= */}
+                  {/* Delivery fields */}
+                  {form.deliveryMethod !== "Pickup" && (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                          Town / City *
+                        </label>
 
-            <section>
-              <label
-                htmlFor="paymentMethod"
-                className="
-                  mb-1.5
-                  block
-                  text-xs
-                  font-semibold
-                  text-gray-600
-                "
-              >
-                Preferred Payment Method
-              </label>
+                        <div className="relative">
+                          <MapPin
+                            size={18}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                          />
 
-              <select
-                id="paymentMethod"
-                value={paymentMethod}
-                onChange={(event) =>
-                  setPaymentMethod(
-                    event.target.value
-                  )
-                }
-                className="
-                  h-11
-                  w-full
-                  rounded-xl
-                  border
-                  border-[#E8DDD4]
-                  bg-white
-                  px-3
-                  text-sm
-                  text-[#2E1208]
-                  outline-none
-                  focus:border-[#C17B4F]
-                  focus:ring-2
-                  focus:ring-[#C17B4F]/20
-                "
-              >
-                <option value="MPESA">
-                  M-Pesa
-                </option>
+                          <input
+                            type="text"
+                            value={form.deliveryTown}
+                            onChange={(event) =>
+                              updateField(
+                                "deliveryTown",
+                                event.target.value
+                              )
+                            }
+                            placeholder="e.g. Nairobi"
+                            className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                            required
+                          />
+                        </div>
+                      </div>
 
-                <option value="PAYPAL">
-                  PayPal
-                </option>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                          Delivery Address *
+                        </label>
 
-                <option value="CASH">
-                  Cash on Delivery / Pickup
-                </option>
-              </select>
-            </section>
+                        <input
+                          type="text"
+                          value={form.deliveryAddress}
+                          onChange={(event) =>
+                            updateField(
+                              "deliveryAddress",
+                              event.target.value
+                            )
+                          }
+                          placeholder="Estate, building, street..."
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
 
-            {/* =================================================
-                NOTES
-            ================================================= */}
+              {/* Notes */}
+              <section>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Additional Notes
+                </label>
 
-            <section>
-              <label
-                htmlFor="deliveryNotes"
-                className="
-                  mb-1.5
-                  block
-                  text-xs
-                  font-semibold
-                  text-gray-600
-                "
-              >
-                Additional Notes
-              </label>
+                <div className="relative">
+                  <MessageSquare
+                    size={18}
+                    className="absolute left-3 top-3 text-slate-400"
+                  />
 
-              <div className="relative">
-                <MessageSquare
-                  className="
-                    pointer-events-none
-                    absolute
-                    left-3.5
-                    top-3.5
-                    h-4
-                    w-4
-                    text-gray-400
-                  "
-                />
+                  <textarea
+                    value={form.deliveryNotes}
+                    onChange={(event) =>
+                      updateField(
+                        "deliveryNotes",
+                        event.target.value
+                      )
+                    }
+                    rows={3}
+                    placeholder="Any additional information or special instructions..."
+                    className="w-full resize-none rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-3 text-sm outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+              </section>
 
-                <textarea
-                  id="deliveryNotes"
-                  value={deliveryNotes}
-                  onChange={(event) =>
-                    setDeliveryNotes(
-                      event.target.value
-                    )
-                  }
-                  placeholder="Any special instructions?"
-                  rows={3}
-                  className="
-                    w-full
-                    resize-none
-                    rounded-xl
-                    border
-                    border-[#E8DDD4]
-                    bg-white
-                    py-3
-                    pl-10
-                    pr-3
-                    text-sm
-                    text-[#2E1208]
-                    outline-none
-                    focus:border-[#C17B4F]
-                    focus:ring-2
-                    focus:ring-[#C17B4F]/20
-                  "
-                />
-              </div>
-            </section>
+              {/* Error */}
+              {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+                  {error}
+                </div>
+              )}
 
-            {/* =================================================
-                ERROR
-            ================================================= */}
+              {/* Summary */}
+              <div className="rounded-xl bg-slate-900 p-4 text-white dark:bg-slate-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-300">
+                      Order total
+                    </p>
 
-            {error && (
-              <div
-                className="
-                  rounded-xl
-                  border
-                  border-red-200
-                  bg-red-50
-                  px-4
-                  py-3
-                  text-sm
-                  text-red-700
-                "
-                role="alert"
-              >
-                {error}
-              </div>
-            )}
+                    <p className="mt-1 text-xs text-slate-400">
+                      {form.quantity}{" "}
+                      {form.quantity === 1 ? "copy" : "copies"} ×{" "}
+                      {formatPrice(book.priceCents)}
+                    </p>
+                  </div>
 
-            {/* =================================================
-                ORDER TOTAL
-            ================================================= */}
-
-            <div
-              className="
-                rounded-2xl
-                bg-[#4A1F0E]
-                p-5
-                text-white
-              "
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-white/60">
-                    Order Total
-                  </p>
-
-                  <p className="mt-1 text-sm text-white/80">
-                    {quantity} ×{" "}
-                    {formatPrice(unitPrice)}
+                  <p className="text-xl font-bold">
+                    {book.priceCents == null
+                      ? "To be confirmed"
+                      : formatPrice(totalCents)}
                   </p>
                 </div>
 
-                <p className="text-xl font-bold">
-                  {formatPrice(totalAmount)}
+                <p className="mt-3 text-xs text-slate-400">
+                  Delivery charges, if applicable, will be confirmed before
+                  final payment.
                 </p>
               </div>
             </div>
-          </div>
 
-          {/* =================================================
-              FOOTER
-          ================================================= */}
+            {/* Footer */}
+            <div className="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-slate-200 bg-white p-4 sm:flex-row sm:justify-end dark:border-slate-700 dark:bg-slate-900">
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isSubmitting}
+                className="rounded-xl border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
 
-          <div
-            className="
-              flex
-              flex-col-reverse
-              gap-3
-              border-t
-              border-[#E8DDD4]
-              bg-white
-              px-5
-              py-4
-              sm:flex-row
-              sm:justify-end
-              sm:px-7
-            "
-          >
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="
-                h-11
-                rounded-xl
-                border
-                border-[#E8DDD4]
-                bg-white
-                px-5
-                text-sm
-                font-semibold
-                text-[#4A1F0E]
-                transition
-                hover:bg-[#F9F6EF]
-                disabled:cursor-not-allowed
-                disabled:opacity-50
-              "
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="
-                inline-flex
-                h-11
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                bg-[#4A1F0E]
-                px-6
-                text-sm
-                font-bold
-                text-white
-                shadow-sm
-                transition
-                hover:bg-[#D4A017]
-                hover:text-[#3A180C]
-                disabled:cursor-not-allowed
-                disabled:opacity-60
-              "
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Placing Order...
-                </>
-              ) : (
-                <>
-                  <ShoppingBag className="h-4 w-4" />
-                  Place Hard Copy Order
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-6 py-3 font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Placing Order...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag size={18} />
+                    Place Order / Inquiry
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
-};
-
-export default HardcopyOrderModal;
+}
