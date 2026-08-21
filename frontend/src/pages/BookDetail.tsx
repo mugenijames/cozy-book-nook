@@ -22,11 +22,6 @@ import { Button } from "@/components/ui/button";
 
 import { resolveBookCoverUrl } from "@/lib/resolveBookCover";
 
-import {
-  bookPurchaseHref,
-  bookPurchaseLabel,
-} from "@/config/purchase";
-
 import { formatPrice } from "@/lib/formatPrice";
 
 import {
@@ -38,6 +33,9 @@ import {
 
 import { PaymentModal } from "@/components/PaymentModal";
 import HardcopyOrderModal from "@/components/HardcopyOrderModal";
+import InquiryModal from "@/components/InquiryModal";
+import BookAccessManager from "@/components/BookAccessManager";
+import { rememberBuyerEmail, getRememberedBuyerEmail } from "@/services/bookAccess";
 
 /* =========================================================
    BOOK TYPE
@@ -93,6 +91,15 @@ const BookDetail = () => {
 
   const [showHardcopyOrder, setShowHardcopyOrder] =
     useState(false);
+
+  const [showInquiry, setShowInquiry] =
+    useState(false);
+
+  const [showAccessManager, setShowAccessManager] =
+    useState(false);
+
+  const [buyerEmail, setBuyerEmail] =
+    useState<string | null>(null);
 
   /* =========================================================
      FETCH BOOK
@@ -175,6 +182,10 @@ const BookDetail = () => {
           String(foundBook.id)
         )
       );
+
+      setBuyerEmail(
+        getRememberedBuyerEmail(String(foundBook.id))
+      );
     } catch (err) {
       console.error(
         "Failed to fetch book:",
@@ -199,12 +210,18 @@ const BookDetail = () => {
 
     if (status === "success") {
       toast.success(
-        "Payment received — thank you! Your download is ready below."
+        "Payment received — opening your download now."
       );
 
       markBookAsPurchased(book.id);
 
       setPurchased(true);
+
+      const paypalEmail = localStorage.getItem("checkout_email");
+      if (paypalEmail) {
+        rememberBuyerEmail(book.id, paypalEmail);
+        setBuyerEmail(paypalEmail);
+      }
 
       searchParams.delete("checkout");
 
@@ -214,6 +231,8 @@ const BookDetail = () => {
           replace: true,
         }
       );
+
+      void handleDownload();
     }
 
     if (status === "cancel") {
@@ -411,12 +430,8 @@ const BookDetail = () => {
      PAYMENT SUBMITTED
   ========================================================= */
 
-  const handlePaymentSubmitted = () => {
+  const handlePaymentSubmitted = (submittedBuyerEmail: string) => {
     if (!book) return;
-
-    toast.success(
-      "Payment submitted! We'll verify and unlock your download shortly."
-    );
 
     markBookAsPurchased(
       book.id
@@ -425,6 +440,17 @@ const BookDetail = () => {
     setPurchased(true);
 
     setShowPayment(false);
+
+    rememberBuyerEmail(book.id, submittedBuyerEmail);
+    setBuyerEmail(submittedBuyerEmail);
+
+    /*
+     * Payment is already confirmed by this point (PaymentModal only
+     * calls this after M-Pesa polling succeeds, or after a successful
+     * PayPal return). So we open the download immediately instead of
+     * waiting for the user to click "Download Now" again.
+     */
+    void handleDownload();
   };
 
   /* =========================================================
@@ -544,20 +570,6 @@ const BookDetail = () => {
   }
 
   /* =========================================================
-     PURCHASE / INQUIRY LINK
-  ========================================================= */
-
-  const inquireHref =
-    bookPurchaseHref(
-      book.slug
-    );
-
-  const inquireExternal =
-    inquireHref.startsWith(
-      "http"
-    );
-
-  /* =========================================================
      COVER
   ========================================================= */
 
@@ -598,17 +610,48 @@ const BookDetail = () => {
           HARDCOPY ORDER MODAL
       ===================================================== */}
 
-      {showHardcopyOrder && (
-        <HardcopyOrderModal
+      <HardcopyOrderModal
+        isOpen={showHardcopyOrder}
+        book={{
+          id: book.id,
+          title: book.title,
+          author: book.author,
+          priceCents: book.priceCents ?? null,
+          coverImage: book.coverImage,
+        }}
+        onClose={() =>
+          setShowHardcopyOrder(false)
+        }
+      />
+
+      {/* =====================================================
+          INQUIRY MODAL
+      ===================================================== */}
+
+      {showInquiry && (
+        <InquiryModal
           book={{
             id: book.id,
             title: book.title,
             author: book.author,
-            priceCents: price ?? 0,
-            coverImage: book.coverImage,
           }}
           onClose={() =>
-            setShowHardcopyOrder(false)
+            setShowInquiry(false)
+          }
+        />
+      )}
+
+      {/* =====================================================
+          BOOK ACCESS MANAGER
+      ===================================================== */}
+
+      {showAccessManager && buyerEmail && (
+        <BookAccessManager
+          bookId={book.id}
+          bookTitle={book.title}
+          buyerEmail={buyerEmail}
+          onClose={() =>
+            setShowAccessManager(false)
           }
         />
       )}
@@ -1290,9 +1333,11 @@ const BookDetail = () => {
                   ================================================= */}
 
                   <Button
-                    asChild
                     type="button"
                     variant="outline"
+                    onClick={() =>
+                      setShowInquiry(true)
+                    }
                     className="
                       min-h-[52px]
                       rounded-full
@@ -1305,31 +1350,15 @@ const BookDetail = () => {
                     "
                   >
 
-                    <a
-                      href={inquireHref}
-                      {...(
-                        inquireExternal
-                          ? {
-                              target:
-                                "_blank",
-                              rel:
-                                "noopener noreferrer",
-                            }
-                          : {}
-                      )}
-                    >
+                    <FileText
+                      className="
+                        mr-2
+                        h-5
+                        w-5
+                      "
+                    />
 
-                      <FileText
-                        className="
-                          mr-2
-                          h-5
-                          w-5
-                        "
-                      />
-
-                      Inquiry
-
-                    </a>
+                    Inquiry
 
                   </Button>
 
@@ -1423,6 +1452,26 @@ const BookDetail = () => {
                       </strong>{" "}
 
                       to access your PDF copy.
+
+                      {buyerEmail && !isFree && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowAccessManager(true)
+                          }
+                          className="
+                            mt-3
+                            block
+                            font-semibold
+                            text-green-800
+                            underline
+                            underline-offset-2
+                            hover:text-green-900
+                          "
+                        >
+                          Manage who else has access
+                        </button>
+                      )}
 
                     </div>
                   )}
