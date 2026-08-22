@@ -3,6 +3,11 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 
+import {
+  sendInquiryAdminNotification,
+  sendInquiryCustomerConfirmation,
+} from "../services/email.service";
+
 /*
 |--------------------------------------------------------------------------
 | GET ALL ORDERS - ADMIN
@@ -30,7 +35,10 @@ export const getOrders = async (
 
     return res.json(orders);
   } catch (error) {
-    console.error("Error fetching orders:", error);
+    console.error(
+      "Error fetching orders:",
+      error
+    );
 
     return res.status(500).json({
       error: "Failed to fetch orders",
@@ -57,19 +65,20 @@ export const getOrderById = async (
       });
     }
 
-    const order = await prisma.order.findUnique({
-      where: {
-        id,
-      },
-      include: {
-        book: true,
-        items: {
-          include: {
-            book: true,
+    const order =
+      await prisma.order.findUnique({
+        where: {
+          id,
+        },
+        include: {
+          book: true,
+          items: {
+            include: {
+              book: true,
+            },
           },
         },
-      },
-    });
+      });
 
     if (!order) {
       return res.status(404).json({
@@ -79,7 +88,10 @@ export const getOrderById = async (
 
     return res.json(order);
   } catch (error) {
-    console.error("Error fetching order:", error);
+    console.error(
+      "Error fetching order:",
+      error
+    );
 
     return res.status(500).json({
       error: "Failed to fetch order",
@@ -98,13 +110,16 @@ export const getOrdersByEmail = async (
   res: Response
 ) => {
   try {
-    const emailValue = req.query.email;
+    const emailValue =
+      req.query.email;
 
     const email =
       typeof emailValue === "string"
         ? emailValue
         : Array.isArray(emailValue)
-          ? String(emailValue[0] || "")
+          ? String(
+              emailValue[0] || ""
+            )
           : "";
 
     if (!email.trim()) {
@@ -113,22 +128,29 @@ export const getOrdersByEmail = async (
       });
     }
 
-    const orders = await prisma.order.findMany({
-      where: {
-        email: email.trim().toLowerCase(),
-      },
-      include: {
-        book: true,
-        items: {
-          include: {
-            book: true,
+    const orders =
+      await prisma.order.findMany({
+        where: {
+          email:
+            email
+              .trim()
+              .toLowerCase(),
+        },
+
+        include: {
+          book: true,
+
+          items: {
+            include: {
+              book: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
 
     return res.json(orders);
   } catch (error) {
@@ -145,12 +167,12 @@ export const getOrdersByEmail = async (
 
 /*
 |--------------------------------------------------------------------------
-| CREATE HARDCOPY ORDER - PUBLIC
+| CREATE HARDCOPY ORDER / BOOK INQUIRY - PUBLIC
 |--------------------------------------------------------------------------
 |
 | POST /api/orders
 |
-| Expected body:
+| Hardcopy order body:
 |
 | {
 |   customerName,
@@ -164,6 +186,23 @@ export const getOrdersByEmail = async (
 |     {
 |       bookId,
 |       quantity
+|     }
+|   ]
+| }
+|
+| Inquiry body:
+|
+| {
+|   orderType: "INQUIRY",
+|   customerName,
+|   email,
+|   phoneNumber,
+|   notes,
+|   deliveryNotes,
+|   items: [
+|     {
+|       bookId,
+|       quantity: 1
 |     }
 |   ]
 | }
@@ -189,7 +228,20 @@ export const createHardcopyOrder = async (
 
     /*
     |--------------------------------------------------------------------------
-    | Basic validation
+    | ORDER TYPE
+    |--------------------------------------------------------------------------
+    */
+
+    const orderType =
+      typeof req.body.orderType === "string"
+        ? req.body.orderType
+            .trim()
+            .toUpperCase()
+        : "DIGITAL";
+
+    /*
+    |--------------------------------------------------------------------------
+    | BASIC CUSTOMER VALIDATION
     |--------------------------------------------------------------------------
     */
 
@@ -198,7 +250,8 @@ export const createHardcopyOrder = async (
       !customerName.trim()
     ) {
       return res.status(400).json({
-        error: "Customer name is required",
+        error:
+          "Customer name is required",
       });
     }
 
@@ -207,22 +260,296 @@ export const createHardcopyOrder = async (
       !email.trim()
     ) {
       return res.status(400).json({
-        error: "Email is required",
+        error:
+          "Email is required",
       });
     }
 
     if (
-      typeof phoneNumber !== "string" ||
-      !phoneNumber.trim()
+      typeof phoneNumber !== "string" &&
+      phoneNumber !== null &&
+      phoneNumber !== undefined
     ) {
       return res.status(400).json({
-        error: "Phone number is required",
+        error:
+          "Invalid phone number",
       });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Validate delivery method
+    | EMAIL NORMALIZATION
+    |--------------------------------------------------------------------------
+    */
+
+    const normalizedEmail =
+      email
+        .trim()
+        .toLowerCase();
+
+    /*
+    |--------------------------------------------------------------------------
+    | HANDLE BOOK INQUIRY
+    |--------------------------------------------------------------------------
+    |
+    | Inquiries are stored in the existing Order table
+    | using orderType = "INQUIRY".
+    |
+    |--------------------------------------------------------------------------
+    */
+
+    if (orderType === "INQUIRY") {
+      /*
+      |----------------------------------------------------------------------
+      | Get inquiry message
+      |----------------------------------------------------------------------
+      */
+
+      const inquiryMessage =
+        typeof req.body.notes === "string" &&
+        req.body.notes.trim()
+          ? req.body.notes.trim()
+          : typeof deliveryNotes === "string" &&
+            deliveryNotes.trim()
+            ? deliveryNotes.trim()
+            : "";
+
+      if (!inquiryMessage) {
+        return res.status(400).json({
+          error:
+            "Inquiry message is required",
+        });
+      }
+
+      /*
+      |----------------------------------------------------------------------
+      | Validate items
+      |----------------------------------------------------------------------
+      */
+
+      if (
+        !Array.isArray(items) ||
+        items.length === 0
+      ) {
+        return res.status(400).json({
+          error:
+            "A book is required for this inquiry",
+        });
+      }
+
+      const inquiryBookId =
+        typeof items[0]?.bookId ===
+        "string"
+          ? items[0].bookId.trim()
+          : "";
+
+      if (!inquiryBookId) {
+        return res.status(400).json({
+          error:
+            "Book is required for this inquiry",
+        });
+      }
+
+      /*
+      |----------------------------------------------------------------------
+      | Find book
+      |----------------------------------------------------------------------
+      */
+
+      const inquiryBook =
+        await prisma.book.findUnique({
+          where: {
+            id: inquiryBookId,
+          },
+        });
+
+      if (!inquiryBook) {
+        return res.status(404).json({
+          error:
+            "Book not found",
+        });
+      }
+
+      /*
+      |----------------------------------------------------------------------
+      | Save inquiry
+      |----------------------------------------------------------------------
+      */
+
+      const inquiry =
+        await prisma.order.create({
+          data: {
+            bookId:
+              inquiryBook.id,
+
+            bookTitle:
+              inquiryBook.title,
+
+            orderType:
+              "INQUIRY",
+
+            customerName:
+              customerName.trim(),
+
+            email:
+              normalizedEmail,
+
+            phoneNumber:
+              typeof phoneNumber === "string" &&
+              phoneNumber.trim()
+                ? phoneNumber.trim()
+                : null,
+
+            deliveryMethod:
+              null,
+
+            deliveryAddress:
+              null,
+
+            deliveryTown:
+              null,
+
+            deliveryNotes:
+              inquiryMessage,
+
+            paymentMethod:
+              null,
+
+            amountCents:
+              0,
+
+            status:
+              "PENDING",
+
+            paymentStatus:
+              "UNPAID",
+
+            notes:
+              inquiryMessage,
+          },
+
+          include: {
+            book: true,
+
+            items: {
+              include: {
+                book: true,
+              },
+            },
+          },
+        });
+
+      /*
+      |----------------------------------------------------------------------
+      | EMAIL NOTIFICATIONS
+      |----------------------------------------------------------------------
+      */
+
+      let adminEmailSent =
+        false;
+
+      let customerEmailSent =
+        false;
+
+      /*
+      |----------------------------------------------------------------------
+      | ADMIN EMAIL
+      |----------------------------------------------------------------------
+      */
+
+      try {
+        await sendInquiryAdminNotification({
+          customerName:
+            customerName.trim(),
+
+          email:
+            normalizedEmail,
+
+          phoneNumber:
+            typeof phoneNumber === "string"
+              ? phoneNumber.trim()
+              : null,
+
+          bookTitle:
+            inquiryBook.title,
+
+          bookAuthor:
+            inquiryBook.author,
+
+          message:
+            inquiryMessage,
+
+          inquiryId:
+            inquiry.id,
+        });
+
+        adminEmailSent = true;
+      } catch (emailError) {
+        console.error(
+          "❌ Failed to send admin inquiry email:",
+          emailError
+        );
+      }
+
+      /*
+      |----------------------------------------------------------------------
+      | CUSTOMER EMAIL
+      |----------------------------------------------------------------------
+      */
+
+      try {
+        await sendInquiryCustomerConfirmation({
+          customerName:
+            customerName.trim(),
+
+          email:
+            normalizedEmail,
+
+          bookTitle:
+            inquiryBook.title,
+
+          message:
+            inquiryMessage,
+
+          inquiryId:
+            inquiry.id,
+        });
+
+        customerEmailSent =
+          true;
+      } catch (emailError) {
+        console.error(
+          "❌ Failed to send customer inquiry confirmation:",
+          emailError
+        );
+      }
+
+      /*
+      |----------------------------------------------------------------------
+      | RETURN SUCCESS
+      |----------------------------------------------------------------------
+      */
+
+      return res.status(201).json({
+        message:
+          "Inquiry submitted successfully",
+
+        order:
+          inquiry,
+
+        emailNotifications: {
+          admin:
+            adminEmailSent,
+
+          customer:
+            customerEmailSent,
+        },
+      });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | VALIDATE DELIVERY METHOD
     |--------------------------------------------------------------------------
     */
 
@@ -238,33 +565,41 @@ export const createHardcopyOrder = async (
 
     /*
     |--------------------------------------------------------------------------
-    | Delivery-specific validation
+    | DELIVERY-SPECIFIC VALIDATION
     |--------------------------------------------------------------------------
     */
 
     if (
       deliveryMethod === "DELIVERY" &&
-      (typeof deliveryAddress !== "string" ||
-        !deliveryAddress.trim())
+      (
+        typeof deliveryAddress !==
+          "string" ||
+        !deliveryAddress.trim()
+      )
     ) {
       return res.status(400).json({
-        error: "Delivery address is required",
+        error:
+          "Delivery address is required",
       });
     }
 
     if (
       deliveryMethod === "DELIVERY" &&
-      (typeof deliveryTown !== "string" ||
-        !deliveryTown.trim())
+      (
+        typeof deliveryTown !==
+          "string" ||
+        !deliveryTown.trim()
+      )
     ) {
       return res.status(400).json({
-        error: "Delivery town is required",
+        error:
+          "Delivery town is required",
       });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Validate order items
+    | VALIDATE ORDER ITEMS
     |--------------------------------------------------------------------------
     */
 
@@ -273,42 +608,47 @@ export const createHardcopyOrder = async (
       items.length === 0
     ) {
       return res.status(400).json({
-        error: "At least one book must be selected",
+        error:
+          "At least one book must be selected",
       });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Validate individual items
+    | VALIDATE INDIVIDUAL ITEMS
     |--------------------------------------------------------------------------
     */
 
     for (const item of items) {
       if (
         !item ||
-        typeof item.bookId !== "string" ||
+        typeof item.bookId !==
+          "string" ||
         !item.bookId.trim()
       ) {
         return res.status(400).json({
-          error: "Invalid book selected",
+          error:
+            "Invalid book selected",
         });
       }
 
-      const quantity = Number(item.quantity);
+      const quantity =
+        Number(item.quantity);
 
       if (
         !Number.isInteger(quantity) ||
         quantity < 1
       ) {
         return res.status(400).json({
-          error: "Book quantity must be at least 1",
+          error:
+            "Book quantity must be at least 1",
         });
       }
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Combine duplicate books
+    | COMBINE DUPLICATE BOOKS
     |--------------------------------------------------------------------------
     */
 
@@ -316,24 +656,31 @@ export const createHardcopyOrder = async (
       new Map<string, number>();
 
     for (const item of items) {
-      const bookId = item.bookId.trim();
-      const quantity = Number(item.quantity);
+      const bookId =
+        item.bookId.trim();
+
+      const quantity =
+        Number(item.quantity);
 
       quantityMap.set(
         bookId,
-        (quantityMap.get(bookId) || 0) + quantity
+        (
+          quantityMap.get(bookId) ||
+          0
+        ) + quantity
       );
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Fetch books
+    | FETCH BOOKS
     |--------------------------------------------------------------------------
     */
 
-    const bookIds = Array.from(
-      quantityMap.keys()
-    );
+    const bookIds =
+      Array.from(
+        quantityMap.keys()
+      );
 
     const books =
       await prisma.book.findMany({
@@ -346,20 +693,25 @@ export const createHardcopyOrder = async (
 
     /*
     |--------------------------------------------------------------------------
-    | Make sure every requested book exists
+    | MAKE SURE EVERY BOOK EXISTS
     |--------------------------------------------------------------------------
     */
 
     if (
-      books.length !== bookIds.length
+      books.length !==
+      bookIds.length
     ) {
-      const foundIds = new Set(
-        books.map((book) => book.id)
-      );
+      const foundIds =
+        new Set(
+          books.map(
+            (book) => book.id
+          )
+        );
 
       const missingBooks =
         bookIds.filter(
-          (id) => !foundIds.has(id)
+          (id) =>
+            !foundIds.has(id)
         );
 
       console.error(
@@ -375,38 +727,50 @@ export const createHardcopyOrder = async (
 
     /*
     |--------------------------------------------------------------------------
-    | Calculate order total
+    | CALCULATE ORDER TOTAL
     |--------------------------------------------------------------------------
     */
 
     let totalCents = 0;
 
-    const orderItems = books.map(
-      (book) => {
+    const orderItems =
+      books.map((book) => {
         const quantity =
-          quantityMap.get(book.id) || 1;
+          quantityMap.get(
+            book.id
+          ) || 1;
 
         const unitPriceCents =
-          Number(book.priceCents || 0);
+          Number(
+            book.priceCents || 0
+          );
 
         const itemTotal =
-          unitPriceCents * quantity;
+          unitPriceCents *
+          quantity;
 
-        totalCents += itemTotal;
+        totalCents +=
+          itemTotal;
 
         return {
-          bookId: book.id,
-          bookTitle: book.title,
+          bookId:
+            book.id,
+
+          bookTitle:
+            book.title,
+
           quantity,
+
           unitPriceCents,
-          totalCents: itemTotal,
+
+          totalCents:
+            itemTotal,
         };
-      }
-    );
+      });
 
     /*
     |--------------------------------------------------------------------------
-    | Backward compatibility
+    | BACKWARD COMPATIBILITY
     |--------------------------------------------------------------------------
     */
 
@@ -417,7 +781,7 @@ export const createHardcopyOrder = async (
 
     /*
     |--------------------------------------------------------------------------
-    | Create order
+    | CREATE HARDCOPY ORDER
     |--------------------------------------------------------------------------
     */
 
@@ -425,11 +789,12 @@ export const createHardcopyOrder = async (
       await prisma.order.create({
         data: {
           /*
-           * Backward compatibility with
-           * existing digital orders.
+           * Backward compatibility
+           * with existing digital orders.
            */
           bookId:
-            firstBook?.id || null,
+            firstBook?.id ||
+            null,
 
           bookTitle:
             books.length === 1
@@ -437,9 +802,10 @@ export const createHardcopyOrder = async (
               : `${books.length} books`,
 
           /*
-           * Identify as hardcopy order.
+           * Identify as hardcopy.
            */
-          orderType: "HARDCOPY",
+          orderType:
+            "HARDCOPY",
 
           /*
            * Customer information.
@@ -448,7 +814,7 @@ export const createHardcopyOrder = async (
             customerName.trim(),
 
           email:
-            email.trim().toLowerCase(),
+            normalizedEmail,
 
           phoneNumber:
             phoneNumber.trim(),
@@ -459,19 +825,22 @@ export const createHardcopyOrder = async (
           deliveryMethod,
 
           deliveryAddress:
-            typeof deliveryAddress === "string" &&
+            typeof deliveryAddress ===
+              "string" &&
             deliveryAddress.trim()
               ? deliveryAddress.trim()
               : null,
 
           deliveryTown:
-            typeof deliveryTown === "string" &&
+            typeof deliveryTown ===
+              "string" &&
             deliveryTown.trim()
               ? deliveryTown.trim()
               : null,
 
           deliveryNotes:
-            typeof deliveryNotes === "string" &&
+            typeof deliveryNotes ===
+              "string" &&
             deliveryNotes.trim()
               ? deliveryNotes.trim()
               : null,
@@ -479,22 +848,27 @@ export const createHardcopyOrder = async (
           /*
            * Payment has not happened yet.
            */
-          paymentMethod: "PENDING",
+          paymentMethod:
+            "PENDING",
 
-          amountCents: totalCents,
+          amountCents:
+            totalCents,
 
           /*
            * Initial order state.
            */
-          status: "PENDING",
+          status:
+            "PENDING",
 
-          paymentStatus: "UNPAID",
+          paymentStatus:
+            "UNPAID",
 
           /*
            * Compatibility notes.
            */
           notes:
-            typeof deliveryNotes === "string" &&
+            typeof deliveryNotes ===
+              "string" &&
             deliveryNotes.trim()
               ? deliveryNotes.trim()
               : null,
@@ -503,7 +877,8 @@ export const createHardcopyOrder = async (
            * Create individual order items.
            */
           items: {
-            create: orderItems,
+            create:
+              orderItems,
           },
         },
 
@@ -520,7 +895,7 @@ export const createHardcopyOrder = async (
 
     /*
     |--------------------------------------------------------------------------
-    | Return created order
+    | RETURN CREATED ORDER
     |--------------------------------------------------------------------------
     */
 
@@ -539,7 +914,9 @@ export const createHardcopyOrder = async (
     /*
      * Prisma unique constraint.
      */
-    if (error?.code === "P2002") {
+    if (
+      error?.code === "P2002"
+    ) {
       return res.status(409).json({
         error:
           "A record with this information already exists",
@@ -557,18 +934,6 @@ export const createHardcopyOrder = async (
 |--------------------------------------------------------------------------
 | UPDATE ORDER STATUS - ADMIN
 |--------------------------------------------------------------------------
-|
-| Allowed statuses:
-|
-| PENDING
-| CONFIRMED
-| PROCESSING
-| READY
-| SHIPPED
-| COMPLETED
-| CANCELLED
-|
-|--------------------------------------------------------------------------
 */
 
 export const updateOrderStatus = async (
@@ -576,29 +941,29 @@ export const updateOrderStatus = async (
   res: Response
 ) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    const { id } =
+      req.params;
+
+    const { status } =
+      req.body;
 
     if (!id) {
       return res.status(400).json({
-        error: "Order ID is required",
+        error:
+          "Order ID is required",
       });
     }
 
     if (
-      typeof status !== "string" ||
+      typeof status !==
+        "string" ||
       !status.trim()
     ) {
       return res.status(400).json({
-        error: "Order status is required",
+        error:
+          "Order status is required",
       });
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Validate status
-    |--------------------------------------------------------------------------
-    */
 
     const allowedStatuses = [
       "PENDING",
@@ -611,7 +976,9 @@ export const updateOrderStatus = async (
     ];
 
     const normalizedStatus =
-      status.trim().toUpperCase();
+      status
+        .trim()
+        .toUpperCase();
 
     if (
       !allowedStatuses.includes(
@@ -626,12 +993,6 @@ export const updateOrderStatus = async (
       });
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Update order
-    |--------------------------------------------------------------------------
-    */
-
     const order =
       await prisma.order.update({
         where: {
@@ -639,7 +1000,8 @@ export const updateOrderStatus = async (
         },
 
         data: {
-          status: normalizedStatus,
+          status:
+            normalizedStatus,
         },
 
         include: {
@@ -660,12 +1022,12 @@ export const updateOrderStatus = async (
       error
     );
 
-    /*
-     * Order does not exist.
-     */
-    if (error?.code === "P2025") {
+    if (
+      error?.code === "P2025"
+    ) {
       return res.status(404).json({
-        error: "Order not found",
+        error:
+          "Order not found",
       });
     }
 
@@ -680,16 +1042,6 @@ export const updateOrderStatus = async (
 |--------------------------------------------------------------------------
 | UPDATE PAYMENT STATUS - ADMIN
 |--------------------------------------------------------------------------
-|
-| Allowed payment statuses:
-|
-| UNPAID
-| PENDING
-| PAID
-| FAILED
-| REFUNDED
-|
-|--------------------------------------------------------------------------
 */
 
 export const updatePaymentStatus =
@@ -698,7 +1050,8 @@ export const updatePaymentStatus =
     res: Response
   ) => {
     try {
-      const { id } = req.params;
+      const { id } =
+        req.params;
 
       const {
         paymentStatus,
@@ -714,7 +1067,8 @@ export const updatePaymentStatus =
       }
 
       if (
-        typeof paymentStatus !== "string" ||
+        typeof paymentStatus !==
+          "string" ||
         !paymentStatus.trim()
       ) {
         return res.status(400).json({
@@ -722,12 +1076,6 @@ export const updatePaymentStatus =
             "Payment status is required",
         });
       }
-
-      /*
-      |--------------------------------------------------------------------------
-      | Validate payment status
-      |--------------------------------------------------------------------------
-      */
 
       const allowedPaymentStatuses = [
         "UNPAID",
@@ -755,12 +1103,6 @@ export const updatePaymentStatus =
         });
       }
 
-      /*
-      |--------------------------------------------------------------------------
-      | Build update object
-      |--------------------------------------------------------------------------
-      */
-
       const updateData: {
         paymentStatus: string;
         paymentMethod?: string;
@@ -771,7 +1113,8 @@ export const updatePaymentStatus =
       };
 
       if (
-        typeof paymentMethod === "string" &&
+        typeof paymentMethod ===
+          "string" &&
         paymentMethod.trim()
       ) {
         updateData.paymentMethod =
@@ -781,18 +1124,13 @@ export const updatePaymentStatus =
       }
 
       if (
-        typeof transactionCode === "string" &&
+        typeof transactionCode ===
+          "string" &&
         transactionCode.trim()
       ) {
         updateData.transactionCode =
           transactionCode.trim();
       }
-
-      /*
-      |--------------------------------------------------------------------------
-      | Update payment
-      |--------------------------------------------------------------------------
-      */
 
       const order =
         await prisma.order.update({
@@ -800,7 +1138,8 @@ export const updatePaymentStatus =
             id,
           },
 
-          data: updateData,
+          data:
+            updateData,
 
           include: {
             book: true,
@@ -820,19 +1159,18 @@ export const updatePaymentStatus =
         error
       );
 
-      /*
-       * Order not found.
-       */
-      if (error?.code === "P2025") {
+      if (
+        error?.code === "P2025"
+      ) {
         return res.status(404).json({
-          error: "Order not found",
+          error:
+            "Order not found",
         });
       }
 
-      /*
-       * Duplicate transaction code.
-       */
-      if (error?.code === "P2002") {
+      if (
+        error?.code === "P2002"
+      ) {
         return res.status(409).json({
           error:
             "This transaction code has already been used",

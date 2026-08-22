@@ -4,9 +4,8 @@ import {
   Mic2,
   Users,
   HeartHandshake,
-  X,
-  Send,
   Loader2,
+  Send,
   CheckCircle2,
   CalendarDays,
   MapPin,
@@ -24,6 +23,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
+/* =========================================================
+   TYPES
+========================================================= */
+
 type SpeakingRequest = {
   name: string;
   email: string;
@@ -33,6 +36,50 @@ type SpeakingRequest = {
   location?: string;
   message?: string;
 };
+
+/* =========================================================
+   API CONFIGURATION
+========================================================= */
+
+const getApiBaseUrl = (): string => {
+  const configured =
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL;
+
+  /*
+   * DEVELOPMENT
+   */
+  if (import.meta.env.DEV) {
+    const base =
+      configured || "http://localhost:5000";
+
+    return base.endsWith("/api")
+      ? base
+      : `${base}/api`;
+  }
+
+  /*
+   * PRODUCTION
+   */
+  const base =
+    configured ||
+    "https://cozy-book-nook-1.onrender.com";
+
+  return base.endsWith("/api")
+    ? base
+    : `${base}/api`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+console.log(
+  "📡 Speaking API Base URL:",
+  API_BASE_URL
+);
+
+/* =========================================================
+   SPEAKING TOPICS
+========================================================= */
 
 const SPEAKING_TOPICS = [
   {
@@ -55,6 +102,10 @@ const SPEAKING_TOPICS = [
   },
 ];
 
+/* =========================================================
+   COMPONENT
+========================================================= */
+
 export default function Speaking() {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -70,10 +121,10 @@ export default function Speaking() {
     message: "",
   });
 
-  /**
-   * Allows Hero.tsx or any other component to open
-   * the speaking dialog without duplicating the form.
-   */
+  /* =========================================================
+     OPEN EVENT LISTENER
+  ========================================================= */
+
   useEffect(() => {
     const handleOpenSpeakingDialog = () => {
       setSubmitted(false);
@@ -93,6 +144,10 @@ export default function Speaking() {
     };
   }, []);
 
+  /* =========================================================
+     UPDATE FIELD
+  ========================================================= */
+
   const updateField = (
     field: keyof SpeakingRequest,
     value: string
@@ -102,6 +157,10 @@ export default function Speaking() {
       [field]: value,
     }));
   };
+
+  /* =========================================================
+     RESET FORM
+  ========================================================= */
 
   const resetForm = () => {
     setForm({
@@ -117,6 +176,10 @@ export default function Speaking() {
     setSubmitted(false);
   };
 
+  /* =========================================================
+     CLOSE DIALOG
+  ========================================================= */
+
   const closeDialog = () => {
     if (loading) return;
 
@@ -126,6 +189,10 @@ export default function Speaking() {
       resetForm();
     }, 300);
   };
+
+  /* =========================================================
+     SUBMIT SPEAKING REQUEST
+  ========================================================= */
 
   const submitRequest = async () => {
     if (!form.name.trim()) {
@@ -139,42 +206,129 @@ export default function Speaking() {
     }
 
     if (!form.program?.trim()) {
-      alert("Please tell us what you are inviting David to speak about.");
+      alert(
+        "Please tell us what you are inviting David to speak about."
+      );
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch("/api/invite", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
+      /*
+       * IMPORTANT:
+       *
+       * Do NOT use:
+       *
+       * fetch("/api/invite")
+       *
+       * because that sends the request to the Vite
+       * frontend server on port 8080.
+       *
+       * Our backend is running on port 5000.
+       */
+
+      const endpoint =
+        `${API_BASE_URL}/invite`;
+
+      console.log(
+        "📨 Submitting speaking request:",
+        {
+          endpoint,
+          form,
+        }
+      );
+
+      const response = await fetch(
+        endpoint,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            name: form.name.trim(),
+            email: form.email.trim().toLowerCase(),
+            phone: form.phone?.trim() || "",
+            program: form.program?.trim() || "",
+            date: form.preferredDate || "",
+            location: form.location?.trim() || "",
+            message: form.message?.trim() || "",
+          }),
+        }
+      );
+
+      const contentType =
+        response.headers.get(
+          "content-type"
+        );
+
+      let data: any = null;
+
+      if (
+        contentType?.includes(
+          "application/json"
+        )
+      ) {
+        data = await response.json();
+      } else {
+        const text =
+          await response.text();
+
+        data = {
+          error:
+            text ||
+            "The server returned an unexpected response.",
+        };
+      }
 
       if (!response.ok) {
-        throw new Error("Failed to submit speaking request");
+        if (response.status === 404) {
+          throw new Error(
+            `Speaking API endpoint not found: ${endpoint}`
+          );
+        }
+
+        throw new Error(
+          data?.error ||
+            data?.message ||
+            "Failed to submit speaking request."
+        );
       }
+
+      console.log(
+        "✅ Speaking request submitted:",
+        data
+      );
 
       setSubmitted(true);
     } catch (error) {
-      console.error("Speaking request error:", error);
+      console.error(
+        "❌ Speaking request error:",
+        error
+      );
 
       alert(
-        "We couldn't send your request right now. Please try again."
+        error instanceof Error
+          ? error.message
+          : "We couldn't send your request right now. Please try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
   return (
     <>
-      {/* =========================================================
+      {/* =====================================================
           SPEAKING SECTION
-      ========================================================== */}
+      ====================================================== */}
 
       <section
         id="speaking"
@@ -187,7 +341,6 @@ export default function Speaking() {
           lg:py-24
         "
       >
-        {/* Decorative background */}
         <div className="pointer-events-none absolute inset-0">
           <div
             className="
@@ -227,12 +380,21 @@ export default function Speaking() {
             lg:px-8
           "
         >
-          {/* Header */}
           <motion.div
-            initial={{ opacity: 0, y: 25 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
+            initial={{
+              opacity: 0,
+              y: 25,
+            }}
+            whileInView={{
+              opacity: 1,
+              y: 0,
+            }}
+            viewport={{
+              once: true,
+            }}
+            transition={{
+              duration: 0.7,
+            }}
             className="mx-auto max-w-3xl text-center"
           >
             <span
@@ -259,6 +421,7 @@ export default function Speaking() {
               "
             >
               Conversations That
+
               <span className="block text-[#C08A43]">
                 Create Transformation.
               </span>
@@ -276,14 +439,19 @@ export default function Speaking() {
                 sm:leading-8
               "
             >
-              Invite David Emuria to inspire, equip, and challenge
-              your audience through meaningful conversations around
-              healing, leadership, identity, purpose, and
+              Invite David Emuria to inspire,
+              equip, and challenge your audience
+              through meaningful conversations
+              around healing, leadership,
+              identity, purpose, and
               transformation.
             </p>
           </motion.div>
 
-          {/* Speaking topics */}
+          {/* =================================================
+              TOPICS
+          ================================================== */}
+
           <div
             className="
               mx-auto
@@ -294,80 +462,88 @@ export default function Speaking() {
               md:grid-cols-3
             "
           >
-            {SPEAKING_TOPICS.map((topic, index) => {
-              const Icon = topic.icon;
+            {SPEAKING_TOPICS.map(
+              (topic, index) => {
+                const Icon = topic.icon;
 
-              return (
-                <motion.div
-                  key={topic.title}
-                  initial={{
-                    opacity: 0,
-                    y: 30,
-                  }}
-                  whileInView={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  viewport={{ once: true }}
-                  transition={{
-                    duration: 0.6,
-                    delay: index * 0.12,
-                  }}
-                  className="
-                    rounded-2xl
-                    border
-                    border-[#E6DED5]
-                    bg-white
-                    p-6
-                    shadow-sm
-                    transition-all
-                    duration-300
-                    hover:-translate-y-1
-                    hover:shadow-xl
-                  "
-                >
-                  <div
+                return (
+                  <motion.div
+                    key={topic.title}
+                    initial={{
+                      opacity: 0,
+                      y: 30,
+                    }}
+                    whileInView={{
+                      opacity: 1,
+                      y: 0,
+                    }}
+                    viewport={{
+                      once: true,
+                    }}
+                    transition={{
+                      duration: 0.6,
+                      delay:
+                        index * 0.12,
+                    }}
                     className="
-                      flex
-                      h-12
-                      w-12
-                      items-center
-                      justify-center
-                      rounded-xl
-                      bg-[#4A1F0E]
-                      text-[#D4A017]
+                      rounded-2xl
+                      border
+                      border-[#E6DED5]
+                      bg-white
+                      p-6
+                      shadow-sm
+                      transition-all
+                      duration-300
+                      hover:-translate-y-1
+                      hover:shadow-xl
                     "
                   >
-                    <Icon className="h-5 w-5" />
-                  </div>
+                    <div
+                      className="
+                        flex
+                        h-12
+                        w-12
+                        items-center
+                        justify-center
+                        rounded-xl
+                        bg-[#4A1F0E]
+                        text-[#D4A017]
+                      "
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
 
-                  <h3
-                    className="
-                      mt-5
-                      text-lg
-                      font-bold
-                      text-[#3B2314]
-                    "
-                  >
-                    {topic.title}
-                  </h3>
+                    <h3
+                      className="
+                        mt-5
+                        text-lg
+                        font-bold
+                        text-[#3B2314]
+                      "
+                    >
+                      {topic.title}
+                    </h3>
 
-                  <p
-                    className="
-                      mt-3
-                      text-sm
-                      leading-6
-                      text-gray-600
-                    "
-                  >
-                    {topic.description}
-                  </p>
-                </motion.div>
-              );
-            })}
+                    <p
+                      className="
+                        mt-3
+                        text-sm
+                        leading-6
+                        text-gray-600
+                      "
+                    >
+                      {topic.description}
+                    </p>
+                  </motion.div>
+                );
+              }
+            )}
           </div>
 
-          {/* CTA */}
+          {/* =================================================
+              CTA
+          ================================================== */}
+
           <motion.div
             initial={{
               opacity: 0,
@@ -377,7 +553,9 @@ export default function Speaking() {
               opacity: 1,
               y: 0,
             }}
-            viewport={{ once: true }}
+            viewport={{
+              once: true,
+            }}
             transition={{
               duration: 0.7,
               delay: 0.2,
@@ -419,7 +597,9 @@ export default function Speaking() {
             >
               <Mic2 className="h-4 w-4" />
 
-              <span>Invite David to Speak</span>
+              <span>
+                Invite David to Speak
+              </span>
 
               <span
                 className="
@@ -435,9 +615,9 @@ export default function Speaking() {
         </div>
       </section>
 
-      {/* =========================================================
-          SPEAKING BOOKING DIALOG
-      ========================================================== */}
+      {/* =====================================================
+          SPEAKING DIALOG
+      ====================================================== */}
 
       <Dialog
         open={open}
@@ -463,11 +643,12 @@ export default function Speaking() {
             sm:w-[calc(100%-3rem)]
           "
         >
-          {/* Top accent */}
           <div className="h-1.5 w-full bg-[#C08A43]" />
 
           <div className="p-5 sm:p-7 lg:p-8">
+
             <DialogHeader className="text-left">
+
               <div
                 className="
                   mb-4
@@ -504,14 +685,18 @@ export default function Speaking() {
                   text-gray-600
                 "
               >
-                Tell us a little about your event and the kind of
-                conversation you would like David to bring to your
+                Tell us a little about your event
+                and the kind of conversation you
+                would like David to bring to your
                 audience.
               </DialogDescription>
+
             </DialogHeader>
 
             <AnimatePresence mode="wait">
+
               {submitted ? (
+
                 <motion.div
                   key="success"
                   initial={{
@@ -526,11 +711,9 @@ export default function Speaking() {
                     opacity: 0,
                     scale: 0.96,
                   }}
-                  className="
-                    py-10
-                    text-center
-                  "
+                  className="py-10 text-center"
                 >
+
                   <div
                     className="
                       mx-auto
@@ -568,8 +751,9 @@ export default function Speaking() {
                       text-gray-600
                     "
                   >
-                    Thank you for reaching out. Your speaking
-                    request has been submitted successfully.
+                    Thank you for reaching out.
+                    Your speaking request has been
+                    submitted successfully.
                   </p>
 
                   <button
@@ -590,8 +774,11 @@ export default function Speaking() {
                   >
                     Done
                   </button>
+
                 </motion.div>
+
               ) : (
+
                 <motion.div
                   key="form"
                   initial={{
@@ -608,17 +795,27 @@ export default function Speaking() {
                   }}
                   className="mt-7"
                 >
+
                   <div className="grid gap-5 sm:grid-cols-2">
-                    {/* Name */}
-                    <div className="sm:col-span-1">
+
+                    {/* NAME */}
+
+                    <div>
                       <label
                         htmlFor="speaker-name"
-                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                        className="
+                          mb-2
+                          block
+                          text-sm
+                          font-semibold
+                          text-[#3B2314]
+                        "
                       >
                         Your Name *
                       </label>
 
                       <div className="relative">
+
                         <UserRound
                           className="
                             absolute
@@ -636,7 +833,10 @@ export default function Speaking() {
                           type="text"
                           value={form.name}
                           onChange={(e) =>
-                            updateField("name", e.target.value)
+                            updateField(
+                              "name",
+                              e.target.value
+                            )
                           }
                           placeholder="Your full name"
                           className="
@@ -658,19 +858,28 @@ export default function Speaking() {
                             focus:ring-[#C08A43]/20
                           "
                         />
+
                       </div>
                     </div>
 
-                    {/* Email */}
+                    {/* EMAIL */}
+
                     <div>
                       <label
                         htmlFor="speaker-email"
-                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                        className="
+                          mb-2
+                          block
+                          text-sm
+                          font-semibold
+                          text-[#3B2314]
+                        "
                       >
                         Email Address *
                       </label>
 
                       <div className="relative">
+
                         <Mail
                           className="
                             absolute
@@ -688,7 +897,10 @@ export default function Speaking() {
                           type="email"
                           value={form.email}
                           onChange={(e) =>
-                            updateField("email", e.target.value)
+                            updateField(
+                              "email",
+                              e.target.value
+                            )
                           }
                           placeholder="you@example.com"
                           className="
@@ -710,19 +922,28 @@ export default function Speaking() {
                             focus:ring-[#C08A43]/20
                           "
                         />
+
                       </div>
                     </div>
 
-                    {/* Phone */}
+                    {/* PHONE */}
+
                     <div>
                       <label
                         htmlFor="speaker-phone"
-                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                        className="
+                          mb-2
+                          block
+                          text-sm
+                          font-semibold
+                          text-[#3B2314]
+                        "
                       >
                         Phone Number
                       </label>
 
                       <div className="relative">
+
                         <Phone
                           className="
                             absolute
@@ -740,7 +961,10 @@ export default function Speaking() {
                           type="tel"
                           value={form.phone}
                           onChange={(e) =>
-                            updateField("phone", e.target.value)
+                            updateField(
+                              "phone",
+                              e.target.value
+                            )
                           }
                           placeholder="+254..."
                           className="
@@ -762,19 +986,28 @@ export default function Speaking() {
                             focus:ring-[#C08A43]/20
                           "
                         />
+
                       </div>
                     </div>
 
-                    {/* Program */}
+                    {/* PROGRAM */}
+
                     <div>
                       <label
                         htmlFor="speaker-program"
-                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                        className="
+                          mb-2
+                          block
+                          text-sm
+                          font-semibold
+                          text-[#3B2314]
+                        "
                       >
                         Event / Program *
                       </label>
 
                       <div className="relative">
+
                         <Mic2
                           className="
                             absolute
@@ -792,7 +1025,10 @@ export default function Speaking() {
                           type="text"
                           value={form.program}
                           onChange={(e) =>
-                            updateField("program", e.target.value)
+                            updateField(
+                              "program",
+                              e.target.value
+                            )
                           }
                           placeholder="e.g. Leadership Conference"
                           className="
@@ -814,19 +1050,28 @@ export default function Speaking() {
                             focus:ring-[#C08A43]/20
                           "
                         />
+
                       </div>
                     </div>
 
-                    {/* Date */}
+                    {/* DATE */}
+
                     <div>
                       <label
                         htmlFor="speaker-date"
-                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                        className="
+                          mb-2
+                          block
+                          text-sm
+                          font-semibold
+                          text-[#3B2314]
+                        "
                       >
                         Preferred Date
                       </label>
 
                       <div className="relative">
+
                         <CalendarDays
                           className="
                             absolute
@@ -842,7 +1087,9 @@ export default function Speaking() {
                         <input
                           id="speaker-date"
                           type="date"
-                          value={form.preferredDate}
+                          value={
+                            form.preferredDate
+                          }
                           onChange={(e) =>
                             updateField(
                               "preferredDate",
@@ -867,19 +1114,28 @@ export default function Speaking() {
                             focus:ring-[#C08A43]/20
                           "
                         />
+
                       </div>
                     </div>
 
-                    {/* Location */}
+                    {/* LOCATION */}
+
                     <div>
                       <label
                         htmlFor="speaker-location"
-                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                        className="
+                          mb-2
+                          block
+                          text-sm
+                          font-semibold
+                          text-[#3B2314]
+                        "
                       >
                         Event Location
                       </label>
 
                       <div className="relative">
+
                         <MapPin
                           className="
                             absolute
@@ -897,7 +1153,10 @@ export default function Speaking() {
                           type="text"
                           value={form.location}
                           onChange={(e) =>
-                            updateField("location", e.target.value)
+                            updateField(
+                              "location",
+                              e.target.value
+                            )
                           }
                           placeholder="City / Venue"
                           className="
@@ -919,19 +1178,29 @@ export default function Speaking() {
                             focus:ring-[#C08A43]/20
                           "
                         />
+
                       </div>
                     </div>
 
-                    {/* Message */}
+                    {/* MESSAGE */}
+
                     <div className="sm:col-span-2">
+
                       <label
                         htmlFor="speaker-message"
-                        className="mb-2 block text-sm font-semibold text-[#3B2314]"
+                        className="
+                          mb-2
+                          block
+                          text-sm
+                          font-semibold
+                          text-[#3B2314]
+                        "
                       >
                         Tell Us More
                       </label>
 
                       <div className="relative">
+
                         <MessageSquare
                           className="
                             absolute
@@ -948,7 +1217,10 @@ export default function Speaking() {
                           rows={4}
                           value={form.message}
                           onChange={(e) =>
-                            updateField("message", e.target.value)
+                            updateField(
+                              "message",
+                              e.target.value
+                            )
                           }
                           placeholder="Tell us about your event, audience and what you would like David to speak about..."
                           className="
@@ -972,11 +1244,14 @@ export default function Speaking() {
                             focus:ring-[#C08A43]/20
                           "
                         />
+
                       </div>
                     </div>
+
                   </div>
 
-                  {/* Footer */}
+                  {/* FOOTER */}
+
                   <div
                     className="
                       mt-7
@@ -990,6 +1265,7 @@ export default function Speaking() {
                       sm:justify-end
                     "
                   >
+
                     <button
                       type="button"
                       onClick={closeDialog}
@@ -1040,6 +1316,7 @@ export default function Speaking() {
                         disabled:opacity-60
                       "
                     >
+
                       {loading ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1051,11 +1328,16 @@ export default function Speaking() {
                           Send Booking Request
                         </>
                       )}
+
                     </button>
+
                   </div>
+
                 </motion.div>
               )}
+
             </AnimatePresence>
+
           </div>
         </DialogContent>
       </Dialog>

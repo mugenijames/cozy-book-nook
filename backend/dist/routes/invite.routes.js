@@ -1,101 +1,80 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const nodemailer_1 = __importDefault(require("nodemailer"));
+const email_service_1 = require("../services/email.service");
 const router = (0, express_1.Router)();
-const transporter = nodemailer_1.default.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
-router.post("/invite-david", async (req, res) => {
+/* =========================================================
+   POST /api/invite
+========================================================= */
+router.post("/invite", async (req, res) => {
     try {
-        const { name, email, phone, eventType, date, location, message, } = req.body;
-        // Validation
-        if (!name || !email || !eventType || !date) {
+        const { name, email, phone, program, date, location, message, } = req.body;
+        /* -----------------------------------------------------
+           VALIDATION
+        ----------------------------------------------------- */
+        if (!name?.trim()) {
             return res.status(400).json({
-                success: false,
-                error: "Missing required fields",
+                error: "Name is required.",
             });
         }
-        // Email to you
-        await transporter.sendMail({
-            from: `"Speaking Invitation" <${process.env.EMAIL_USER}>`,
-            to: process.env.OWNER_EMAIL,
-            subject: "🎤 New Speaking Invitation Received",
-            html: `
-        <div style="font-family:Arial,sans-serif;padding:20px">
-          <h2 style="color:#B8860B;">New Speaking Invitation</h2>
-
-          <table cellpadding="8">
-            <tr><td><strong>Name</strong></td><td>${name}</td></tr>
-            <tr><td><strong>Email</strong></td><td>${email}</td></tr>
-            <tr><td><strong>Phone</strong></td><td>${phone || "Not provided"}</td></tr>
-            <tr><td><strong>Event Type</strong></td><td>${eventType}</td></tr>
-            <tr><td><strong>Date</strong></td><td>${date}</td></tr>
-            <tr><td><strong>Location</strong></td><td>${location || "Not provided"}</td></tr>
-          </table>
-
-          <h3>Message</h3>
-
-          <p>${message || "No message provided"}</p>
-
-          <hr>
-
-          <small>Submitted from your website.</small>
-        </div>
-      `,
-        });
-        // Confirmation email
-        await transporter.sendMail({
-            from: `"David's Team" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "✅ We have received your invitation",
-            html: `
-        <div style="font-family:Arial,sans-serif;padding:20px">
-
-          <h2>Thank you ${name}!</h2>
-
-          <p>
-            We have successfully received your speaking invitation.
-          </p>
-
-          <p>
-            Our team will review your request and contact you shortly.
-          </p>
-
-          <hr>
-
-          <p><strong>Your Request</strong></p>
-
-          <ul>
-            <li><strong>Event:</strong> ${eventType}</li>
-            <li><strong>Date:</strong> ${date}</li>
-            <li><strong>Location:</strong> ${location || "Not specified"}</li>
-          </ul>
-
-          <p>
-            Thank you for considering David.
-          </p>
-
-        </div>
-      `,
-        });
-        return res.status(200).json({
+        if (!email?.trim()) {
+            return res.status(400).json({
+                error: "Email address is required.",
+            });
+        }
+        if (!program?.trim()) {
+            return res.status(400).json({
+                error: "Event / program is required.",
+            });
+        }
+        /* -----------------------------------------------------
+           FORM DATA
+        ----------------------------------------------------- */
+        const formData = {
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            phone: phone?.trim() || "",
+            program: program.trim(),
+            date: date || "",
+            location: location?.trim() || "",
+            message: message?.trim() || "",
+        };
+        console.log("📨 New speaking invitation:", formData);
+        /* -----------------------------------------------------
+           SEND ADMIN NOTIFICATION
+        ----------------------------------------------------- */
+        await (0, email_service_1.sendInviteNotification)(formData);
+        console.log("✅ Admin speaking notification sent");
+        /* -----------------------------------------------------
+           SEND CUSTOMER CONFIRMATION
+        ----------------------------------------------------- */
+        try {
+            await (0, email_service_1.sendConfirmationEmail)(formData);
+            console.log("✅ Customer confirmation email sent");
+        }
+        catch (emailError) {
+            /*
+             * We don't fail the entire request if
+             * the customer's confirmation fails.
+             *
+             * The admin notification has already
+             * been delivered.
+             */
+            console.error("⚠️ Customer confirmation email failed:", emailError);
+        }
+        /* -----------------------------------------------------
+           SUCCESS
+        ----------------------------------------------------- */
+        return res.status(201).json({
             success: true,
-            message: "Invitation submitted successfully.",
+            message: "Speaking request submitted successfully.",
         });
     }
     catch (error) {
-        console.error("Invite Email Error:", error);
+        console.error("❌ Speaking invitation error:", error);
         return res.status(500).json({
             success: false,
-            message: "Failed to send invitation.",
+            error: "Unable to submit speaking request. Please try again.",
         });
     }
 });
