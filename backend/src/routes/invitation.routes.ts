@@ -5,17 +5,25 @@ import nodemailer from "nodemailer";
 
 const router = Router();
 
+/* ==========================================================================
+   EMAIL TRANSPORTER
+   ========================================================================== */
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: process.env.SMTP_HOST || "smtp.gmail.com",
+  port: Number(process.env.SMTP_PORT || 587),
+  secure:
+    String(process.env.SMTP_SECURE).toLowerCase() === "true",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
-/**
- * Escape user input before inserting it into HTML emails.
- */
+/* ==========================================================================
+   HTML ESCAPE
+   ========================================================================== */
+
 function escapeHtml(value: unknown): string {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -25,280 +33,740 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#039;");
 }
 
-router.post("/invite-david", async (req, res) => {
+/* ==========================================================================
+   POST /api/invite
+   ========================================================================== */
+
+router.post("/", async (req, res) => {
   try {
+    console.log("");
+    console.log("========================================");
+    console.log("🎤 NEW SPEAKING INVITATION");
+    console.log("========================================");
+
+    console.log("Request body:", req.body);
+
+    /* ----------------------------------------------------------------------
+       RECEIVE FORM DATA
+       ---------------------------------------------------------------------- */
+
     const {
       name,
       email,
       phone,
-      eventType,
-      date,
+      program,
+      preferredDate,
       location,
       message,
     } = req.body;
 
-    // Validation
-    if (!name || !email || !eventType || !date) {
+    /* ----------------------------------------------------------------------
+       VALIDATION
+       ---------------------------------------------------------------------- */
+
+    if (!name || !String(name).trim()) {
       return res.status(400).json({
         success: false,
-        error: "Please fill in all required fields.",
+        error: "Please enter your name.",
       });
     }
 
-    // Clean / escape values
+    if (!email || !String(email).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Please enter your email address.",
+      });
+    }
+
+    if (!program || !String(program).trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Please tell us what you are inviting David to speak about.",
+      });
+    }
+
+    /* ----------------------------------------------------------------------
+       CLEAN / ESCAPE DATA
+       ---------------------------------------------------------------------- */
+
     const safeName = escapeHtml(name);
     const safeEmail = escapeHtml(email);
-    const safePhone = escapeHtml(phone || "Not provided");
-    const safeEventType = escapeHtml(eventType);
-    const safeDate = escapeHtml(date);
-    const safeLocation = escapeHtml(location || "Not provided");
-    const safeMessage = escapeHtml(message || "No message provided");
+    const safePhone = escapeHtml(
+      phone || "Not provided"
+    );
 
-    // ---------------------------------------------------------
-    // Email to David / website owner
-    // ---------------------------------------------------------
+    const safeProgram = escapeHtml(program);
+
+    const safeDate = escapeHtml(
+      preferredDate || "Not specified"
+    );
+
+    const safeLocation = escapeHtml(
+      location || "Not provided"
+    );
+
+    const safeMessage = escapeHtml(
+      message || "No additional message provided."
+    );
+
+    /* ==========================================================================
+       EMAIL CONFIGURATION
+       ========================================================================== */
+
+    const adminEmail =
+      process.env.ADMIN_EMAIL ||
+      process.env.SMTP_USER;
+
+    const smtpFrom =
+      process.env.SMTP_FROM ||
+      `David Emuria Website <${process.env.SMTP_USER}>`;
+
+    /* ----------------------------------------------------------------------
+       CHECK EMAIL CONFIGURATION
+       ---------------------------------------------------------------------- */
+
+    if (
+      !process.env.SMTP_USER ||
+      !process.env.SMTP_PASS
+    ) {
+      console.error(
+        "❌ SMTP_USER or SMTP_PASS is missing."
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          "Email service is not configured correctly.",
+      });
+    }
+
+    if (!adminEmail) {
+      console.error(
+        "❌ ADMIN_EMAIL is missing."
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          "Administrator email is not configured.",
+      });
+    }
+
+    /* ==========================================================================
+       VERIFY SMTP CONNECTION
+       ========================================================================== */
+
+    try {
+      await transporter.verify();
+
+      console.log(
+        "✅ SMTP connection verified."
+      );
+    } catch (smtpError) {
+      console.error(
+        "❌ SMTP verification failed:",
+        smtpError
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          "Email service is currently unavailable.",
+      });
+    }
+
+    /* ==========================================================================
+       EMAIL 1 — NOTIFICATION TO DAVID / ADMIN
+       ========================================================================== */
+
+    console.log(
+      `📧 Sending admin notification to ${adminEmail}`
+    );
 
     await transporter.sendMail({
-      from: `"Speaking Invitation" <${process.env.EMAIL_USER}>`,
-      to: process.env.OWNER_EMAIL,
+      from: smtpFrom,
+
+      to: adminEmail,
+
       replyTo: email,
 
-      subject: "🎤 New Speaking Invitation Received",
+      subject:
+        `🎤 New Speaking Invitation from ${name}`,
 
       html: `
-        <div
+        <!DOCTYPE html>
+
+        <html>
+
+        <head>
+
+          <meta charset="UTF-8" />
+
+          <title>
+            New Speaking Invitation
+          </title>
+
+        </head>
+
+        <body
           style="
-            font-family: Arial, sans-serif;
-            max-width: 650px;
-            margin: 0 auto;
-            padding: 30px;
-            background: #f9f6ef;
-            color: #2e1208;
+            margin:0;
+            padding:0;
+            background:#f4f1ec;
+            font-family:Arial,Helvetica,sans-serif;
           "
         >
 
           <div
             style="
-              background: #4a1f0e;
-              color: white;
-              padding: 24px;
-              border-radius: 12px 12px 0 0;
-            "
-          >
-            <h2 style="margin: 0;">
-              🎤 New Speaking Invitation
-            </h2>
-
-            <p style="margin: 8px 0 0; opacity: 0.85;">
-              A new speaking request has been submitted through the website.
-            </p>
-          </div>
-
-          <div
-            style="
-              background: white;
-              padding: 25px;
-              border-radius: 0 0 12px 12px;
+              max-width:650px;
+              margin:30px auto;
+              background:#ffffff;
+              border-radius:14px;
+              overflow:hidden;
+              box-shadow:0 4px 20px rgba(0,0,0,0.08);
             "
           >
 
-            <table
-              cellpadding="8"
-              cellspacing="0"
-              width="100%"
-              style="border-collapse: collapse;"
-            >
-
-              <tr>
-                <td><strong>Name</strong></td>
-                <td>${safeName}</td>
-              </tr>
-
-              <tr>
-                <td><strong>Email</strong></td>
-                <td>${safeEmail}</td>
-              </tr>
-
-              <tr>
-                <td><strong>Phone</strong></td>
-                <td>${safePhone}</td>
-              </tr>
-
-              <tr>
-                <td><strong>Event Type</strong></td>
-                <td>${safeEventType}</td>
-              </tr>
-
-              <tr>
-                <td><strong>Date</strong></td>
-                <td>${safeDate}</td>
-              </tr>
-
-              <tr>
-                <td><strong>Location</strong></td>
-                <td>${safeLocation}</td>
-              </tr>
-
-            </table>
+            <!-- HEADER -->
 
             <div
               style="
-                margin-top: 25px;
-                padding-top: 20px;
-                border-top: 1px solid #e8ddd4;
+                background:#4A1F0E;
+                color:#ffffff;
+                padding:28px;
               "
             >
 
-              <h3>Message</h3>
+              <h1
+                style="
+                  margin:0;
+                  font-size:24px;
+                "
+              >
+                🎤 New Speaking Invitation
+              </h1>
 
-              <p style="line-height: 1.7; white-space: pre-line;">
-                ${safeMessage}
+              <p
+                style="
+                  margin:10px 0 0;
+                  color:#f3dfc8;
+                  font-size:14px;
+                "
+              >
+                A new speaking request has been
+                submitted through David Emuria's website.
               </p>
 
             </div>
 
-            <hr style="border: none; border-top: 1px solid #e8ddd4; margin-top: 25px;" />
+            <!-- CONTENT -->
 
-            <p
+            <div
               style="
-                font-size: 12px;
-                color: #777;
+                padding:30px;
               "
             >
-              Submitted from David Emuria's official website.
-            </p>
+
+              <h2
+                style="
+                  color:#3B2314;
+                  margin-top:0;
+                "
+              >
+                Invitation Details
+              </h2>
+
+              <table
+                width="100%"
+                cellpadding="10"
+                cellspacing="0"
+                style="
+                  border-collapse:collapse;
+                  font-size:14px;
+                "
+              >
+
+                <tr>
+                  <td
+                    style="
+                      font-weight:bold;
+                      color:#555;
+                      width:35%;
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    Name
+                  </td>
+
+                  <td
+                    style="
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    ${safeName}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td
+                    style="
+                      font-weight:bold;
+                      color:#555;
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    Email
+                  </td>
+
+                  <td
+                    style="
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    ${safeEmail}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td
+                    style="
+                      font-weight:bold;
+                      color:#555;
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    Phone
+                  </td>
+
+                  <td
+                    style="
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    ${safePhone}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td
+                    style="
+                      font-weight:bold;
+                      color:#555;
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    Event / Program
+                  </td>
+
+                  <td
+                    style="
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    ${safeProgram}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td
+                    style="
+                      font-weight:bold;
+                      color:#555;
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    Preferred Date
+                  </td>
+
+                  <td
+                    style="
+                      border-bottom:1px solid #eee;
+                    "
+                  >
+                    ${safeDate}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td
+                    style="
+                      font-weight:bold;
+                      color:#555;
+                    "
+                  >
+                    Location
+                  </td>
+
+                  <td>
+                    ${safeLocation}
+                  </td>
+                </tr>
+
+              </table>
+
+              <!-- MESSAGE -->
+
+              <div
+                style="
+                  margin-top:25px;
+                  padding:20px;
+                  background:#faf7f2;
+                  border-left:4px solid #C08A43;
+                  border-radius:8px;
+                "
+              >
+
+                <h3
+                  style="
+                    margin-top:0;
+                    color:#3B2314;
+                  "
+                >
+                  Message
+                </h3>
+
+                <p
+                  style="
+                    margin-bottom:0;
+                    line-height:1.7;
+                    color:#555;
+                    white-space:pre-line;
+                  "
+                >
+                  ${safeMessage}
+                </p>
+
+              </div>
+
+              <!-- REPLY BUTTON -->
+
+              <div
+                style="
+                  margin-top:25px;
+                  text-align:center;
+                "
+              >
+
+                <a
+                  href="mailto:${safeEmail}"
+                  style="
+                    display:inline-block;
+                    background:#4A1F0E;
+                    color:#ffffff;
+                    text-decoration:none;
+                    padding:12px 22px;
+                    border-radius:25px;
+                    font-weight:bold;
+                  "
+                >
+                  Reply to ${safeName}
+                </a>
+
+              </div>
+
+              <hr
+                style="
+                  margin:30px 0 20px;
+                  border:none;
+                  border-top:1px solid #eee;
+                "
+              />
+
+              <p
+                style="
+                  margin:0;
+                  color:#888;
+                  font-size:12px;
+                  text-align:center;
+                "
+              >
+                Submitted from
+                David Emuria's official website.
+              </p>
+
+            </div>
 
           </div>
-        </div>
+
+        </body>
+
+        </html>
       `,
     });
 
-    // ---------------------------------------------------------
-    // Confirmation email to person making the invitation
-    // ---------------------------------------------------------
+    console.log(
+      "✅ Admin notification email sent."
+    );
+
+    /* ==========================================================================
+       EMAIL 2 — CONFIRMATION TO CUSTOMER
+       ========================================================================== */
+
+    console.log(
+      `📧 Sending confirmation email to ${email}`
+    );
 
     await transporter.sendMail({
-      from: `"David's Team" <${process.env.EMAIL_USER}>`,
+      from: smtpFrom,
+
       to: email,
 
-      subject: "✅ We have received your invitation",
+      subject:
+        "✅ We received your speaking invitation",
 
       html: `
-        <div
+        <!DOCTYPE html>
+
+        <html>
+
+        <head>
+
+          <meta charset="UTF-8" />
+
+          <title>
+            Speaking Invitation Received
+          </title>
+
+        </head>
+
+        <body
           style="
-            font-family: Arial, sans-serif;
-            max-width: 650px;
-            margin: 0 auto;
-            padding: 30px;
-            background: #f9f6ef;
-            color: #2e1208;
+            margin:0;
+            padding:0;
+            background:#f4f1ec;
+            font-family:Arial,Helvetica,sans-serif;
           "
         >
 
           <div
             style="
-              background: #4a1f0e;
-              color: white;
-              padding: 25px;
-              border-radius: 12px 12px 0 0;
+              max-width:650px;
+              margin:30px auto;
+              background:#ffffff;
+              border-radius:14px;
+              overflow:hidden;
+              box-shadow:0 4px 20px rgba(0,0,0,0.08);
             "
           >
 
-            <h2 style="margin: 0;">
-              Thank you, ${safeName}!
-            </h2>
-
-            <p style="margin-top: 8px;">
-              Your speaking invitation has been received.
-            </p>
-
-          </div>
-
-          <div
-            style="
-              background: white;
-              padding: 25px;
-              border-radius: 0 0 12px 12px;
-            "
-          >
-
-            <p style="line-height: 1.7;">
-              We have successfully received your speaking invitation.
-            </p>
-
-            <p style="line-height: 1.7;">
-              Our team will review your request and contact you shortly.
-            </p>
+            <!-- HEADER -->
 
             <div
               style="
-                margin-top: 25px;
-                padding: 20px;
-                background: #f9f6ef;
-                border-radius: 10px;
+                background:#4A1F0E;
+                color:#ffffff;
+                padding:28px;
               "
             >
 
-              <h3>Your Request</h3>
+              <h1
+                style="
+                  margin:0;
+                  font-size:24px;
+                "
+              >
+                Thank You, ${safeName}!
+              </h1>
 
-              <ul style="line-height: 1.8;">
-                <li>
-                  <strong>Event:</strong>
-                  ${safeEventType}
-                </li>
-
-                <li>
-                  <strong>Date:</strong>
-                  ${safeDate}
-                </li>
-
-                <li>
-                  <strong>Location:</strong>
-                  ${safeLocation}
-                </li>
-              </ul>
+              <p
+                style="
+                  margin:10px 0 0;
+                  color:#f3dfc8;
+                "
+              >
+                Your speaking invitation has been received.
+              </p>
 
             </div>
 
-            <p style="margin-top: 25px; line-height: 1.7;">
-              Thank you for considering David for your event.
-            </p>
+            <!-- CONTENT -->
 
-            <hr
+            <div
               style="
-                border: none;
-                border-top: 1px solid #e8ddd4;
-                margin-top: 25px;
-              "
-            />
-
-            <p
-              style="
-                font-size: 12px;
-                color: #777;
+                padding:30px;
               "
             >
-              This is an automated confirmation from David Emuria's website.
-            </p>
+
+              <p
+                style="
+                  font-size:15px;
+                  line-height:1.7;
+                  color:#555;
+                "
+              >
+                Thank you for reaching out to David
+                Emuria through the website.
+                We have successfully received your
+                speaking invitation.
+              </p>
+
+              <p
+                style="
+                  font-size:15px;
+                  line-height:1.7;
+                  color:#555;
+                "
+              >
+                David's team will review your request
+                and get back to you shortly.
+              </p>
+
+              <!-- REQUEST SUMMARY -->
+
+              <div
+                style="
+                  margin-top:25px;
+                  padding:22px;
+                  background:#faf7f2;
+                  border-radius:10px;
+                "
+              >
+
+                <h2
+                  style="
+                    margin-top:0;
+                    color:#3B2314;
+                    font-size:18px;
+                  "
+                >
+                  Your Request
+                </h2>
+
+                <p>
+                  <strong>Event / Program:</strong>
+                  ${safeProgram}
+                </p>
+
+                <p>
+                  <strong>Preferred Date:</strong>
+                  ${safeDate}
+                </p>
+
+                <p>
+                  <strong>Location:</strong>
+                  ${safeLocation}
+                </p>
+
+              </div>
+
+              <p
+                style="
+                  margin-top:25px;
+                  font-size:15px;
+                  line-height:1.7;
+                  color:#555;
+                "
+              >
+                We appreciate your interest in having
+                David speak at your event.
+              </p>
+
+              <p
+                style="
+                  margin-top:25px;
+                  color:#3B2314;
+                "
+              >
+                Blessings,
+                <br />
+
+                <strong>
+                  David Emuria's Team
+                </strong>
+              </p>
+
+              <hr
+                style="
+                  margin:30px 0 20px;
+                  border:none;
+                  border-top:1px solid #eee;
+                "
+              />
+
+              <p
+                style="
+                  margin:0;
+                  color:#888;
+                  font-size:12px;
+                  text-align:center;
+                "
+              >
+                This is an automated confirmation
+                from David Emuria's official website.
+              </p>
+
+            </div>
 
           </div>
-        </div>
+
+        </body>
+
+        </html>
       `,
     });
 
+    console.log(
+      "✅ Customer confirmation email sent."
+    );
+
+    console.log(
+      "========================================"
+    );
+    console.log(
+      "🎉 SPEAKING INVITATION COMPLETED"
+    );
+    console.log(
+      "========================================"
+    );
+
+    /* ==========================================================================
+       SUCCESS RESPONSE
+       ========================================================================== */
+
     return res.status(200).json({
       success: true,
-      message: "Invitation submitted successfully.",
+      message:
+        "Speaking invitation submitted successfully.",
     });
 
-  } catch (error) {
-    console.error("Invite Email Error:", error);
+  } catch (error: any) {
+
+    console.error("");
+    console.error(
+      "========================================"
+    );
+    console.error(
+      "❌ SPEAKING INVITATION ERROR"
+    );
+    console.error(
+      "========================================"
+    );
+
+    console.error(
+      "Error:",
+      error
+    );
+
+    console.error(
+      "Message:",
+      error?.message
+    );
+
+    console.error(
+      "========================================"
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Failed to send invitation. Please try again later.",
+      error:
+        "Failed to send speaking invitation. Please try again later.",
     });
   }
 });
+
+/* ==========================================================================
+   EXPORT
+   ========================================================================== */
 
 export default router;
