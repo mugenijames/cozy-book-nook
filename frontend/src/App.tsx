@@ -23,11 +23,22 @@ import DashboardLayout from "@/components/admin/DashboardLayout";
 import Home from "@/pages/Home";
 import BooksCatalogPage from "@/pages/Books";
 import BookDetail from "@/pages/BookDetail";
+
 import ProgramActivityPage from "@/pages/ProgramActivity";
 import ProgramHighlightPage from "@/pages/ProgramHighlight";
+
+// ============================================================
+// DEAR DAD INITIATIVE
+// ============================================================
+
+import DearDadInitiative from "@/pages/DearDadInitiative";
 import DearDadSupportPage from "@/pages/DearDadSupport";
-import DearDadInitiative from "./pages/DearDadInitiative";
-import DearDadGetInvolved from "./pages/DearDadGetInvolved";
+import DearDadGetInvolved from "@/pages/DearDadGetInvolved";
+
+// ============================================================
+// LEGAL
+// ============================================================
+
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 
@@ -72,7 +83,6 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-
       <Routes>
 
         {/* ======================================================
@@ -81,7 +91,10 @@ function App() {
 
         <Route element={<Layout />}>
 
-          {/* Home */}
+          {/* ====================================================
+              HOME
+          ==================================================== */}
+
           <Route
             path="/"
             element={<Home />}
@@ -105,35 +118,40 @@ function App() {
               PROGRAMS
           ==================================================== */}
 
-          {/* Program */}
+          {/* Main program page */}
           <Route
             path="/programs/:slug"
             element={<ProgramActivityPage />}
           />
 
-          {/* Program area / highlight */}
+          {/* Individual program area / highlight */}
           <Route
             path="/programs/:slug/:highlightSlug"
             element={<ProgramHighlightPage />}
           />
 
           {/* ====================================================
-              DEAR DAD SUPPORT
+              DEAR DAD INITIATIVE
           ==================================================== */}
 
-          <Route
-            path="/dear-dad/support"
-            element={<DearDadSupportPage />}
-          />
+          {/* Main Dear Dad Initiative page */}
           <Route
             path="/dear-dad"
             element={<DearDadInitiative />}
           />
 
+          {/* Donation / Sponsorship / Support page */}
+          <Route
+            path="/dear-dad/support"
+            element={<DearDadSupportPage />}
+          />
+
+          {/* Partnership / Get Involved page */}
           <Route
             path="/dear-dad/get-involved"
             element={<DearDadGetInvolved />}
           />
+
           {/* ====================================================
               LEGAL
           ==================================================== */}
@@ -150,7 +168,6 @@ function App() {
 
         </Route>
 
-
         {/* ======================================================
             ADMIN LOGIN
         ======================================================= */}
@@ -160,9 +177,8 @@ function App() {
           element={<LoginPage />}
         />
 
-
         {/* ======================================================
-            PROTECTED ADMIN
+            PROTECTED ADMIN AREA
         ======================================================= */}
 
         <Route
@@ -174,21 +190,25 @@ function App() {
           }
         >
 
+          {/* Dashboard */}
           <Route
             index
             element={<DashboardHome />}
           />
 
+          {/* Books */}
           <Route
             path="books"
             element={<BookListPage />}
           />
 
+          {/* Add book */}
           <Route
             path="books/new"
             element={<BookFormPage />}
           />
 
+          {/* Edit book */}
           <Route
             path="books/:id/edit"
             element={<BookFormPage />}
@@ -196,9 +216,8 @@ function App() {
 
         </Route>
 
-
         {/* ======================================================
-            404
+            404 / UNKNOWN ROUTES
         ======================================================= */}
 
         <Route
@@ -213,7 +232,11 @@ function App() {
 
       </Routes>
 
-      {/* React Query DevTools - development only */}
+      {/* ========================================================
+          REACT QUERY DEVTOOLS
+          Development only
+      ========================================================= */}
+
       {import.meta.env.DEV && (
         <ReactQueryDevtools
           initialIsOpen={false}
