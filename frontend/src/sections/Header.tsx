@@ -12,7 +12,6 @@ import {
   Quote,
   Mic2,
   GraduationCap,
-  HeartHandshake,
 } from "lucide-react";
 
 import BookingModal from "@/components/BookingModal";
@@ -29,7 +28,6 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [programsOpen, setProgramsOpen] = useState(false);
-
   const [isSticky, setIsSticky] = useState(false);
   const [activeSection, setActiveSection] = useState("");
 
@@ -37,33 +35,31 @@ export default function Header() {
 
   const isHomePage = location.pathname === "/";
 
-  /*
-  |--------------------------------------------------------------------------
-  | CLOSE MENUS
-  |--------------------------------------------------------------------------
-  */
+  // ============================================================
+  // CLOSE MENUS
+  // ============================================================
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
     setProgramsOpen(false);
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | BOOKING MODAL
-  |--------------------------------------------------------------------------
-  */
+  // ============================================================
+  // BOOKING MODAL
+  // ============================================================
 
   const openBookingModal = () => {
     closeMobileMenu();
     setBookingOpen(true);
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | STICKY HEADER
-  |--------------------------------------------------------------------------
-  */
+  const closeBookingModal = () => {
+    setBookingOpen(false);
+  };
+
+  // ============================================================
+  // STICKY HEADER
+  // ============================================================
 
   useEffect(() => {
     const handleScroll = () => {
@@ -81,11 +77,9 @@ export default function Header() {
     };
   }, []);
 
-  /*
-  |--------------------------------------------------------------------------
-  | ACTIVE SECTION DETECTION
-  |--------------------------------------------------------------------------
-  */
+  // ============================================================
+  // ACTIVE HOMEPAGE SECTION
+  // ============================================================
 
   useEffect(() => {
     if (!isHomePage) {
@@ -130,11 +124,9 @@ export default function Header() {
     };
   }, [isHomePage, location.pathname]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | SECTION CLICK
-  |--------------------------------------------------------------------------
-  */
+  // ============================================================
+  // SECTION CLICK
+  // ============================================================
 
   const handleSectionClick = (
     event: React.MouseEvent<HTMLAnchorElement>,
@@ -174,40 +166,37 @@ export default function Header() {
     }
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | ACTIVE ROUTE
-  |--------------------------------------------------------------------------
-  */
+  // ============================================================
+  // ACTIVE ROUTE
+  // ============================================================
 
   const isActiveRoute = (path: string) => {
     return location.pathname === path;
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | ACTIVE HOMEPAGE SECTION
-  |--------------------------------------------------------------------------
-  */
+  // ============================================================
+  // ACTIVE SECTION
+  // ============================================================
 
   const isSectionActive = (sectionId: string) => {
-    return isHomePage && activeSection === sectionId;
+    return (
+      isHomePage &&
+      activeSection === sectionId
+    );
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | NAVIGATION LINK STYLES
-  |--------------------------------------------------------------------------
-  */
+  // ============================================================
+  // NAVIGATION STYLES
+  // ============================================================
 
   const desktopLinkBase =
     "relative flex items-center gap-1.5 py-2 text-sm font-medium transition-all duration-300";
 
   return (
     <>
-      {/* =========================================================
+      {/* ========================================================
           HEADER
-      ========================================================= */}
+      ======================================================== */}
 
       <header
         className={`
@@ -253,9 +242,9 @@ export default function Header() {
             }
           `}
         >
-          {/* =====================================================
-              LOGO / BRAND
-          ===================================================== */}
+          {/* ====================================================
+              LOGO
+          ==================================================== */}
 
           <Link
             to="/"
@@ -330,9 +319,9 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* =====================================================
+          {/* ====================================================
               DESKTOP NAVIGATION
-          ===================================================== */}
+          ==================================================== */}
 
           <nav
             className="
@@ -505,12 +494,18 @@ export default function Header() {
                     "
                   >
                     <div className="px-4 pb-3 pt-3">
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C17B4F]">
-                        Programs & Initiatives
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#D4A017]">
+                        Programs
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Explore David's initiatives
                       </p>
                     </div>
 
                     <div className="h-px bg-[#E8DDD4]" />
+
+                    {/* All Programs */}
 
                     <a
                       href="/#program"
@@ -557,6 +552,8 @@ export default function Header() {
                         </p>
                       </div>
                     </a>
+
+                    {/* Individual Programs */}
 
                     <div className="mt-1">
                       {PROGRAM_ACTIVITIES.map(
@@ -702,39 +699,6 @@ export default function Header() {
               )}
             </a>
 
-            {/* BOOK DAVID */}
-
-            <button
-              type="button"
-              onClick={openBookingModal}
-              className="
-                inline-flex
-                items-center
-                gap-2
-                rounded-full
-                bg-[#4A1F0E]
-                px-5
-                py-2.5
-                text-sm
-                font-semibold
-                text-white
-                shadow-md
-                transition-all
-                duration-300
-                hover:-translate-y-0.5
-                hover:bg-[#2E1208]
-                hover:shadow-xl
-                focus:outline-none
-                focus:ring-2
-                focus:ring-[#C17B4F]
-                focus:ring-offset-2
-                active:scale-95
-              "
-            >
-              <CalendarCheck2 className="h-4 w-4" />
-              Book David
-            </button>
-
             {/* DONATE */}
 
             <Link
@@ -755,7 +719,7 @@ export default function Header() {
                 transition-all
                 duration-300
                 hover:-translate-y-0.5
-                hover:bg-[#B88900]
+                hover:bg-[#B58900]
                 hover:shadow-xl
                 focus:outline-none
                 focus:ring-2
@@ -764,14 +728,14 @@ export default function Header() {
                 active:scale-95
               "
             >
-              <HeartHandshake className="h-4 w-4" />
+              <span className="text-base">💛</span>
               Donate
             </Link>
           </nav>
 
-          {/* =====================================================
+          {/* ====================================================
               MOBILE MENU BUTTON
-          ===================================================== */}
+          ==================================================== */}
 
           <button
             type="button"
@@ -811,7 +775,7 @@ export default function Header() {
           </button>
         </div>
 
-        {/* =======================================================
+        {/* ======================================================
             MOBILE NAVIGATION
         ======================================================= */}
 
@@ -837,7 +801,6 @@ export default function Header() {
               aria-label="Mobile navigation"
             >
               <div className="space-y-1">
-
                 {/* ABOUT */}
 
                 <a
@@ -1025,7 +988,9 @@ export default function Header() {
                     font-medium
                     transition-colors
                     ${
-                      isSectionActive("testimonials")
+                      isSectionActive(
+                        "testimonials"
+                      )
                         ? "bg-[#F8F6F2] text-[#C17B4F]"
                         : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
@@ -1070,12 +1035,43 @@ export default function Header() {
 
                 <div className="my-4 h-px bg-[#E8DDD4]" />
 
+                {/* DONATE */}
+
+                <Link
+                  to="/dear-dad/support"
+                  onClick={closeMobileMenu}
+                  className="
+                    flex
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-full
+                    bg-[#D4A017]
+                    px-5
+                    py-3.5
+                    text-sm
+                    font-bold
+                    text-white
+                    shadow-md
+                    transition-all
+                    duration-300
+                    hover:bg-[#B58900]
+                    hover:shadow-xl
+                    active:scale-[0.98]
+                  "
+                >
+                  <span className="text-base">💛</span>
+                  Donate / Support Dear Dad
+                </Link>
+
                 {/* BOOK DAVID */}
 
                 <button
                   type="button"
                   onClick={openBookingModal}
                   className="
+                    mt-3
                     flex
                     w-full
                     items-center
@@ -1099,46 +1095,15 @@ export default function Header() {
                   <CalendarCheck2 className="h-4 w-4" />
                   Book David to Speak
                 </button>
-
-                {/* SUPPORT DEAR DAD */}
-
-                <Link
-                  to="/dear-dad/support"
-                  onClick={closeMobileMenu}
-                  className="
-                    mt-3
-                    flex
-                    w-full
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-full
-                    bg-[#D4A017]
-                    px-5
-                    py-3.5
-                    text-sm
-                    font-semibold
-                    text-white
-                    shadow-md
-                    transition-all
-                    duration-300
-                    hover:bg-[#B88900]
-                    hover:shadow-xl
-                    active:scale-[0.98]
-                  "
-                >
-                  <HeartHandshake className="h-4 w-4" />
-                  Support Dear Dad
-                </Link>
               </div>
             </nav>
           </div>
         )}
       </header>
 
-      {/* =========================================================
+      {/* ========================================================
           STICKY HEADER SPACER
-      ========================================================= */}
+      ======================================================== */}
 
       {isSticky && (
         <div
@@ -1147,13 +1112,13 @@ export default function Header() {
         />
       )}
 
-      {/* =========================================================
+      {/* ========================================================
           BOOKING MODAL
-      ========================================================= */}
+      ======================================================== */}
 
       <BookingModal
-        open={bookingOpen}
-        onClose={() => setBookingOpen(false)}
+        isOpen={bookingOpen}
+        onClose={closeBookingModal}
       />
     </>
   );
