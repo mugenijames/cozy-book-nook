@@ -30,10 +30,7 @@ export default function Header() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [programsOpen, setProgramsOpen] = useState(false);
 
-  // Controls whether the header has reached the sticky state
   const [isSticky, setIsSticky] = useState(false);
-
-  // Controls which homepage section is currently visible
   const [activeSection, setActiveSection] = useState("");
 
   const location = useLocation();
@@ -66,9 +63,6 @@ export default function Header() {
   |--------------------------------------------------------------------------
   | STICKY HEADER
   |--------------------------------------------------------------------------
-  |
-  | The header becomes sticky after the user scrolls approximately 80px.
-  |
   */
 
   useEffect(() => {
@@ -91,10 +85,6 @@ export default function Header() {
   |--------------------------------------------------------------------------
   | ACTIVE SECTION DETECTION
   |--------------------------------------------------------------------------
-  |
-  | Watches the homepage sections and determines which section is currently
-  | visible on the screen.
-  |
   */
 
   useEffect(() => {
@@ -152,10 +142,6 @@ export default function Header() {
   ) => {
     closeMobileMenu();
 
-    /*
-     * If we're already on the homepage, prevent the browser from jumping
-     * directly to the hash and instead perform a smooth scroll.
-     */
     if (isHomePage) {
       event.preventDefault();
 
@@ -177,9 +163,6 @@ export default function Header() {
           behavior: "smooth",
         });
 
-        /*
-         * Update the URL without forcing a page reload.
-         */
         window.history.replaceState(
           null,
           "",
@@ -208,20 +191,8 @@ export default function Header() {
   */
 
   const isSectionActive = (sectionId: string) => {
-    return (
-      isHomePage &&
-      activeSection === sectionId
-    );
+    return isHomePage && activeSection === sectionId;
   };
-
-  /*
-  |--------------------------------------------------------------------------
-  | ACTIVE DEAR DAD ROUTE
-  |--------------------------------------------------------------------------
-  */
-
-  const isDearDadRoute =
-    location.pathname.startsWith("/dear-dad");
 
   /*
   |--------------------------------------------------------------------------
@@ -292,8 +263,6 @@ export default function Header() {
             className="group flex items-center gap-3"
             aria-label="David Emuria - Home"
           >
-            {/* Logo */}
-
             <div
               className={`
                 flex
@@ -327,8 +296,6 @@ export default function Header() {
                 }}
               />
             </div>
-
-            {/* Brand text */}
 
             <div className="leading-tight">
               <p
@@ -379,9 +346,7 @@ export default function Header() {
             "
             aria-label="Main navigation"
           >
-            {/* =================================================
-                ABOUT
-            ================================================= */}
+            {/* ABOUT */}
 
             <a
               href="/#about"
@@ -399,7 +364,6 @@ export default function Header() {
               `}
             >
               <UserRound className="h-4 w-4" />
-
               About
 
               {isSectionActive("about") && (
@@ -417,9 +381,7 @@ export default function Header() {
               )}
             </a>
 
-            {/* =================================================
-                BOOKS
-            ================================================= */}
+            {/* BOOKS */}
 
             <Link
               to="/books"
@@ -435,7 +397,6 @@ export default function Header() {
               `}
             >
               <BookOpen className="h-4 w-4" />
-
               Books
 
               {isActiveRoute("/books") && (
@@ -453,9 +414,7 @@ export default function Header() {
               )}
             </Link>
 
-            {/* =================================================
-                PROGRAMS DROPDOWN
-            ================================================= */}
+            {/* PROGRAMS */}
 
             <div className="relative">
               <button
@@ -514,8 +473,6 @@ export default function Header() {
 
               {programsOpen && (
                 <>
-                  {/* Click outside */}
-
                   <button
                     type="button"
                     aria-label="Close programs menu"
@@ -529,8 +486,6 @@ export default function Header() {
                       setProgramsOpen(false)
                     }
                   />
-
-                  {/* Dropdown */}
 
                   <div
                     className="
@@ -549,21 +504,13 @@ export default function Header() {
                       shadow-2xl
                     "
                   >
-                    {/* Dropdown Header */}
-
                     <div className="px-4 pb-3 pt-3">
                       <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#C17B4F]">
-                        Programs & Impact
-                      </p>
-
-                      <p className="mt-1 text-xs text-gray-500">
-                        Explore initiatives and areas of impact.
+                        Programs & Initiatives
                       </p>
                     </div>
 
                     <div className="h-px bg-[#E8DDD4]" />
-
-                    {/* All Programs */}
 
                     <a
                       href="/#program"
@@ -610,8 +557,6 @@ export default function Header() {
                         </p>
                       </div>
                     </a>
-
-                    {/* Individual Programs */}
 
                     <div className="mt-1">
                       {PROGRAM_ACTIVITIES.map(
@@ -681,9 +626,7 @@ export default function Header() {
               )}
             </div>
 
-            {/* =================================================
-                TESTIMONIALS
-            ================================================= */}
+            {/* TESTIMONIALS */}
 
             <a
               href="/#testimonials"
@@ -704,7 +647,6 @@ export default function Header() {
               `}
             >
               <Quote className="h-4 w-4" />
-
               Testimonials
 
               {isSectionActive("testimonials") && (
@@ -722,9 +664,7 @@ export default function Header() {
               )}
             </a>
 
-            {/* =================================================
-                SPEAKING
-            ================================================= */}
+            {/* SPEAKING */}
 
             <a
               href="/#speaking"
@@ -745,7 +685,6 @@ export default function Header() {
               `}
             >
               <Mic2 className="h-4 w-4" />
-
               Speaking
 
               {isSectionActive("speaking") && (
@@ -763,41 +702,69 @@ export default function Header() {
               )}
             </a>
 
-            {/* =================================================
-                DEAR DAD / DONATE
-            ================================================= */}
+            {/* BOOK DAVID */}
 
-            <Link
-              to="/dear-dad/support"
-              onClick={closeMobileMenu}
-              className={`
+            <button
+              type="button"
+              onClick={openBookingModal}
+              className="
                 inline-flex
                 items-center
                 gap-2
                 rounded-full
+                bg-[#4A1F0E]
                 px-5
                 py-2.5
                 text-sm
-                font-bold
+                font-semibold
+                text-white
                 shadow-md
                 transition-all
                 duration-300
                 hover:-translate-y-0.5
+                hover:bg-[#2E1208]
+                hover:shadow-xl
+                focus:outline-none
+                focus:ring-2
+                focus:ring-[#C17B4F]
+                focus:ring-offset-2
+                active:scale-95
+              "
+            >
+              <CalendarCheck2 className="h-4 w-4" />
+              Book David
+            </button>
+
+            {/* DONATE */}
+
+            <Link
+              to="/dear-dad/support"
+              onClick={closeMobileMenu}
+              className="
+                inline-flex
+                items-center
+                gap-2
+                rounded-full
+                bg-[#D4A017]
+                px-5
+                py-2.5
+                text-sm
+                font-semibold
+                text-white
+                shadow-md
+                transition-all
+                duration-300
+                hover:-translate-y-0.5
+                hover:bg-[#B88900]
                 hover:shadow-xl
                 focus:outline-none
                 focus:ring-2
                 focus:ring-[#D4A017]
                 focus:ring-offset-2
-                ${
-                  isDearDadRoute
-                    ? "bg-[#B88900] text-white"
-                    : "bg-[#D4A017] text-white hover:bg-[#B88900]"
-                }
-              `}
-              aria-label="Donate or support the Dear Dad Initiative"
+                active:scale-95
+              "
             >
               <HeartHandshake className="h-4 w-4" />
-
               Donate
             </Link>
           </nav>
@@ -871,9 +838,7 @@ export default function Header() {
             >
               <div className="space-y-1">
 
-                {/* =================================================
-                    ABOUT
-                ================================================= */}
+                {/* ABOUT */}
 
                 <a
                   href="/#about"
@@ -901,13 +866,10 @@ export default function Header() {
                   `}
                 >
                   <UserRound className="h-4 w-4" />
-
                   About
                 </a>
 
-                {/* =================================================
-                    BOOKS
-                ================================================= */}
+                {/* BOOKS */}
 
                 <Link
                   to="/books"
@@ -930,13 +892,10 @@ export default function Header() {
                   `}
                 >
                   <BookOpen className="h-4 w-4" />
-
                   Books
                 </Link>
 
-                {/* =================================================
-                    PROGRAMS
-                ================================================= */}
+                {/* PROGRAMS */}
 
                 <div className="rounded-xl">
                   <button
@@ -967,7 +926,6 @@ export default function Header() {
                   >
                     <span className="flex items-center gap-3">
                       <GraduationCap className="h-4 w-4" />
-
                       Programs
                     </span>
 
@@ -997,8 +955,6 @@ export default function Header() {
                         pl-3
                       "
                     >
-                      {/* All Programs */}
-
                       <a
                         href="/#program"
                         onClick={(event) =>
@@ -1021,8 +977,6 @@ export default function Header() {
                       >
                         All Programs
                       </a>
-
-                      {/* Individual Programs */}
 
                       {PROGRAM_ACTIVITIES.map(
                         (program) => (
@@ -1050,9 +1004,7 @@ export default function Header() {
                   )}
                 </div>
 
-                {/* =================================================
-                    TESTIMONIALS
-                ================================================= */}
+                {/* TESTIMONIALS */}
 
                 <a
                   href="/#testimonials"
@@ -1073,22 +1025,17 @@ export default function Header() {
                     font-medium
                     transition-colors
                     ${
-                      isSectionActive(
-                        "testimonials"
-                      )
+                      isSectionActive("testimonials")
                         ? "bg-[#F8F6F2] text-[#C17B4F]"
                         : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
                   <Quote className="h-4 w-4" />
-
                   Testimonials
                 </a>
 
-                {/* =================================================
-                    SPEAKING
-                ================================================= */}
+                {/* SPEAKING */}
 
                 <a
                   href="/#speaking"
@@ -1116,51 +1063,50 @@ export default function Header() {
                   `}
                 >
                   <Mic2 className="h-4 w-4" />
-
                   Speaking
                 </a>
 
-                {/* =================================================
-                    DEAR DAD
-                ================================================= */}
-
-                <Link
-                  to="/dear-dad"
-                  onClick={closeMobileMenu}
-                  className={`
-                    flex
-                    items-center
-                    gap-3
-                    rounded-xl
-                    px-4
-                    py-3.5
-                    text-sm
-                    font-semibold
-                    transition-colors
-                    ${
-                      isDearDadRoute
-                        ? "bg-[#F8F6F2] text-[#8B4513]"
-                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
-                    }
-                  `}
-                >
-                  <HeartHandshake className="h-4 w-4" />
-
-                  Dear Dad Initiative
-                </Link>
-
-                {/* Divider */}
+                {/* DIVIDER */}
 
                 <div className="my-4 h-px bg-[#E8DDD4]" />
 
-                {/* =================================================
-                    DONATE CTA
-                ================================================= */}
+                {/* BOOK DAVID */}
+
+                <button
+                  type="button"
+                  onClick={openBookingModal}
+                  className="
+                    flex
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-full
+                    bg-[#4A1F0E]
+                    px-5
+                    py-3.5
+                    text-sm
+                    font-semibold
+                    text-white
+                    shadow-md
+                    transition-all
+                    duration-300
+                    hover:bg-[#2E1208]
+                    hover:shadow-xl
+                    active:scale-[0.98]
+                  "
+                >
+                  <CalendarCheck2 className="h-4 w-4" />
+                  Book David to Speak
+                </button>
+
+                {/* SUPPORT DEAR DAD */}
 
                 <Link
                   to="/dear-dad/support"
                   onClick={closeMobileMenu}
                   className="
+                    mt-3
                     flex
                     w-full
                     items-center
@@ -1171,57 +1117,19 @@ export default function Header() {
                     px-5
                     py-3.5
                     text-sm
-                    font-bold
+                    font-semibold
                     text-white
-                    shadow-lg
+                    shadow-md
                     transition-all
                     duration-300
-                    hover:-translate-y-0.5
                     hover:bg-[#B88900]
                     hover:shadow-xl
                     active:scale-[0.98]
                   "
                 >
                   <HeartHandshake className="h-4 w-4" />
-
-                  Donate / Support
+                  Support Dear Dad
                 </Link>
-
-                {/* =================================================
-                    BOOK DAVID TO SPEAK
-                ================================================= */}
-
-                <button
-                  type="button"
-                  onClick={openBookingModal}
-                  className="
-                    mt-2
-                    flex
-                    w-full
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-full
-                    border
-                    border-[#4A1F0E]
-                    bg-white
-                    px-5
-                    py-3.5
-                    text-sm
-                    font-semibold
-                    text-[#4A1F0E]
-                    transition-all
-                    duration-300
-                    hover:bg-[#4A1F0E]
-                    hover:text-white
-                    active:scale-[0.98]
-                  "
-                >
-                  <CalendarCheck2 className="h-4 w-4" />
-
-                  Book David to Speak
-                </button>
-
               </div>
             </nav>
           </div>
@@ -1229,7 +1137,7 @@ export default function Header() {
       </header>
 
       {/* =========================================================
-          SPACER
+          STICKY HEADER SPACER
       ========================================================= */}
 
       {isSticky && (
