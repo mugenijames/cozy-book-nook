@@ -62,7 +62,19 @@ model Order {
   paymentMethod   String?
   transactionCode String? @unique
 
+  // Amount actually charged in the selected payment currency.
+  // Example:
+  // 1500 USD cents = $15.00
   amountCents Int
+
+  // Currency actually charged.
+  // Examples: KES, USD, EUR, GBP
+  currency String @default("KES")
+
+  // Original bookstore price in KES cents.
+  // This allows us to know the original price even when
+  // the customer pays through PayPal in another currency.
+  baseAmountCents Int?
 
   status        String @default("PENDING")
   paymentStatus String @default("UNPAID")
@@ -81,6 +93,7 @@ model Order {
   @@index([paymentStatus])
   @@index([createdAt])
   @@index([bookId])
+  @@index([currency])
   @@map("orders")
 }
 
@@ -109,26 +122,57 @@ model OrderItem {
 
 model PendingPayment {
   id                 String   @id @default(uuid())
+
   checkoutRequestID  String?  @unique
+
   paypalOrderId      String?  @unique
+
   bookId             String
+
   bookTitle          String
+
   email              String
+
   phoneNumber        String?
+
+  // Amount in the payment currency.
   amount             Float
+
+  // Currency selected by customer.
+  // M-Pesa = KES
+  // PayPal = KES/USD/EUR/GBP
+  currency           String   @default("KES")
+
+  // Original book price stored in KES cents.
+  baseAmountCents    Int?
+
   status             String   @default("pending")
+
   mpesaReceiptNumber String?
+
   paypalCaptureId    String?
+
   errorMessage       String?
+
   createdAt          DateTime @default(now())
+
   updatedAt          DateTime @updatedAt
 
-  book Book @relation(fields: [bookId], references: [id])
+  book Book @relation(
+    fields: [bookId],
+    references: [id]
+  )
 
   @@index([email])
+
   @@index([status])
+
   @@index([checkoutRequestID])
+
   @@index([paypalOrderId])
+
+  @@index([currency])
+
   @@map("pending_payments")
 }
 
