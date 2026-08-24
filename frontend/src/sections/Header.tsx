@@ -12,6 +12,7 @@ import {
   Quote,
   Mic2,
   GraduationCap,
+  HeartHandshake,
 } from "lucide-react";
 
 import BookingModal from "@/components/BookingModal";
@@ -25,15 +26,25 @@ const SECTION_IDS = [
 ];
 
 export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [bookingOpen, setBookingOpen] = useState(false);
-  const [programsOpen, setProgramsOpen] = useState(false);
-  const [isSticky, setIsSticky] = useState(false);
-  const [activeSection, setActiveSection] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] =
+    useState(false);
+
+  const [bookingOpen, setBookingOpen] =
+    useState(false);
+
+  const [programsOpen, setProgramsOpen] =
+    useState(false);
+
+  const [isSticky, setIsSticky] =
+    useState(false);
+
+  const [activeSection, setActiveSection] =
+    useState("");
 
   const location = useLocation();
 
-  const isHomePage = location.pathname === "/";
+  const isHomePage =
+    location.pathname === "/";
 
   // ============================================================
   // CLOSE MENUS
@@ -45,16 +56,12 @@ export default function Header() {
   };
 
   // ============================================================
-  // BOOKING MODAL
+  // OPEN BOOKING MODAL
   // ============================================================
 
   const openBookingModal = () => {
     closeMobileMenu();
     setBookingOpen(true);
-  };
-
-  const closeBookingModal = () => {
-    setBookingOpen(false);
   };
 
   // ============================================================
@@ -66,14 +73,21 @@ export default function Header() {
       setIsSticky(window.scrollY > 80);
     };
 
-    window.addEventListener("scroll", handleScroll, {
-      passive: true,
-    });
+    window.addEventListener(
+      "scroll",
+      handleScroll,
+      {
+        passive: true,
+      }
+    );
 
     handleScroll();
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener(
+        "scroll",
+        handleScroll
+      );
     };
   }, []);
 
@@ -88,32 +102,49 @@ export default function Header() {
     }
 
     const sections = SECTION_IDS
-      .map((id) => document.getElementById(id))
+      .map((id) =>
+        document.getElementById(id)
+      )
       .filter(Boolean) as HTMLElement[];
 
     if (!sections.length) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleSections = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (a, b) =>
-              b.intersectionRatio - a.intersectionRatio
-          );
+    const observer =
+      new IntersectionObserver(
+        (entries) => {
+          const visibleSections =
+            entries
+              .filter(
+                (entry) =>
+                  entry.isIntersecting
+              )
+              .sort(
+                (a, b) =>
+                  b.intersectionRatio -
+                  a.intersectionRatio
+              );
 
-        if (visibleSections.length > 0) {
-          setActiveSection(
-            visibleSections[0].target.id
-          );
+          if (
+            visibleSections.length > 0
+          ) {
+            setActiveSection(
+              visibleSections[0]
+                .target.id
+            );
+          }
+        },
+        {
+          root: null,
+          rootMargin:
+            "-110px 0px -45% 0px",
+          threshold: [
+            0.1,
+            0.25,
+            0.5,
+            0.75,
+          ],
         }
-      },
-      {
-        root: null,
-        rootMargin: "-110px 0px -45% 0px",
-        threshold: [0.1, 0.25, 0.5, 0.75],
-      }
-    );
+      );
 
     sections.forEach((section) => {
       observer.observe(section);
@@ -122,7 +153,10 @@ export default function Header() {
     return () => {
       observer.disconnect();
     };
-  }, [isHomePage, location.pathname]);
+  }, [
+    isHomePage,
+    location.pathname,
+  ]);
 
   // ============================================================
   // SECTION CLICK
@@ -138,17 +172,20 @@ export default function Header() {
       event.preventDefault();
 
       const element =
-        document.getElementById(sectionId);
+        document.getElementById(
+          sectionId
+        );
 
       if (element) {
         const headerOffset = 95;
 
         const elementPosition =
-          element.getBoundingClientRect().top +
-          window.scrollY;
+          element.getBoundingClientRect()
+            .top + window.scrollY;
 
         const offsetPosition =
-          elementPosition - headerOffset;
+          elementPosition -
+          headerOffset;
 
         window.scrollTo({
           top: offsetPosition,
@@ -170,7 +207,9 @@ export default function Header() {
   // ACTIVE ROUTE
   // ============================================================
 
-  const isActiveRoute = (path: string) => {
+  const isActiveRoute = (
+    path: string
+  ) => {
     return location.pathname === path;
   };
 
@@ -178,7 +217,9 @@ export default function Header() {
   // ACTIVE SECTION
   // ============================================================
 
-  const isSectionActive = (sectionId: string) => {
+  const isSectionActive = (
+    sectionId: string
+  ) => {
     return (
       isHomePage &&
       activeSection === sectionId
@@ -186,7 +227,7 @@ export default function Header() {
   };
 
   // ============================================================
-  // NAVIGATION STYLES
+  // DESKTOP LINK STYLE
   // ============================================================
 
   const desktopLinkBase =
@@ -194,9 +235,9 @@ export default function Header() {
 
   return (
     <>
-      {/* ========================================================
+      {/* ======================================================
           HEADER
-      ======================================================== */}
+      ====================================================== */}
 
       <header
         className={`
@@ -242,9 +283,9 @@ export default function Header() {
             }
           `}
         >
-          {/* ====================================================
+          {/* ==================================================
               LOGO
-          ==================================================== */}
+          ================================================== */}
 
           <Link
             to="/"
@@ -319,9 +360,9 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* ====================================================
+          {/* ==================================================
               DESKTOP NAVIGATION
-          ==================================================== */}
+          ================================================== */}
 
           <nav
             className="
@@ -335,12 +376,17 @@ export default function Header() {
             "
             aria-label="Main navigation"
           >
-            {/* ABOUT */}
+            {/* =================================================
+                ABOUT
+            ================================================= */}
 
             <a
               href="/#about"
               onClick={(event) =>
-                handleSectionClick(event, "about")
+                handleSectionClick(
+                  event,
+                  "about"
+                )
               }
               className={`
                 ${desktopLinkBase}
@@ -353,6 +399,7 @@ export default function Header() {
               `}
             >
               <UserRound className="h-4 w-4" />
+
               About
 
               {isSectionActive("about") && (
@@ -370,7 +417,9 @@ export default function Header() {
               )}
             </a>
 
-            {/* BOOKS */}
+            {/* =================================================
+                BOOKS
+            ================================================= */}
 
             <Link
               to="/books"
@@ -386,6 +435,7 @@ export default function Header() {
               `}
             >
               <BookOpen className="h-4 w-4" />
+
               Books
 
               {isActiveRoute("/books") && (
@@ -403,14 +453,17 @@ export default function Header() {
               )}
             </Link>
 
-            {/* PROGRAMS */}
+            {/* =================================================
+                PROGRAMS
+            ================================================= */}
 
             <div className="relative">
               <button
                 type="button"
                 onClick={() =>
                   setProgramsOpen(
-                    (previous) => !previous
+                    (previous) =>
+                      !previous
                   )
                 }
                 className={`
@@ -419,12 +472,16 @@ export default function Header() {
                   hover:text-[#C17B4F]
                   focus-visible:text-[#C17B4F]
                   ${
-                    isSectionActive("program")
+                    isSectionActive(
+                      "program"
+                    )
                       ? "font-semibold text-[#C17B4F]"
                       : ""
                   }
                 `}
-                aria-expanded={programsOpen}
+                aria-expanded={
+                  programsOpen
+                }
                 aria-haspopup="menu"
               >
                 <GraduationCap className="h-4 w-4" />
@@ -445,7 +502,9 @@ export default function Header() {
                   `}
                 />
 
-                {isSectionActive("program") && (
+                {isSectionActive(
+                  "program"
+                ) && (
                   <span
                     className="
                       absolute
@@ -462,6 +521,8 @@ export default function Header() {
 
               {programsOpen && (
                 <>
+                  {/* Outside click layer */}
+
                   <button
                     type="button"
                     aria-label="Close programs menu"
@@ -472,9 +533,13 @@ export default function Header() {
                       cursor-default
                     "
                     onClick={() =>
-                      setProgramsOpen(false)
+                      setProgramsOpen(
+                        false
+                      )
                     }
                   />
+
+                  {/* Dropdown */}
 
                   <div
                     className="
@@ -494,12 +559,27 @@ export default function Header() {
                     "
                   >
                     <div className="px-4 pb-3 pt-3">
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#D4A017]">
+                      <p
+                        className="
+                          text-xs
+                          font-bold
+                          uppercase
+                          tracking-[0.16em]
+                          text-[#C17B4F]
+                        "
+                      >
                         Programs
                       </p>
 
-                      <p className="mt-1 text-xs text-gray-500">
-                        Explore David's initiatives
+                      <p
+                        className="
+                          mt-1
+                          text-xs
+                          text-gray-500
+                        "
+                      >
+                        Explore David's
+                        initiatives
                       </p>
                     </div>
 
@@ -543,11 +623,22 @@ export default function Header() {
                       </div>
 
                       <div>
-                        <p className="text-sm font-semibold text-[#2E1208]">
+                        <p
+                          className="
+                            text-sm
+                            font-semibold
+                            text-[#2E1208]
+                          "
+                        >
                           All Programs
                         </p>
 
-                        <p className="text-xs text-gray-500">
+                        <p
+                          className="
+                            text-xs
+                            text-gray-500
+                          "
+                        >
                           View all initiatives
                         </p>
                       </div>
@@ -559,10 +650,14 @@ export default function Header() {
                       {PROGRAM_ACTIVITIES.map(
                         (program) => (
                           <Link
-                            key={program.slug}
+                            key={
+                              program.slug
+                            }
                             to={`/programs/${program.slug}`}
                             onClick={() =>
-                              setProgramsOpen(false)
+                              setProgramsOpen(
+                                false
+                              )
                             }
                             className="
                               flex
@@ -600,7 +695,9 @@ export default function Header() {
                                   text-[#2E1208]
                                 "
                               >
-                                {program.title}
+                                {
+                                  program.title
+                                }
                               </p>
 
                               <p
@@ -611,7 +708,9 @@ export default function Header() {
                                   text-gray-500
                                 "
                               >
-                                {program.description}
+                                {
+                                  program.description
+                                }
                               </p>
                             </div>
                           </Link>
@@ -623,7 +722,9 @@ export default function Header() {
               )}
             </div>
 
-            {/* TESTIMONIALS */}
+            {/* =================================================
+                TESTIMONIALS
+            ================================================= */}
 
             <a
               href="/#testimonials"
@@ -637,16 +738,21 @@ export default function Header() {
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
                 ${
-                  isSectionActive("testimonials")
+                  isSectionActive(
+                    "testimonials"
+                  )
                     ? "font-semibold text-[#C17B4F]"
                     : ""
                 }
               `}
             >
               <Quote className="h-4 w-4" />
+
               Testimonials
 
-              {isSectionActive("testimonials") && (
+              {isSectionActive(
+                "testimonials"
+              ) && (
                 <span
                   className="
                     absolute
@@ -661,7 +767,9 @@ export default function Header() {
               )}
             </a>
 
-            {/* SPEAKING */}
+            {/* =================================================
+                SPEAKING
+            ================================================= */}
 
             <a
               href="/#speaking"
@@ -682,9 +790,12 @@ export default function Header() {
               `}
             >
               <Mic2 className="h-4 w-4" />
+
               Speaking
 
-              {isSectionActive("speaking") && (
+              {isSectionActive(
+                "speaking"
+              ) && (
                 <span
                   className="
                     absolute
@@ -699,7 +810,47 @@ export default function Header() {
               )}
             </a>
 
-            {/* DONATE */}
+            {/* =================================================
+                BOOK DAVID CTA
+            ================================================= */}
+
+            <button
+              type="button"
+              onClick={
+                openBookingModal
+              }
+              className="
+                inline-flex
+                items-center
+                gap-2
+                rounded-full
+                bg-[#4A1F0E]
+                px-5
+                py-2.5
+                text-sm
+                font-semibold
+                text-white
+                shadow-md
+                transition-all
+                duration-300
+                hover:-translate-y-0.5
+                hover:bg-[#2E1208]
+                hover:shadow-xl
+                focus:outline-none
+                focus:ring-2
+                focus:ring-[#C17B4F]
+                focus:ring-offset-2
+                active:scale-95
+              "
+            >
+              <CalendarCheck2 className="h-4 w-4" />
+
+              Book David
+            </button>
+
+            {/* =================================================
+                DONATE CTA
+            ================================================= */}
 
             <Link
               to="/dear-dad/support"
@@ -728,20 +879,22 @@ export default function Header() {
                 active:scale-95
               "
             >
-              <span className="text-base">💛</span>
+              <HeartHandshake className="h-4 w-4" />
+
               Donate
             </Link>
           </nav>
 
-          {/* ====================================================
+          {/* ==================================================
               MOBILE MENU BUTTON
-          ==================================================== */}
+          ================================================== */}
 
           <button
             type="button"
             onClick={() =>
               setMobileMenuOpen(
-                (previous) => !previous
+                (previous) =>
+                  !previous
               )
             }
             className="
@@ -765,7 +918,9 @@ export default function Header() {
                 ? "Close navigation menu"
                 : "Open navigation menu"
             }
-            aria-expanded={mobileMenuOpen}
+            aria-expanded={
+              mobileMenuOpen
+            }
           >
             {mobileMenuOpen ? (
               <X className="h-6 w-6" />
@@ -777,7 +932,7 @@ export default function Header() {
 
         {/* ======================================================
             MOBILE NAVIGATION
-        ======================================================= */}
+        ====================================================== */}
 
         {mobileMenuOpen && (
           <div
@@ -822,13 +977,16 @@ export default function Header() {
                     font-medium
                     transition-colors
                     ${
-                      isSectionActive("about")
+                      isSectionActive(
+                        "about"
+                      )
                         ? "bg-[#F8F6F2] text-[#C17B4F]"
                         : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
                   <UserRound className="h-4 w-4" />
+
                   About
                 </a>
 
@@ -848,13 +1006,16 @@ export default function Header() {
                     font-medium
                     transition-colors
                     ${
-                      isActiveRoute("/books")
+                      isActiveRoute(
+                        "/books"
+                      )
                         ? "bg-[#F8F6F2] text-[#C17B4F]"
                         : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
                   <BookOpen className="h-4 w-4" />
+
                   Books
                 </Link>
 
@@ -865,7 +1026,8 @@ export default function Header() {
                     type="button"
                     onClick={() =>
                       setProgramsOpen(
-                        (previous) => !previous
+                        (previous) =>
+                          !previous
                       )
                     }
                     className={`
@@ -881,7 +1043,9 @@ export default function Header() {
                       font-medium
                       transition-colors
                       ${
-                        isSectionActive("program")
+                        isSectionActive(
+                          "program"
+                        )
                           ? "bg-[#F8F6F2] text-[#C17B4F]"
                           : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                       }
@@ -889,6 +1053,7 @@ export default function Header() {
                   >
                     <span className="flex items-center gap-3">
                       <GraduationCap className="h-4 w-4" />
+
                       Programs
                     </span>
 
@@ -944,9 +1109,13 @@ export default function Header() {
                       {PROGRAM_ACTIVITIES.map(
                         (program) => (
                           <Link
-                            key={program.slug}
+                            key={
+                              program.slug
+                            }
                             to={`/programs/${program.slug}`}
-                            onClick={closeMobileMenu}
+                            onClick={
+                              closeMobileMenu
+                            }
                             className="
                               block
                               rounded-lg
@@ -959,7 +1128,9 @@ export default function Header() {
                               hover:text-[#C17B4F]
                             "
                           >
-                            {program.title}
+                            {
+                              program.title
+                            }
                           </Link>
                         )
                       )}
@@ -997,6 +1168,7 @@ export default function Header() {
                   `}
                 >
                   <Quote className="h-4 w-4" />
+
                   Testimonials
                 </a>
 
@@ -1021,57 +1193,33 @@ export default function Header() {
                     font-medium
                     transition-colors
                     ${
-                      isSectionActive("speaking")
+                      isSectionActive(
+                        "speaking"
+                      )
                         ? "bg-[#F8F6F2] text-[#C17B4F]"
                         : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
                   <Mic2 className="h-4 w-4" />
+
                   Speaking
                 </a>
 
-                {/* DIVIDER */}
+                {/* =================================================
+                    MOBILE ACTIONS
+                ================================================= */}
 
                 <div className="my-4 h-px bg-[#E8DDD4]" />
 
-                {/* DONATE */}
-
-                <Link
-                  to="/dear-dad/support"
-                  onClick={closeMobileMenu}
-                  className="
-                    flex
-                    w-full
-                    items-center
-                    justify-center
-                    gap-2
-                    rounded-full
-                    bg-[#D4A017]
-                    px-5
-                    py-3.5
-                    text-sm
-                    font-bold
-                    text-white
-                    shadow-md
-                    transition-all
-                    duration-300
-                    hover:bg-[#B58900]
-                    hover:shadow-xl
-                    active:scale-[0.98]
-                  "
-                >
-                  <span className="text-base">💛</span>
-                  Donate / Support Dear Dad
-                </Link>
-
-                {/* BOOK DAVID */}
+                {/* Book David */}
 
                 <button
                   type="button"
-                  onClick={openBookingModal}
+                  onClick={
+                    openBookingModal
+                  }
                   className="
-                    mt-3
                     flex
                     w-full
                     items-center
@@ -1093,8 +1241,43 @@ export default function Header() {
                   "
                 >
                   <CalendarCheck2 className="h-4 w-4" />
+
                   Book David to Speak
                 </button>
+
+                {/* Donate */}
+
+                <Link
+                  to="/dear-dad/support"
+                  onClick={
+                    closeMobileMenu
+                  }
+                  className="
+                    mt-3
+                    flex
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-full
+                    bg-[#D4A017]
+                    px-5
+                    py-3.5
+                    text-sm
+                    font-bold
+                    text-white
+                    shadow-md
+                    transition-all
+                    duration-300
+                    hover:bg-[#B58900]
+                    hover:shadow-xl
+                    active:scale-[0.98]
+                  "
+                >
+                  <HeartHandshake className="h-4 w-4" />
+
+                  Donate / Sponsor / Partner
+                </Link>
               </div>
             </nav>
           </div>
@@ -1117,8 +1300,10 @@ export default function Header() {
       ======================================================== */}
 
       <BookingModal
-        isOpen={bookingOpen}
-        onClose={closeBookingModal}
+        open={bookingOpen}
+        onClose={() =>
+          setBookingOpen(false)
+        }
       />
     </>
   );
