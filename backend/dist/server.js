@@ -17,6 +17,7 @@ const admin_book_routes_1 = __importDefault(require("./routes/admin.book.routes"
 const checkout_routes_1 = __importDefault(require("./routes/checkout.routes"));
 const upload_routes_1 = __importDefault(require("./routes/upload.routes"));
 const invitation_routes_1 = __importDefault(require("./routes/invitation.routes"));
+const inquiry_routes_1 = __importDefault(require("./routes/inquiry.routes"));
 const order_routes_1 = __importDefault(require("./routes/order.routes"));
 const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
 const bookPreview_routes_1 = __importDefault(require("./routes/bookPreview.routes"));
@@ -280,6 +281,15 @@ app.use("/api/checkout", checkout_routes_1.default);
    INVITATIONS
    -------------------------------------------------------------------------- */
 app.use("/api/invite", invitation_routes_1.default);
+/* --------------------------------------------------------------------------
+   DEAR DAD INQUIRIES
+
+   Mounted as:
+
+   POST /api/inquiries
+   GET  /api/inquiries/health
+   -------------------------------------------------------------------------- */
+app.use("/api/inquiries", inquiry_routes_1.default);
 /* --------------------------------------------------------------------------
    ORDERS
    -------------------------------------------------------------------------- */
