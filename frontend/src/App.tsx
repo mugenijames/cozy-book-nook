@@ -26,6 +26,8 @@ import BookDetail from "@/pages/BookDetail";
 import ProgramActivityPage from "@/pages/ProgramActivity";
 import ProgramHighlightPage from "@/pages/ProgramHighlight";
 import DearDadSupportPage from "@/pages/DearDadSupport";
+import DearDadInitiative from "./pages/DearDadInitiative";
+import DearDadGetInvolved from "./pages/DearDadGetInvolved";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 
@@ -123,7 +125,15 @@ function App() {
             path="/dear-dad/support"
             element={<DearDadSupportPage />}
           />
+          <Route
+            path="/dear-dad"
+            element={<DearDadInitiative />}
+          />
 
+          <Route
+            path="/dear-dad/get-involved"
+            element={<DearDadGetInvolved />}
+          />
           {/* ====================================================
               LEGAL
           ==================================================== */}
