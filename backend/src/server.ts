@@ -21,6 +21,7 @@ import adminBookRoutes from "./routes/admin.book.routes";
 import checkoutRoutes from "./routes/checkout.routes";
 import uploadRoutes from "./routes/upload.routes";
 import invitationRoutes from "./routes/invitation.routes";
+import inquiryRoutes from "./routes/inquiry.routes";
 import orderRoutes from "./routes/order.routes";
 import paymentRoutes from "./routes/payment.routes";
 import bookPreviewRoutes from "./routes/bookPreview.routes";
@@ -541,6 +542,19 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
+   DEAR DAD INQUIRIES
+
+   Mounted as:
+
+   POST /api/inquiries
+   GET  /api/inquiries/health
+   -------------------------------------------------------------------------- */
+
+app.use(
+  "/api/inquiries",
+  inquiryRoutes
+);
+/* --------------------------------------------------------------------------
    ORDERS
    -------------------------------------------------------------------------- */
 
@@ -722,10 +736,9 @@ const server =
       );
 
       console.log(
-        `🔐 Auth Bypass: ${
-          BYPASS_AUTH
-            ? "⚠️ ENABLED"
-            : "✓ DISABLED"
+        `🔐 Auth Bypass: ${BYPASS_AUTH
+          ? "⚠️ ENABLED"
+          : "✓ DISABLED"
         }`
       );
 
@@ -740,19 +753,19 @@ const server =
       console.log(
         "SMTP Host:",
         process.env.SMTP_HOST ||
-          "Missing"
+        "Missing"
       );
 
       console.log(
         "SMTP User:",
         process.env.SMTP_USER ||
-          "Missing"
+        "Missing"
       );
 
       console.log(
         "Admin Email:",
         process.env.ADMIN_EMAIL ||
-          "Missing"
+        "Missing"
       );
 
       console.log(
