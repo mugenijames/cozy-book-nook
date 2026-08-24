@@ -1,17 +1,17 @@
 generator client {
-  provider      = "prisma-client-js"
+  provider = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model Book {
-  id              String           @id @default(uuid())
-  slug            String           @unique
+  id              String   @id @default(uuid())
+  slug            String   @unique
   title           String
   author          String
   description     String?
@@ -30,8 +30,9 @@ model Book {
   keywords        Json?
   readingTime     String?
   targetAudience  String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   orders          Order[]
   pendingPayments PendingPayment[]
@@ -52,7 +53,7 @@ model Order {
 
   customerName String?
   email        String
-  phoneNumber String?
+  phoneNumber  String?
 
   deliveryMethod  String?
   deliveryAddress String?
@@ -62,19 +63,9 @@ model Order {
   paymentMethod   String?
   transactionCode String? @unique
 
-  // Amount actually charged in the selected payment currency.
-  // Example:
-  // 1500 USD cents = $15.00
-  amountCents Int
-
-  // Currency actually charged.
-  // Examples: KES, USD, EUR, GBP
-  currency String @default("KES")
-
-  // Original bookstore price in KES cents.
-  // This allows us to know the original price even when
-  // the customer pays through PayPal in another currency.
-  baseAmountCents Int?
+  baseAmountCents Int
+  amountCents     Int
+  currency        String @default("KES")
 
   status        String @default("PENDING")
   paymentStatus String @default("UNPAID")
@@ -84,7 +75,7 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  book  Book?       @relation(fields: [bookId], references: [id])
+  book Book? @relation(fields: [bookId], references: [id])
   items OrderItem[]
 
   @@index([email])
@@ -121,71 +112,57 @@ model OrderItem {
 }
 
 model PendingPayment {
-  id                 String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  checkoutRequestID  String?  @unique
+  checkoutRequestID String? @unique
+  paypalOrderId     String? @unique
 
-  paypalOrderId      String?  @unique
+  bookId    String
+  bookTitle String
 
-  bookId             String
+  email       String
+  phoneNumber String?
 
-  bookTitle          String
+  baseAmountCents Int
+  amount          Float
+  currency        String @default("KES")
 
-  email              String
-
-  phoneNumber        String?
-
-  // Amount in the payment currency.
-  amount             Float
-
-  // Currency selected by customer.
-  // M-Pesa = KES
-  // PayPal = KES/USD/EUR/GBP
-  currency           String   @default("KES")
-
-  // Original book price stored in KES cents.
-  baseAmountCents    Int?
-
-  status             String   @default("pending")
+  status String @default("pending")
 
   mpesaReceiptNumber String?
-
   paypalCaptureId    String?
 
-  errorMessage       String?
+  errorMessage String?
 
-  createdAt          DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  updatedAt          DateTime @updatedAt
-
-  book Book @relation(
-    fields: [bookId],
-    references: [id]
-  )
+  book Book @relation(fields: [bookId], references: [id])
 
   @@index([email])
-
   @@index([status])
-
   @@index([checkoutRequestID])
-
   @@index([paypalOrderId])
-
   @@index([currency])
-
   @@map("pending_payments")
 }
 
 model Testimonial {
-  id        String   @id @default(uuid())
-  name      String
-  role      String?
-  company   String?
-  message   String
-  rating    Int      @default(5)
-  photoUrl  String?
-  approved  Boolean  @default(false)
-  featured  Boolean  @default(false)
+  id String @id @default(uuid())
+
+  name    String
+  role    String?
+  company String?
+
+  message String
+
+  rating Int @default(5)
+
+  photoUrl String?
+
+  approved Boolean @default(false)
+  featured Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

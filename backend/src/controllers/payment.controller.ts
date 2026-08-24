@@ -49,17 +49,17 @@ const getMpesaAuthToken = async (): Promise<string> => {
   }
 
   const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString('base64');
-  const url = MPESA_ENV === 'sandbox' 
+  const url = MPESA_ENV === 'sandbox'
     ? 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
     : 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials';
-  
+
   try {
     const response = await axios.get<MpesaTokenResponse>(url, {
       headers: {
         Authorization: `Basic ${auth}`,
       },
     });
-    
+
     console.log('✅ M-Pesa auth token obtained');
     return response.data.access_token;
   } catch (error: any) {
@@ -71,7 +71,7 @@ const getMpesaAuthToken = async (): Promise<string> => {
 // Format phone number to international format
 const formatPhoneNumber = (phone: string): string => {
   let formatted = phone.toString().trim();
-  
+
   // Remove any leading + or 0
   if (formatted.startsWith('+')) {
     formatted = formatted.substring(1);
@@ -79,59 +79,59 @@ const formatPhoneNumber = (phone: string): string => {
   if (formatted.startsWith('0')) {
     formatted = '254' + formatted.substring(1);
   }
-  
+
   // Ensure it starts with 254
   if (!formatted.startsWith('254')) {
     formatted = '254' + formatted;
   }
-  
+
   return formatted;
 };
 
 export const initiateMpesaPayment = async (req: Request, res: Response) => {
   try {
     const { phoneNumber, amount, bookId, email } = req.body;
-    
+
     // Validate required fields
     const missingFields = [];
     if (!phoneNumber) missingFields.push('phoneNumber');
     if (!amount) missingFields.push('amount');
     if (!bookId) missingFields.push('bookId');
     if (!email) missingFields.push('email');
-    
+
     if (missingFields.length > 0) {
-      return res.status(400).json({ 
-        error: `Missing required fields: ${missingFields.join(', ')}` 
+      return res.status(400).json({
+        error: `Missing required fields: ${missingFields.join(', ')}`
       });
     }
-    
+
     // Validate amount
     const numericAmount = Number(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
     }
-    
+
     // Get book details
     const book = await prisma.book.findUnique({
       where: { id: bookId as string },
     });
-    
+
     if (!book) {
       return res.status(404).json({ error: 'Book not found' });
     }
-    
+
     // Check if book has PDF
     if (!book.pdfUrl) {
       return res.status(400).json({ error: 'This book is not available for purchase yet' });
     }
-    
+
     const formattedPhone = formatPhoneNumber(phoneNumber);
     const token = await getMpesaAuthToken();
     const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, -3);
     const password = Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${timestamp}`).toString('base64');
-    
+
     console.log(`📱 Initiating M-Pesa payment for: ${formattedPhone}, Amount: KES ${numericAmount}`);
-    
+
     const response = await axios.post<MpesaStkPushResponse>(
       MPESA_ENV === 'sandbox'
         ? 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
@@ -155,22 +155,32 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
         },
       }
     );
-    
+
     // Save pending payment
     await prisma.pendingPayment.create({
       data: {
         checkoutRequestID: response.data.CheckoutRequestID,
-        bookId: book.id,
+
+        book: {
+          connect: {
+            id: book.id,
+          },
+        },
+
         bookTitle: book.title,
         email: email as string,
         phoneNumber: formattedPhone,
+
+        baseAmountCents: book.priceCents ?? Math.round(numericAmount * 100),
         amount: numericAmount,
-        status: 'pending',
+        currency: "KES",
+
+        status: "pending",
       },
     });
-    
+
     console.log(`✅ M-Pesa STK Push initiated: ${response.data.CheckoutRequestID}`);
-    
+
     res.json({
       success: true,
       checkoutRequestID: response.data.CheckoutRequestID,
@@ -178,7 +188,7 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("M-Pesa STK Push error:", error.response?.data || error.message);
-    
+
     // Provide user-friendly error message
     let errorMessage = "Failed to initiate M-Pesa payment";
     if (error.response?.data?.errorMessage) {
@@ -186,8 +196,8 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
     } else if (error.response?.data?.ResponseDescription) {
       errorMessage = error.response.data.ResponseDescription;
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: errorMessage,
       details: MPESA_ENV === 'sandbox' ? error.response?.data : undefined
     });
@@ -198,26 +208,26 @@ export const mpesaCallback = async (req: Request, res: Response) => {
   try {
     const callbackData = req.body as MpesaCallbackRequest;
     const { stkCallback } = callbackData.Body;
-    
+
     const checkoutRequestID = stkCallback.CheckoutRequestID;
     const resultCode = stkCallback.ResultCode;
     const resultDesc = stkCallback.ResultDesc;
-    
+
     console.log(`📞 M-Pesa callback received for: ${checkoutRequestID}, Result: ${resultCode}`);
-    
+
     const pendingPayment = await prisma.pendingPayment.findUnique({
       where: { checkoutRequestID },
     });
-    
+
     if (!pendingPayment) {
       console.log(`⚠️ Payment not found: ${checkoutRequestID}`);
       return res.status(404).json({ error: "Payment not found" });
     }
-    
+
     if (resultCode === 0) {
       let mpesaReceiptNumber = "";
       let amount = pendingPayment.amount;
-      
+
       if (stkCallback.CallbackMetadata?.Item) {
         for (const item of stkCallback.CallbackMetadata.Item) {
           if (item.Name === "MpesaReceiptNumber") {
@@ -228,20 +238,32 @@ export const mpesaCallback = async (req: Request, res: Response) => {
           }
         }
       }
-      
+
       // Create order record
       await prisma.order.create({
         data: {
-          bookId: pendingPayment.bookId,
+          book: {
+            connect: {
+              id: pendingPayment.bookId,
+            },
+          },
+
           bookTitle: pendingPayment.bookTitle,
-          paymentMethod: 'mpesa',
+
+          paymentMethod: "mpesa",
           transactionCode: mpesaReceiptNumber || checkoutRequestID,
+
           email: pendingPayment.email,
+
+          baseAmountCents: pendingPayment.baseAmountCents,
           amountCents: Math.round(amount * 100),
-          status: 'approved',
+          currency: pendingPayment.currency || "KES",
+
+          status: "approved",
+          paymentStatus: "PAID",
         },
       });
-      
+
       // Update pending payment
       await prisma.pendingPayment.update({
         where: { id: pendingPayment.id },
@@ -250,7 +272,7 @@ export const mpesaCallback = async (req: Request, res: Response) => {
           mpesaReceiptNumber,
         },
       });
-      
+
       console.log(`✅ Payment successful: ${checkoutRequestID}, Receipt: ${mpesaReceiptNumber}`);
     } else {
       await prisma.pendingPayment.update({
@@ -260,10 +282,10 @@ export const mpesaCallback = async (req: Request, res: Response) => {
           errorMessage: resultDesc,
         },
       });
-      
+
       console.log(`❌ Payment failed: ${checkoutRequestID} - ${resultDesc}`);
     }
-    
+
     // Always respond with success to M-Pesa
     res.json({ ResultCode: 0, ResultDesc: "Success" });
   } catch (error) {
@@ -275,26 +297,26 @@ export const mpesaCallback = async (req: Request, res: Response) => {
 export const checkPaymentStatus = async (req: Request, res: Response) => {
   try {
     const { checkoutRequestID } = req.params;
-    
+
     if (!checkoutRequestID) {
       return res.status(400).json({ error: "Checkout Request ID is required" });
     }
-    
+
     const payment = await prisma.pendingPayment.findUnique({
       where: { checkoutRequestID: checkoutRequestID as string },
     });
-    
+
     if (!payment) {
       return res.status(404).json({ error: "Payment not found" });
     }
-    
+
     // Also get the order if completed
-    const order = payment.status === 'completed' 
+    const order = payment.status === 'completed'
       ? await prisma.order.findFirst({
-          where: { transactionCode: payment.mpesaReceiptNumber || undefined },
-        })
+        where: { transactionCode: payment.mpesaReceiptNumber || undefined },
+      })
       : null;
-    
+
     res.json({
       status: payment.status,
       checkoutRequestID: payment.checkoutRequestID,
@@ -311,17 +333,17 @@ export const checkPaymentStatus = async (req: Request, res: Response) => {
 export const getUserPayments = async (req: Request, res: Response) => {
   try {
     const { email } = req.query;
-    
+
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
     }
-    
+
     const payments = await prisma.order.findMany({
       where: { email: email as string },
       include: { book: true },
       orderBy: { createdAt: 'desc' },
     });
-    
+
     res.json(payments);
   } catch (error) {
     console.error("Error fetching user payments:", error);
