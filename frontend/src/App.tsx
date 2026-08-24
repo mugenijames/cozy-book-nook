@@ -18,6 +18,7 @@ import Home from "./pages/Home";
 import BookDetail from "./pages/BookDetail";
 import BooksCatalogPage from "./pages/Books";
 import ProgramActivityPage from "./pages/ProgramActivity";
+import ProgramHighlightPage from "./pages/ProgramHighlight";
 import LoginPage from "./pages/admin/Login";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -51,6 +52,7 @@ function App() {
         <Route element={<Layout />}>
 
           {/* ================= HOME ================= */}
+
           <Route
             path="/"
             element={<Home />}
@@ -76,6 +78,12 @@ function App() {
           <Route
             path="/programs/:slug"
             element={<ProgramActivityPage />}
+          />
+
+          {/* Individual program area / highlight */}
+          <Route
+            path="/programs/:slug/:highlightSlug"
+            element={<ProgramHighlightPage />}
           />
 
           {/* ================= LEGAL ================= */}

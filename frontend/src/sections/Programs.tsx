@@ -8,16 +8,25 @@ import {
   HeartHandshake,
   Users,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { PROGRAM_ACTIVITIES } from "@/data/programActivities";
 
-const iconMap = {
+// ============================================================
+// ICON MAP
+// ============================================================
+
+const iconMap: Record<string, LucideIcon> = {
   GraduationCap,
   Church,
   Users,
   HeartHandshake,
 };
+
+// ============================================================
+// PROGRAM SECTION
+// ============================================================
 
 const Program = () => {
   return (
@@ -25,14 +34,20 @@ const Program = () => {
       id="program"
       className="relative overflow-hidden bg-white py-20 sm:py-24 lg:py-32"
     >
-      {/* Background decorations */}
+      {/* ======================================================
+          BACKGROUND DECORATIONS
+      ====================================================== */}
+
       <div className="pointer-events-none absolute -left-32 top-20 h-72 w-72 rounded-full bg-[#D4A017]/10 blur-3xl" />
 
       <div className="pointer-events-none absolute -right-32 bottom-20 h-80 w-80 rounded-full bg-[#4A1F0E]/10 blur-3xl" />
 
       <div className="container relative z-10 mx-auto px-5 sm:px-6 lg:px-8">
 
-        {/* Section heading */}
+        {/* ====================================================
+            SECTION HEADING
+        ==================================================== */}
+
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -60,10 +75,16 @@ const Program = () => {
           </p>
         </motion.div>
 
-        {/* Program cards */}
+        {/* ====================================================
+            PROGRAM CARDS
+        ==================================================== */}
+
         <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-4">
           {PROGRAM_ACTIVITIES.map((program, index) => {
-            const Icon = iconMap[program.icon];
+            // Safely get the icon.
+            // If the icon name is missing or incorrect,
+            // Users will be used as a fallback.
+            const Icon = iconMap[program.icon] ?? Users;
 
             return (
               <motion.article
@@ -78,7 +99,10 @@ const Program = () => {
                 whileHover={{ y: -8 }}
                 className="group flex h-full flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition-shadow duration-500 hover:shadow-2xl"
               >
-                {/* Image */}
+                {/* ==================================================
+                    PROGRAM IMAGE
+                ================================================== */}
+
                 <Link
                   to={`/programs/${program.slug}`}
                   className="relative block aspect-[4/3] overflow-hidden"
@@ -103,12 +127,19 @@ const Program = () => {
 
                   {/* Icon */}
                   <div className="absolute bottom-4 left-4 flex h-11 w-11 items-center justify-center rounded-xl bg-[#D4A017] text-white shadow-lg">
-                    <Icon className="h-5 w-5" strokeWidth={2} />
+                    <Icon
+                      className="h-5 w-5"
+                      strokeWidth={2}
+                    />
                   </div>
                 </Link>
 
-                {/* Card content */}
+                {/* ==================================================
+                    CARD CONTENT
+                ================================================== */}
+
                 <div className="flex flex-1 flex-col p-6">
+
                   <h3 className="text-xl font-bold text-[#2E1208]">
                     {program.title}
                   </h3>
@@ -117,11 +148,16 @@ const Program = () => {
                     {program.description}
                   </p>
 
+                  {/* =================================================
+                      EXPLORE PROGRAM LINK
+                  ================================================= */}
+
                   <Link
                     to={`/programs/${program.slug}`}
                     className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B4513] transition-all duration-300 group-hover:gap-3 hover:text-[#4A1F0E]"
                   >
                     Explore program
+
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -130,7 +166,10 @@ const Program = () => {
           })}
         </div>
 
-        {/* Bottom statement */}
+        {/* ====================================================
+            BOTTOM STATEMENT
+        ==================================================== */}
+
         <motion.div
           initial={{ opacity: 0, y: 25 }}
           whileInView={{ opacity: 1, y: 0 }}
