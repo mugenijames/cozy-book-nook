@@ -23,10 +23,9 @@ import DashboardLayout from "@/components/admin/DashboardLayout";
 import Home from "@/pages/Home";
 import BooksCatalogPage from "@/pages/Books";
 import BookDetail from "@/pages/BookDetail";
-
 import ProgramActivityPage from "@/pages/ProgramActivity";
 import ProgramHighlightPage from "@/pages/ProgramHighlight";
-
+import DearDadSupportPage from "@/pages/DearDadSupport";
 import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 
@@ -37,7 +36,7 @@ import Terms from "@/pages/Terms";
 import LoginPage from "@/pages/admin/Login";
 
 // ============================================================
-// ADMIN PAGES
+// ADMIN
 // ============================================================
 
 import DashboardHome from "@/features/admin/dashboard/DashboardHome";
@@ -65,7 +64,7 @@ const queryClient = new QueryClient({
 });
 
 // ============================================================
-// APPLICATION
+// APP
 // ============================================================
 
 function App() {
@@ -104,22 +103,25 @@ function App() {
               PROGRAMS
           ==================================================== */}
 
-          {/* Program landing/detail page
-              Example:
-              /programs/leadership-development
-          */}
+          {/* Program */}
           <Route
             path="/programs/:slug"
             element={<ProgramActivityPage />}
           />
 
-          {/* Individual program area
-              Example:
-              /programs/leadership-development/mentorship
-          */}
+          {/* Program area / highlight */}
           <Route
             path="/programs/:slug/:highlightSlug"
             element={<ProgramHighlightPage />}
+          />
+
+          {/* ====================================================
+              DEAR DAD SUPPORT
+          ==================================================== */}
+
+          <Route
+            path="/dear-dad/support"
+            element={<DearDadSupportPage />}
           />
 
           {/* ====================================================
@@ -140,7 +142,7 @@ function App() {
 
 
         {/* ======================================================
-            ADMIN AUTHENTICATION
+            ADMIN LOGIN
         ======================================================= */}
 
         <Route
@@ -150,7 +152,7 @@ function App() {
 
 
         {/* ======================================================
-            PROTECTED ADMIN APPLICATION
+            PROTECTED ADMIN
         ======================================================= */}
 
         <Route
@@ -162,32 +164,21 @@ function App() {
           }
         >
 
-          {/* ====================================================
-              DASHBOARD
-          ==================================================== */}
-
           <Route
             index
             element={<DashboardHome />}
           />
 
-          {/* ====================================================
-              BOOK MANAGEMENT
-          ==================================================== */}
-
-          {/* Book list */}
           <Route
             path="books"
             element={<BookListPage />}
           />
 
-          {/* Create book */}
           <Route
             path="books/new"
             element={<BookFormPage />}
           />
 
-          {/* Edit book */}
           <Route
             path="books/:id/edit"
             element={<BookFormPage />}
@@ -197,7 +188,7 @@ function App() {
 
 
         {/* ======================================================
-            FALLBACK / 404
+            404
         ======================================================= */}
 
         <Route
@@ -212,10 +203,7 @@ function App() {
 
       </Routes>
 
-      {/* ========================================================
-          DEVELOPMENT TOOLS
-      ========================================================= */}
-
+      {/* React Query DevTools - development only */}
       {import.meta.env.DEV && (
         <ReactQueryDevtools
           initialIsOpen={false}
