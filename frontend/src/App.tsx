@@ -1,6 +1,6 @@
 // frontend/src/App.tsx
 
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import {
   QueryClient,
   QueryClientProvider,
@@ -9,84 +9,122 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import "./App.css";
 
-// Layouts
+// ============================================================
+// LAYOUTS
+// ============================================================
+
 import Layout from "@/components/Layout";
 import DashboardLayout from "@/components/admin/DashboardLayout";
 
-// Public pages
-import Home from "./pages/Home";
-import BookDetail from "./pages/BookDetail";
-import BooksCatalogPage from "./pages/Books";
-import ProgramActivityPage from "./pages/ProgramActivity";
-import ProgramHighlightPage from "./pages/ProgramHighlight";
-import LoginPage from "./pages/admin/Login";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
+// ============================================================
+// PUBLIC PAGES
+// ============================================================
 
-// Admin pages
+import Home from "@/pages/Home";
+import BooksCatalogPage from "@/pages/Books";
+import BookDetail from "@/pages/BookDetail";
+
+import ProgramActivityPage from "@/pages/ProgramActivity";
+import ProgramHighlightPage from "@/pages/ProgramHighlight";
+
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
+
+// ============================================================
+// AUTHENTICATION
+// ============================================================
+
+import LoginPage from "@/pages/admin/Login";
+
+// ============================================================
+// ADMIN PAGES
+// ============================================================
+
 import DashboardHome from "@/features/admin/dashboard/DashboardHome";
 import BookListPage from "@/features/admin/books/BookListPage";
 import BookFormPage from "@/features/admin/books/BookFormPage";
 
-// Route protection
+// ============================================================
+// ROUTE PROTECTION
+// ============================================================
+
 import ProtectedRoute from "@/components/admin/ProtectedRoute";
+
+// ============================================================
+// REACT QUERY
+// ============================================================
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5,
     },
   },
 });
 
+// ============================================================
+// APPLICATION
+// ============================================================
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+
       <Routes>
 
-        {/* =====================================================
+        {/* ======================================================
             PUBLIC WEBSITE
-        ====================================================== */}
+        ======================================================= */}
 
         <Route element={<Layout />}>
 
-          {/* ================= HOME ================= */}
-
+          {/* Home */}
           <Route
             path="/"
             element={<Home />}
           />
 
-          {/* ================= BOOKS ================= */}
+          {/* ====================================================
+              BOOKS
+          ==================================================== */}
 
-          {/* Full books catalogue */}
           <Route
             path="/books"
             element={<BooksCatalogPage />}
           />
 
-          {/* Individual book */}
           <Route
             path="/book/:slug"
             element={<BookDetail />}
           />
 
-          {/* ================= PROGRAMS ================= */}
+          {/* ====================================================
+              PROGRAMS
+          ==================================================== */}
 
-          {/* Individual program/activity */}
+          {/* Program landing/detail page
+              Example:
+              /programs/leadership-development
+          */}
           <Route
             path="/programs/:slug"
             element={<ProgramActivityPage />}
           />
 
-          {/* Individual program area / highlight */}
+          {/* Individual program area
+              Example:
+              /programs/leadership-development/mentorship
+          */}
           <Route
             path="/programs/:slug/:highlightSlug"
             element={<ProgramHighlightPage />}
           />
 
-          {/* ================= LEGAL ================= */}
+          {/* ====================================================
+              LEGAL
+          ==================================================== */}
 
           <Route
             path="/privacy"
@@ -101,9 +139,9 @@ function App() {
         </Route>
 
 
-        {/* =====================================================
-            ADMIN LOGIN
-        ====================================================== */}
+        {/* ======================================================
+            ADMIN AUTHENTICATION
+        ======================================================= */}
 
         <Route
           path="/admin/login"
@@ -111,9 +149,9 @@ function App() {
         />
 
 
-        {/* =====================================================
-            PROTECTED ADMIN AREA
-        ====================================================== */}
+        {/* ======================================================
+            PROTECTED ADMIN APPLICATION
+        ======================================================= */}
 
         <Route
           path="/admin"
@@ -124,25 +162,32 @@ function App() {
           }
         >
 
-          {/* /admin */}
+          {/* ====================================================
+              DASHBOARD
+          ==================================================== */}
+
           <Route
             index
             element={<DashboardHome />}
           />
 
-          {/* /admin/books */}
+          {/* ====================================================
+              BOOK MANAGEMENT
+          ==================================================== */}
+
+          {/* Book list */}
           <Route
             path="books"
             element={<BookListPage />}
           />
 
-          {/* /admin/books/new */}
+          {/* Create book */}
           <Route
             path="books/new"
             element={<BookFormPage />}
           />
 
-          {/* /admin/books/:id/edit */}
+          {/* Edit book */}
           <Route
             path="books/:id/edit"
             element={<BookFormPage />}
@@ -151,19 +196,31 @@ function App() {
         </Route>
 
 
-        {/* =====================================================
-            404 / UNKNOWN ROUTES
-        ====================================================== */}
+        {/* ======================================================
+            FALLBACK / 404
+        ======================================================= */}
 
         <Route
           path="*"
-          element={<Navigate to="/" replace />}
+          element={
+            <Navigate
+              to="/"
+              replace
+            />
+          }
         />
 
       </Routes>
 
-      {/* React Query developer tools */}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {/* ========================================================
+          DEVELOPMENT TOOLS
+      ========================================================= */}
+
+      {import.meta.env.DEV && (
+        <ReactQueryDevtools
+          initialIsOpen={false}
+        />
+      )}
 
     </QueryClientProvider>
   );
