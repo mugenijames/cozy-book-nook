@@ -100,14 +100,20 @@ model PendingPayment {
   bookTitle          String
   email              String
   phoneNumber        String?
+
   amount             Float
+  baseAmountCents    Int?
+  currency           String   @default("KES")
+
   status             String   @default("pending")
   mpesaReceiptNumber String?
   paypalCaptureId    String?
   errorMessage       String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  book               Book     @relation(fields: [bookId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  book Book @relation(fields: [bookId], references: [id])
 
   @@index([email])
   @@index([status])
@@ -115,7 +121,6 @@ model PendingPayment {
   @@index([paypalOrderId])
   @@map("pending_payments")
 }
-
 model Testimonial {
   id        String   @id @default(uuid())
   name      String
