@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Book {
+  id              String   @id @default(uuid())
+  slug            String   @unique
+  title           String
+  author          String
+  description     String?
+  genre           String?
+  coverImage      String?
+  publishedYear   Int?
+  pages           Int?
+  rating          Float?
+  priceCents      Int?
+  pdfUrl          String?
+  pdfPreviewImage String?
+  aiSummary       String?
+  shortSummary    String?
+  pdfSummary      String?
+  keyThemes       Json?
+  keywords        Json?
+  readingTime     String?
+  targetAudience  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders          Order[]
+  pendingPayments PendingPayment[]
+  orderItems      OrderItem[]
+
+  @@index([author])
+  @@index([title])
+  @@map("books")
+}
+
+model Order {
+  id String @id @default(uuid())
+
+  bookId    String?
+  bookTitle String?
+
+  orderType String @default("DIGITAL")
+
+  customerName String?
+  email        String
+  phoneNumber  String?
+
+  deliveryMethod  String?
+  deliveryAddress String?
+  deliveryTown    String?
+  deliveryNotes   String?
+
+  paymentMethod   String?
+  transactionCode String? @unique
+
+  baseAmountCents Int
+  amountCents     Int
+  currency        String @default("KES")
+
+  status        String @default("PENDING")
+  paymentStatus String @default("UNPAID")
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  book Book? @relation(fields: [bookId], references: [id])
+  items OrderItem[]
+
+  @@index([email])
+  @@index([status])
+  @@index([orderType])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@index([bookId])
+  @@index([currency])
+  @@map("orders")
+}
+
+model OrderItem {
+  id String @id @default(uuid())
+
+  orderId String
+  bookId  String
+
+  bookTitle String
+
+  quantity Int @default(1)
+
+  unitPriceCents Int
+  totalCents     Int
+
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  book  Book  @relation(fields: [bookId], references: [id])
+
+  @@index([orderId])
+  @@index([bookId])
+  @@map("order_items")
+}
+
+model PendingPayment {
+  id String @id @default(uuid())
+
+  checkoutRequestID String? @unique
+  paypalOrderId     String? @unique
+
+  bookId    String
+  bookTitle String
+
+  email       String
+  phoneNumber String?
+
+  baseAmountCents Int
+  amount          Float
+  currency        String @default("KES")
+
+  status String @default("pending")
+
+  mpesaReceiptNumber String?
+  paypalCaptureId    String?
+
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  book Book @relation(fields: [bookId], references: [id])
+
+  @@index([email])
+  @@index([status])
+  @@index([checkoutRequestID])
+  @@index([paypalOrderId])
+  @@index([currency])
+  @@map("pending_payments")
+}
+
+model Testimonial {
+  id String @id @default(uuid())
+
+  name    String
+  role    String?
+  company String?
+
+  message String
+
+  rating Int @default(5)
+
+  photoUrl String?
+
+  approved Boolean @default(false)
+  featured Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([approved])
+  @@index([featured])
+  @@index([createdAt])
+  @@map("testimonials")
+}

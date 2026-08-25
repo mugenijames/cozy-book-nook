@@ -1,17 +1,17 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model Book {
-  id              String   @id @default(uuid())
-  slug            String   @unique
+  id              String           @id @default(uuid())
+  slug            String           @unique
   title           String
   author          String
   description     String?
@@ -21,22 +21,20 @@ model Book {
   pages           Int?
   rating          Float?
   priceCents      Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   pdfUrl          String?
   pdfPreviewImage String?
   aiSummary       String?
-  shortSummary    String?
-  pdfSummary      String?
   keyThemes       Json?
   keywords        Json?
   readingTime     String?
+  shortSummary    String?
   targetAudience  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  pdfSummary      String?
+  orderItems      OrderItem[]
   orders          Order[]
   pendingPayments PendingPayment[]
-  orderItems      OrderItem[]
 
   @@index([author])
   @@index([title])
@@ -44,39 +42,29 @@ model Book {
 }
 
 model Order {
-  id String @id @default(uuid())
-
-  bookId    String?
-  bookTitle String?
-
-  orderType String @default("DIGITAL")
-
-  customerName String?
-  email        String
-  phoneNumber  String?
-
-  deliveryMethod  String?
-  deliveryAddress String?
-  deliveryTown    String?
-  deliveryNotes   String?
-
+  id              String      @id @default(uuid())
+  bookId          String?
+  bookTitle       String?
   paymentMethod   String?
-  transactionCode String? @unique
-
-  baseAmountCents Int
+  transactionCode String?     @unique
+  email           String
   amountCents     Int
-  currency        String @default("KES")
-
-  status        String @default("PENDING")
-  paymentStatus String @default("UNPAID")
-
-  notes String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  book Book? @relation(fields: [bookId], references: [id])
-  items OrderItem[]
+  status          String      @default("PENDING")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  customerName    String?
+  deliveryAddress String?
+  deliveryMethod  String?
+  deliveryNotes   String?
+  deliveryTown    String?
+  notes           String?
+  orderType       String      @default("DIGITAL")
+  paymentStatus   String      @default("UNPAID")
+  phoneNumber     String?
+  baseAmountCents Int
+  currency        String      @default("KES")
+  items           OrderItem[]
+  book            Book?       @relation(fields: [bookId], references: [id])
 
   @@index([email])
   @@index([status])
@@ -84,27 +72,20 @@ model Order {
   @@index([paymentStatus])
   @@index([createdAt])
   @@index([bookId])
-  @@index([currency])
   @@map("orders")
 }
 
 model OrderItem {
-  id String @id @default(uuid())
-
-  orderId String
-  bookId  String
-
-  bookTitle String
-
-  quantity Int @default(1)
-
+  id             String   @id @default(uuid())
+  orderId        String
+  bookId         String
+  bookTitle      String
+  quantity       Int      @default(1)
   unitPriceCents Int
   totalCents     Int
-
-  createdAt DateTime @default(now())
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  book  Book  @relation(fields: [bookId], references: [id])
+  createdAt      DateTime @default(now())
+  book           Book     @relation(fields: [bookId], references: [id])
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([bookId])
@@ -112,57 +93,39 @@ model OrderItem {
 }
 
 model PendingPayment {
-  id String @id @default(uuid())
-
-  checkoutRequestID String? @unique
-  paypalOrderId     String? @unique
-
-  bookId    String
-  bookTitle String
-
-  email       String
-  phoneNumber String?
-
-  baseAmountCents Int
-  amount          Float
-  currency        String @default("KES")
-
-  status String @default("pending")
-
+  id                 String   @id @default(uuid())
+  checkoutRequestID  String?  @unique
+  paypalOrderId      String?  @unique
+  bookId             String
+  bookTitle          String
+  email              String
+  phoneNumber        String?
+  amount             Float
+  status             String   @default("pending")
   mpesaReceiptNumber String?
   paypalCaptureId    String?
-
-  errorMessage String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  book Book @relation(fields: [bookId], references: [id])
+  errorMessage       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  book               Book     @relation(fields: [bookId], references: [id])
 
   @@index([email])
   @@index([status])
   @@index([checkoutRequestID])
   @@index([paypalOrderId])
-  @@index([currency])
   @@map("pending_payments")
 }
 
 model Testimonial {
-  id String @id @default(uuid())
-
-  name    String
-  role    String?
-  company String?
-
-  message String
-
-  rating Int @default(5)
-
-  photoUrl String?
-
-  approved Boolean @default(false)
-  featured Boolean @default(false)
-
+  id        String   @id @default(uuid())
+  name      String
+  role      String?
+  company   String?
+  message   String
+  rating    Int      @default(5)
+  photoUrl  String?
+  approved  Boolean  @default(false)
+  featured  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -170,4 +133,366 @@ model Testimonial {
   @@index([featured])
   @@index([createdAt])
   @@map("testimonials")
+}
+
+// ============================================================
+// PROGRAMS
+// ============================================================
+
+model Program {
+  id          String  @id @default(uuid())
+  slug        String  @unique
+  title       String
+  subtitle    String?
+  description String?
+  overview    String?
+
+  imageUrl String?
+
+  category String?
+  level    String?
+  duration String?
+
+  objectives     Json?
+  targetAudience Json?
+
+  instructorName  String?
+  instructorTitle String?
+
+  priceCents Int?
+  currency   String @default("KES")
+
+  isFree      Boolean @default(false)
+  isPublished Boolean @default(false)
+  featured    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  modules       ProgramModule[]
+  registrations ProgramRegistration[]
+
+  @@index([category])
+  @@index([level])
+  @@index([isPublished])
+  @@index([featured])
+  @@index([createdAt])
+  @@map("programs")
+}
+
+// ============================================================
+// PROGRAM MODULES
+// ============================================================
+
+model ProgramModule {
+  id String @id @default(uuid())
+
+  programId String
+
+  title       String
+  description String?
+
+  position Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+  @@index([position])
+  @@map("program_modules")
+}
+
+// ============================================================
+// PROGRAM REGISTRATION
+// ============================================================
+
+model ProgramRegistration {
+  id String @id @default(uuid())
+
+  programId String
+
+  fullName String
+  email    String
+  phone    String?
+
+  organization String?
+  occupation   String?
+
+  motivation String?
+  goals      String?
+
+  status String @default("PENDING")
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("program_registrations")
+}
+
+// ============================================================
+// COURSES
+// ============================================================
+
+model Course {
+  id String @id @default(uuid())
+
+  slug String @unique
+
+  title       String
+  subtitle    String?
+  description String?
+  overview    String?
+
+  thumbnailUrl String?
+
+  category String?
+  level    String?
+
+  duration       String?
+  estimatedHours Int?
+
+  instructorName  String?
+  instructorTitle String?
+  instructorBio   String?
+  instructorImage String?
+
+  priceCents Int?
+  currency   String @default("KES")
+
+  isFree      Boolean @default(false)
+  isPublished Boolean @default(false)
+  featured    Boolean @default(false)
+
+  objectives     Json?
+  targetAudience Json?
+  requirements   Json?
+  whatYouLearn   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  modules     CourseModule[]
+  enrollments CourseEnrollment[]
+
+  @@index([category])
+  @@index([level])
+  @@index([isPublished])
+  @@index([featured])
+  @@index([createdAt])
+  @@map("courses")
+}
+
+// ============================================================
+// COURSE MODULES
+// ============================================================
+
+model CourseModule {
+  id String @id @default(uuid())
+
+  courseId String
+
+  title       String
+  description String?
+
+  position Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([courseId])
+  @@index([position])
+  @@map("course_modules")
+}
+
+// ============================================================
+// COURSE LESSONS
+// ============================================================
+
+model Lesson {
+  id String @id @default(uuid())
+
+  moduleId String
+
+  title       String
+  description String?
+
+  content String?
+
+  videoUrl String?
+  pdfUrl   String?
+
+  durationMinutes Int?
+
+  position Int @default(0)
+
+  isFreePreview Boolean @default(false)
+  isPublished   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  module   CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress CourseProgress[]
+
+  @@index([moduleId])
+  @@index([position])
+  @@index([isPublished])
+  @@map("lessons")
+}
+
+// ============================================================
+// COURSE ENROLLMENT
+// ============================================================
+
+model CourseEnrollment {
+  id String @id @default(uuid())
+
+  courseId String
+
+  fullName String
+  email    String
+  phone    String?
+
+  paymentStatus    String @default("UNPAID")
+  enrollmentStatus String @default("ACTIVE")
+
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  progress CourseProgress[]
+
+  @@unique([courseId, email])
+  @@index([courseId])
+  @@index([email])
+  @@index([paymentStatus])
+  @@index([enrollmentStatus])
+  @@index([createdAt])
+  @@map("course_enrollments")
+}
+
+// ============================================================
+// COURSE PROGRESS
+// ============================================================
+
+model CourseProgress {
+  id String @id @default(uuid())
+
+  enrollmentId String
+  lessonId     String
+
+  completed Boolean @default(false)
+
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollment CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson     Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, lessonId])
+  @@index([enrollmentId])
+  @@index([lessonId])
+  @@index([completed])
+  @@map("course_progress")
+}
+
+// ============================================================
+// MENTORS / COACHES
+// ============================================================
+
+model Mentor {
+  id String @id @default(uuid())
+
+  name String
+
+  title    String?
+  bio      String?
+  photoUrl String?
+  email    String?
+  phone    String?
+
+  expertise Json?
+
+  yearsExperience Int?
+
+  sessionTypes Json?
+
+  isAvailable Boolean @default(true)
+  isFeatured  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requests MentorshipRequest[]
+
+  @@index([isAvailable])
+  @@index([isFeatured])
+  @@index([createdAt])
+  @@map("mentors")
+}
+
+// ============================================================
+// MENTORSHIP / COACHING REQUEST
+// ============================================================
+
+model MentorshipRequest {
+  id String @id @default(uuid())
+
+  mentorId String?
+
+  fullName String
+  email    String
+  phone    String?
+
+  serviceType String @default("MENTORSHIP")
+
+  areaOfInterest String?
+
+  goals        String?
+  challenge    String?
+  expectations String?
+
+  preferredDate DateTime?
+  preferredTime String?
+
+  sessionType String?
+  meetingMode String?
+
+  status String @default("PENDING")
+
+  adminNotes String?
+
+  scheduledAt DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mentor Mentor? @relation(fields: [mentorId], references: [id], onDelete: SetNull)
+
+  @@index([mentorId])
+  @@index([email])
+  @@index([status])
+  @@index([serviceType])
+  @@index([createdAt])
+  @@map("mentorship_requests")
 }
