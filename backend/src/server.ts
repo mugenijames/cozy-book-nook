@@ -25,6 +25,7 @@ import inquiryRoutes from "./routes/inquiry.routes";
 import orderRoutes from "./routes/order.routes";
 import paymentRoutes from "./routes/payment.routes";
 import bookPreviewRoutes from "./routes/bookPreview.routes";
+import authRoutes from "./routes/auth.routes";
 
 /* ==========================================================================
    ENVIRONMENT
@@ -611,6 +612,15 @@ app.use(
         req.originalUrl,
     });
   }
+);
+
+/* --------------------------------------------------------------------------
+   ADMIN AUTHENTICATION
+   -------------------------------------------------------------------------- */
+
+app.use(
+  "/api/auth",
+  authRoutes
 );
 
 /* ==========================================================================
