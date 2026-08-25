@@ -496,3 +496,35 @@ model MentorshipRequest {
   @@index([createdAt])
   @@map("mentorship_requests")
 }
+
+// ============================================================
+// ADMIN AUTHENTICATION
+// ============================================================
+
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
+model AdminUser {
+  id String @id @default(uuid())
+
+  name  String
+  email String @unique
+
+  passwordHash String
+
+  role AdminRole @default(ADMIN)
+
+  isActive Boolean @default(true)
+
+  lastLoginAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("admin_users")
+}

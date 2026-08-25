@@ -8,9 +8,9 @@ import {
   Menu,
   X,
   BookOpen,
+  BookMarked,
   UserRound,
   Quote,
-  Mic2,
   GraduationCap,
   HeartHandshake,
 } from "lucide-react";
@@ -22,7 +22,6 @@ const SECTION_IDS = [
   "about",
   "program",
   "testimonials",
-  "speaking",
 ];
 
 export default function Header() {
@@ -454,6 +453,42 @@ export default function Header() {
             </Link>
 
             {/* =================================================
+                COURSES
+            ================================================= */}
+
+            <Link
+              to="/courses"
+              onClick={closeMobileMenu}
+              className={`
+                ${desktopLinkBase}
+                hover:text-[#C17B4F]
+                ${
+                  isActiveRoute("/courses")
+                    ? "font-semibold text-[#C17B4F]"
+                    : ""
+                }
+              `}
+            >
+              <BookMarked className="h-4 w-4" />
+
+              Courses
+
+              {isActiveRoute("/courses") && (
+                <span
+                  className="
+                    absolute
+                    bottom-0
+                    left-0
+                    right-0
+                    h-0.5
+                    rounded-full
+                    bg-[#C17B4F]
+                  "
+                />
+              )}
+            </Link>
+
+            {/* =================================================
                 PROGRAMS
             ================================================= */}
 
@@ -768,49 +803,6 @@ export default function Header() {
             </a>
 
             {/* =================================================
-                SPEAKING
-            ================================================= */}
-
-            <a
-              href="/#speaking"
-              onClick={(event) =>
-                handleSectionClick(
-                  event,
-                  "speaking"
-                )
-              }
-              className={`
-                ${desktopLinkBase}
-                hover:text-[#C17B4F]
-                ${
-                  isSectionActive("speaking")
-                    ? "font-semibold text-[#C17B4F]"
-                    : ""
-                }
-              `}
-            >
-              <Mic2 className="h-4 w-4" />
-
-              Speaking
-
-              {isSectionActive(
-                "speaking"
-              ) && (
-                <span
-                  className="
-                    absolute
-                    bottom-0
-                    left-0
-                    right-0
-                    h-0.5
-                    rounded-full
-                    bg-[#C17B4F]
-                  "
-                />
-              )}
-            </a>
-
-            {/* =================================================
                 BOOK DAVID CTA
             ================================================= */}
 
@@ -1019,6 +1011,35 @@ export default function Header() {
                   Books
                 </Link>
 
+                {/* COURSES */}
+
+                <Link
+                  to="/courses"
+                  onClick={closeMobileMenu}
+                  className={`
+                    flex
+                    items-center
+                    gap-3
+                    rounded-xl
+                    px-4
+                    py-3.5
+                    text-sm
+                    font-medium
+                    transition-colors
+                    ${
+                      isActiveRoute(
+                        "/courses"
+                      )
+                        ? "bg-[#F8F6F2] text-[#C17B4F]"
+                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+                    }
+                  `}
+                >
+                  <BookMarked className="h-4 w-4" />
+
+                  Courses
+                </Link>
+
                 {/* PROGRAMS */}
 
                 <div className="rounded-xl">
@@ -1170,40 +1191,6 @@ export default function Header() {
                   <Quote className="h-4 w-4" />
 
                   Testimonials
-                </a>
-
-                {/* SPEAKING */}
-
-                <a
-                  href="/#speaking"
-                  onClick={(event) =>
-                    handleSectionClick(
-                      event,
-                      "speaking"
-                    )
-                  }
-                  className={`
-                    flex
-                    items-center
-                    gap-3
-                    rounded-xl
-                    px-4
-                    py-3.5
-                    text-sm
-                    font-medium
-                    transition-colors
-                    ${
-                      isSectionActive(
-                        "speaking"
-                      )
-                        ? "bg-[#F8F6F2] text-[#C17B4F]"
-                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
-                    }
-                  `}
-                >
-                  <Mic2 className="h-4 w-4" />
-
-                  Speaking
                 </a>
 
                 {/* =================================================

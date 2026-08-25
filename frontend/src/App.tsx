@@ -23,7 +23,7 @@ import DashboardLayout from "@/components/admin/DashboardLayout";
 import Home from "@/pages/Home";
 import BooksCatalogPage from "@/pages/Books";
 import BookDetail from "@/pages/BookDetail";
-
+import Courses from "@/pages/Courses";
 import ProgramActivityPage from "@/pages/ProgramActivity";
 import ProgramHighlightPage from "@/pages/ProgramHighlight";
 
@@ -112,6 +112,14 @@ function App() {
           <Route
             path="/book/:slug"
             element={<BookDetail />}
+          />
+          
+          {/* ====================================================
+              COURSES
+          ==================================================== */}
+          <Route
+            path="/courses"
+            element={<Courses />}
           />
 
           {/* ====================================================

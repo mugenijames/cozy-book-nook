@@ -14,7 +14,7 @@ const Header = () => {
         <a href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
           <BookOpen className="h-7 w-7 text-primary" />
           <span className="font-display text-xl font-semibold text-foreground">
-            Emuria Book Store
+            Emuria Book 
           </span>
         </a>
 
