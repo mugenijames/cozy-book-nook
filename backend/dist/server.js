@@ -25,20 +25,26 @@ const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 /* ==========================================================================
    ENVIRONMENT
 ========================================================================== */
-const NODE_ENV = process.env.NODE_ENV ||
-    "development";
+const NODE_ENV = process.env.NODE_ENV || "development";
 const PORT = parseInt(process.env.PORT || "5000", 10);
 const isDevelopment = NODE_ENV === "development";
 /*
- * Authentication bypass should NEVER automatically
- * happen just because NODE_ENV is development.
+ * Authentication bypass must NEVER happen automatically.
  *
- * Development bypass can still be enabled explicitly
- * with:
+ * Enable explicitly with:
  *
  * BYPASS_AUTH=true
  */
 const BYPASS_AUTH = process.env.BYPASS_AUTH === "true";
+/* ==========================================================================
+   EMAIL CONFIGURATION STATUS
+========================================================================== */
+const smtpConfigured = Boolean(process.env.SMTP_HOST &&
+    process.env.SMTP_USER &&
+    process.env.SMTP_PASS);
+const adminEmail = process.env.ADMIN_EMAIL ||
+    process.env.SMTP_USER ||
+    "davidemuria9780@gmail.com";
 /* ==========================================================================
    ENVIRONMENT STATUS
 ========================================================================== */
@@ -49,6 +55,9 @@ console.log("========================================");
 console.log("Environment:", NODE_ENV);
 console.log("Port:", PORT);
 console.log("Database URL:", process.env.DATABASE_URL
+    ? "✓ Loaded"
+    : "✗ Missing");
+console.log("Direct Database URL:", process.env.DIRECT_URL
     ? "✓ Loaded"
     : "✗ Missing");
 console.log("Cloudinary:", process.env.CLOUDINARY_CLOUD_NAME
@@ -69,9 +78,21 @@ console.log("M-Pesa Consumer Key:", process.env.MPESA_CONSUMER_KEY
 console.log("PayPal:", process.env.PAYPAL_CLIENT_ID
     ? "✓ Loaded"
     : "✗ Missing");
-console.log("SMTP:", process.env.SMTP_HOST
+console.log("SMTP Host:", process.env.SMTP_HOST
     ? "✓ Loaded"
     : "✗ Missing");
+console.log("SMTP User:", process.env.SMTP_USER
+    ? "✓ Loaded"
+    : "✗ Missing");
+console.log("SMTP Password:", process.env.SMTP_PASS
+    ? "✓ Loaded"
+    : "✗ Missing");
+console.log("SMTP Port:", process.env.SMTP_PORT || "587");
+console.log("SMTP Secure:", process.env.SMTP_SECURE || "false");
+console.log("Admin Email:", adminEmail);
+console.log("Email Service:", smtpConfigured
+    ? "✓ CONFIGURED"
+    : "✗ NOT CONFIGURED");
 console.log("Authentication Bypass:", BYPASS_AUTH
     ? "⚠️ ENABLED"
     : "✓ Disabled");
@@ -81,6 +102,15 @@ console.log("");
    EXPRESS APP
 ========================================================================== */
 const app = (0, express_1.default)();
+/* ==========================================================================
+   TRUST PROXY
+========================================================================== */
+/*
+ * Render sits behind a proxy.
+ * This allows Express to correctly understand
+ * forwarded requests and HTTPS.
+ */
+app.set("trust proxy", 1);
 /* ==========================================================================
    UPLOADS DIRECTORY
 ========================================================================== */
@@ -110,17 +140,16 @@ const allowedOrigins = [
     "http://192.168.100.8:8080",
     "https://emuriadavid.netlify.app",
     process.env.FRONTEND_URL,
-]
-    .filter((origin) => Boolean(origin));
+].filter((origin) => Boolean(origin));
 console.log("🌐 Allowed CORS origins:", allowedOrigins);
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {
         /*
-         * Requests without Origin:
+         * Requests without an Origin:
          *
-         * - Postman
          * - curl
-         * - server-to-server
+         * - Postman
+         * - server-to-server requests
          */
         if (!origin) {
             return callback(null, true);
@@ -163,8 +192,7 @@ app.use(express_1.default.urlencoded({
    REQUEST LOGGER
 ========================================================================== */
 app.use((req, _res, next) => {
-    const url = req.originalUrl ||
-        req.url;
+    const url = req.originalUrl || req.url;
     if (!url.includes("favicon")) {
         console.log(`>>> ${req.method} ${url}`);
     }
@@ -178,8 +206,9 @@ app.use("/uploads", express_1.default.static(uploadsDir));
    HEALTH CHECK
 ========================================================================== */
 app.get("/health", (_req, res) => {
-    res.json({
+    res.status(200).json({
         status: "OK",
+        service: "Cozy Book Nook Backend",
         environment: NODE_ENV,
         timestamp: new Date().toISOString(),
         port: PORT,
@@ -200,17 +229,26 @@ app.get("/health", (_req, res) => {
                 .MPESA_CONSUMER_KEY),
             paypal: Boolean(process.env
                 .PAYPAL_CLIENT_ID),
-            email: Boolean(process.env.SMTP_HOST &&
-                process.env.SMTP_USER &&
-                process.env.SMTP_PASS),
+            email: smtpConfigured,
+        },
+        email: {
+            configured: smtpConfigured,
+            smtpHost: Boolean(process.env.SMTP_HOST),
+            smtpUser: Boolean(process.env.SMTP_USER),
+            smtpPassword: Boolean(process.env.SMTP_PASS),
+            smtpPort: Number(process.env.SMTP_PORT ||
+                587),
+            smtpSecure: process.env.SMTP_SECURE ===
+                "true",
+            adminEmail,
         },
     });
 });
 /* ==========================================================================
-   ROOT
+   ROOT API
 ========================================================================== */
 app.get("/", (_req, res) => {
-    res.json({
+    res.status(200).json({
         message: "Cozy Book Nook API",
         version: "2.1.0",
         status: "running",
@@ -228,6 +266,11 @@ app.get("/", (_req, res) => {
             orders: "/api/orders",
             payments: "/api/payments",
             auth: "/api/auth",
+        },
+        services: {
+            email: smtpConfigured
+                ? "configured"
+                : "not configured",
         },
     });
 });
@@ -257,6 +300,19 @@ app.use("/api/invite", invitation_routes_1.default);
 /* --------------------------------------------------------------------------
    INQUIRIES
 -------------------------------------------------------------------------- */
+/*
+ * IMPORTANT:
+ *
+ * inquiry.routes.ts contains:
+ *
+ * router.post("/")
+ * router.get("/health")
+ *
+ * Therefore:
+ *
+ * /api/inquiries
+ * /api/inquiries/health
+ */
 app.use("/api/inquiries", inquiry_routes_1.default);
 /* --------------------------------------------------------------------------
    ORDERS
@@ -276,10 +332,12 @@ app.use("/api", bookPreview_routes_1.default);
 app.use("/api/auth", auth_routes_1.default);
 /* ==========================================================================
    API 404 HANDLER
-
-   IMPORTANT:
-   This MUST be AFTER all API routes.
 ========================================================================== */
+/*
+ * IMPORTANT:
+ *
+ * This MUST remain AFTER every app.use("/api/...", ...)
+ */
 app.use((req, res) => {
     console.warn("❌ API route not found:", req.method, req.originalUrl);
     res.status(404).json({
@@ -301,7 +359,6 @@ app.use((err, req, res, _next) => {
     console.error("URL:", req.originalUrl);
     console.error("Error:", err);
     console.error("========================================");
-    console.error("");
     if (res.headersSent) {
         return;
     }
@@ -339,20 +396,31 @@ const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`🔐 Auth Bypass: ${BYPASS_AUTH
         ? "⚠️ ENABLED"
         : "✓ DISABLED"}`);
+    console.log("");
     console.log("========================================");
     console.log("📧 EMAIL CONFIGURATION");
+    console.log("========================================");
     console.log("SMTP Host:", process.env.SMTP_HOST ||
         "Missing");
     console.log("SMTP User:", process.env.SMTP_USER ||
         "Missing");
-    console.log("Admin Email:", process.env.ADMIN_EMAIL ||
-        "Missing");
+    console.log("SMTP Port:", process.env.SMTP_PORT ||
+        "587");
+    console.log("SMTP Secure:", process.env.SMTP_SECURE ||
+        "false");
+    console.log("Admin Email:", adminEmail);
     console.log("SMTP Password:", process.env.SMTP_PASS
         ? "✓ Loaded"
         : "✗ Missing");
+    console.log("Email Service:", smtpConfigured
+        ? "✓ READY"
+        : "✗ NOT CONFIGURED");
     console.log("========================================");
     if (BYPASS_AUTH) {
         console.warn("⚠️ WARNING: Authentication is BYPASSED");
+    }
+    if (!smtpConfigured) {
+        console.warn("⚠️ WARNING: SMTP email service is NOT configured.");
     }
     console.log("");
 });
@@ -392,5 +460,8 @@ process.on("unhandledRejection", (reason) => {
 process.on("uncaughtException", (error) => {
     console.error("❌ UNCAUGHT EXCEPTION:", error);
 });
+/* ==========================================================================
+   EXPORT
+========================================================================== */
 exports.default = app;
 //# sourceMappingURL=server.js.map
