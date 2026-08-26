@@ -1,10 +1,7 @@
 // backend/src/routes/invitation.routes.ts
 
 import { Router, Request, Response } from "express";
-import nodemailer, {
-  Transporter,
-  SendMailOptions,
-} from "nodemailer";
+import { Resend } from "resend";
 
 const router = Router();
 
@@ -21,7 +18,7 @@ interface SpeakingInvitationBody {
   location?: string;
   message?: string;
 
-  // Backward compatibility
+  // Compatibility with older frontend/backend field names
   program?: string;
   preferredDate?: string;
 }
@@ -40,98 +37,41 @@ function escapeHtml(value: unknown): string {
 }
 
 /* ==========================================================================
-   EMAIL CONFIGURATION
+   RESEND CONFIGURATION
 ========================================================================== */
 
-/**
- * Supports BOTH:
- *
- * SMTP_USER / SMTP_PASS
- *
- * and the older:
- *
- * EMAIL_USER / EMAIL_PASS
- *
- * This prevents deployment problems when Render still contains the
- * previous environment variable names.
- */
-
-function getEmailConfiguration() {
-  const smtpUser =
-    process.env.SMTP_USER ||
-    process.env.EMAIL_USER ||
-    "";
-
-  const smtpPass =
-    process.env.SMTP_PASS ||
-    process.env.EMAIL_PASS ||
-    "";
+function getResendConfiguration() {
+  const apiKey = process.env.RESEND_API_KEY;
 
   const adminEmail =
     process.env.ADMIN_EMAIL ||
-    process.env.EMAIL_ADMIN ||
-    smtpUser;
+    "mugenijames99@gmail.com";
 
-  const smtpHost =
-    process.env.SMTP_HOST ||
-    "smtp.gmail.com";
+  /*
+   * IMPORTANT:
+   *
+   * If you have NOT verified your own domain in Resend,
+   * use:
+   *
+   * onboarding@resend.dev
+   *
+   * for testing.
+   *
+   * Once your domain is verified in Resend, change
+   * RESEND_FROM_EMAIL in Render to something like:
+   *
+   * David Emuria <hello@yourdomain.com>
+   */
 
-  const smtpPort =
-    Number(
-      process.env.SMTP_PORT || "587"
-    );
-
-  const smtpSecure =
-    String(
-      process.env.SMTP_SECURE || "false"
-    ).toLowerCase() === "true";
-
-  const smtpFrom =
-    process.env.SMTP_FROM ||
-    `David Emuria Website <${smtpUser}>`;
+  const fromEmail =
+    process.env.RESEND_FROM_EMAIL ||
+    "David Emuria Website <onboarding@resend.dev>";
 
   return {
-    smtpUser,
-    smtpPass,
+    apiKey,
     adminEmail,
-    smtpHost,
-    smtpPort,
-    smtpSecure,
-    smtpFrom,
+    fromEmail,
   };
-}
-
-/* ==========================================================================
-   CREATE TRANSPORTER
-========================================================================== */
-
-function createTransporter(): Transporter {
-  const config =
-    getEmailConfiguration();
-
-  if (
-    !config.smtpUser ||
-    !config.smtpPass
-  ) {
-    throw new Error(
-      "SMTP credentials are missing. Please configure SMTP_USER and SMTP_PASS on Render."
-    );
-  }
-
-  return nodemailer.createTransport({
-    host: config.smtpHost,
-    port: config.smtpPort,
-    secure: config.smtpSecure,
-
-    auth: {
-      user: config.smtpUser,
-      pass: config.smtpPass,
-    },
-
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
-  });
 }
 
 /* ==========================================================================
@@ -141,79 +81,33 @@ function createTransporter(): Transporter {
 
 router.get(
   "/health",
-  async (
-    _req: Request,
-    res: Response
-  ) => {
+  async (_req: Request, res: Response) => {
     const config =
-      getEmailConfiguration();
+      getResendConfiguration();
 
-    const configured =
-      Boolean(
-        config.smtpUser &&
-        config.smtpPass
-      );
-
-    let smtpVerified = false;
-    let smtpError = "";
-
-    /**
-     * Only verify SMTP when credentials exist.
-     *
-     * This makes the endpoint useful for testing Render.
-     */
-
-    if (configured) {
-      try {
-        const transporter =
-          createTransporter();
-
-        await transporter.verify();
-
-        smtpVerified = true;
-      } catch (error: any) {
-        console.error(
-          "❌ SMTP health check failed:",
-          error
-        );
-
-        smtpError =
-          error?.message ||
-          "SMTP verification failed.";
-      }
-    }
-
-    return res.status(200).json({
+    res.json({
       success: true,
 
       service:
         "David Emuria Speaking Invitation",
 
       emailConfigured:
-        configured,
+        Boolean(config.apiKey),
 
-      smtpVerified,
-
-      smtpHost:
-        config.smtpHost,
-
-      smtpPort:
-        config.smtpPort,
-
-      smtpSecure:
-        config.smtpSecure,
-
-      smtpUserConfigured:
-        Boolean(config.smtpUser),
-
-      smtpPasswordConfigured:
-        Boolean(config.smtpPass),
+      resendConfigured:
+        Boolean(config.apiKey),
 
       adminEmail:
-        config.adminEmail || null,
+        config.adminEmail,
 
-      smtpError:
-        smtpError || null,
+      fromEmail:
+        config.fromEmail,
+
+      provider:
+        "Resend",
+
+      smtpUsed:
+        false,
     });
   }
 );
@@ -235,22 +129,27 @@ router.post(
     try {
       console.log("");
       console.log(
-        "=========================================="
+        "========================================"
       );
       console.log(
         "🎤 NEW SPEAKING INVITATION"
       );
       console.log(
-        "=========================================="
+        "========================================"
       );
 
       console.log(
-        "Request received."
+        "📨 Request received."
       );
 
-      /* ----------------------------------------------------------------------
+      console.log(
+        "📨 Request body:",
+        req.body
+      );
+
+      /* ======================================================================
          RECEIVE FORM DATA
-      ---------------------------------------------------------------------- */
+      ====================================================================== */
 
       const {
         name,
@@ -260,58 +159,34 @@ router.post(
         date,
         location,
         message,
+
+        // Old field names
         program,
         preferredDate,
       } = req.body;
 
-      /* ----------------------------------------------------------------------
-         NORMALIZE OLD / NEW FIELD NAMES
-      ---------------------------------------------------------------------- */
+      /* ======================================================================
+         NORMALIZE FIELD NAMES
+      ====================================================================== */
 
       const finalEventType =
-        String(
-          eventType ||
-            program ||
-            ""
-        ).trim();
+        eventType ||
+        program ||
+        "";
 
       const finalDate =
-        String(
-          date ||
-            preferredDate ||
-            ""
-        ).trim();
+        date ||
+        preferredDate ||
+        "";
 
-      const finalName =
-        String(
-          name || ""
-        ).trim();
-
-      const finalEmail =
-        String(
-          email || ""
-        ).trim();
-
-      const finalPhone =
-        String(
-          phone || ""
-        ).trim();
-
-      const finalLocation =
-        String(
-          location || ""
-        ).trim();
-
-      const finalMessage =
-        String(
-          message || ""
-        ).trim();
-
-      /* ----------------------------------------------------------------------
+      /* ======================================================================
          VALIDATION
-      ---------------------------------------------------------------------- */
+      ====================================================================== */
 
-      if (!finalName) {
+      if (
+        !name ||
+        !String(name).trim()
+      ) {
         return res.status(400).json({
           success: false,
           error:
@@ -319,7 +194,10 @@ router.post(
         });
       }
 
-      if (!finalEmail) {
+      if (
+        !email ||
+        !String(email).trim()
+      ) {
         return res.status(400).json({
           success: false,
           error:
@@ -327,24 +205,10 @@ router.post(
         });
       }
 
-      /* Basic email validation */
-
-      const emailRegex =
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
       if (
-        !emailRegex.test(
-          finalEmail
-        )
+        !finalEventType ||
+        !String(finalEventType).trim()
       ) {
-        return res.status(400).json({
-          success: false,
-          error:
-            "Please enter a valid email address.",
-        });
-      }
-
-      if (!finalEventType) {
         return res.status(400).json({
           success: false,
           error:
@@ -352,7 +216,10 @@ router.post(
         });
       }
 
-      if (!finalDate) {
+      if (
+        !finalDate ||
+        !String(finalDate).trim()
+      ) {
         return res.status(400).json({
           success: false,
           error:
@@ -360,71 +227,57 @@ router.post(
         });
       }
 
-      /* ----------------------------------------------------------------------
-         EMAIL CONFIGURATION
-      ---------------------------------------------------------------------- */
+      /* ======================================================================
+         RESEND CONFIGURATION
+      ====================================================================== */
 
-      const config =
-        getEmailConfiguration();
+      const {
+        apiKey,
+        adminEmail,
+        fromEmail,
+      } = getResendConfiguration();
 
       console.log(
-        "📧 SMTP configuration:"
+        "📧 Email provider: Resend"
       );
 
       console.log(
-        "Host:",
-        config.smtpHost
-      );
-
-      console.log(
-        "Port:",
-        config.smtpPort
-      );
-
-      console.log(
-        "Secure:",
-        config.smtpSecure
-      );
-
-      console.log(
-        "SMTP user:",
-        config.smtpUser
+        "📧 Resend API Key:",
+        apiKey
           ? "✓ Loaded"
           : "✗ Missing"
       );
 
       console.log(
-        "SMTP password:",
-        config.smtpPass
-          ? "✓ Loaded"
-          : "✗ Missing"
+        "📧 Admin Email:",
+        adminEmail ||
+          "✗ Missing"
       );
 
       console.log(
-        "Admin email:",
-        config.adminEmail
-          ? "✓ Loaded"
-          : "✗ Missing"
+        "📧 From Email:",
+        fromEmail
       );
 
-      if (
-        !config.smtpUser ||
-        !config.smtpPass
-      ) {
+      /* ======================================================================
+         CHECK RESEND API KEY
+      ====================================================================== */
+
+      if (!apiKey) {
         console.error(
-          "❌ SMTP credentials are missing."
+          "❌ RESEND_API_KEY is missing."
         );
 
         return res.status(500).json({
           success: false,
           error:
-            "Email service is not configured correctly on the server.",
+            "Email service is not configured correctly. RESEND_API_KEY is missing.",
         });
       }
 
-      if (!config.adminEmail) {
+      if (!adminEmail) {
         console.error(
-          "❌ Administrator email is missing."
+          "❌ ADMIN_EMAIL is missing."
         );
 
         return res.status(500).json({
@@ -434,126 +287,26 @@ router.post(
         });
       }
 
-      /* ----------------------------------------------------------------------
-         CREATE TRANSPORTER
-      ---------------------------------------------------------------------- */
+      /* ======================================================================
+         CREATE RESEND CLIENT
+      ====================================================================== */
 
-      let transporter: Transporter;
+      const resend =
+        new Resend(apiKey);
 
-      try {
-        transporter =
-          createTransporter();
-
-        console.log(
-          "📡 Verifying SMTP connection..."
-        );
-
-        await transporter.verify();
-
-        console.log(
-          "✅ SMTP connection verified."
-        );
-      } catch (smtpError: any) {
-        console.error("");
-        console.error(
-          "=========================================="
-        );
-        console.error(
-          "❌ SMTP VERIFICATION FAILED"
-        );
-        console.error(
-          "=========================================="
-        );
-
-        console.error(
-          "SMTP error code:",
-          smtpError?.code
-        );
-
-        console.error(
-          "SMTP command:",
-          smtpError?.command
-        );
-
-        console.error(
-          "SMTP response code:",
-          smtpError?.responseCode
-        );
-
-        console.error(
-          "SMTP response:",
-          smtpError?.response
-        );
-
-        console.error(
-          "SMTP message:",
-          smtpError?.message
-        );
-
-        console.error(
-          "=========================================="
-        );
-
-        return res.status(500).json({
-          success: false,
-          error:
-            "Email service is currently unavailable. Please try again later.",
-
-          /**
-           * Safe diagnostic information.
-           *
-           * We NEVER return the SMTP password.
-           */
-
-          diagnostics:
-            process.env.NODE_ENV ===
-            "production"
-              ? {
-                  code:
-                    smtpError?.code ||
-                    null,
-
-                  responseCode:
-                    smtpError?.responseCode ||
-                    null,
-                }
-              : {
-                  code:
-                    smtpError?.code ||
-                    null,
-
-                  command:
-                    smtpError?.command ||
-                    null,
-
-                  responseCode:
-                    smtpError?.responseCode ||
-                    null,
-
-                  response:
-                    smtpError?.response ||
-                    null,
-                },
-        });
-      }
-
-      /* ----------------------------------------------------------------------
+      /* ======================================================================
          ESCAPE USER DATA
-      ---------------------------------------------------------------------- */
+      ====================================================================== */
 
       const safeName =
-        escapeHtml(
-          finalName
-        );
+        escapeHtml(name);
 
       const safeEmail =
-        escapeHtml(
-          finalEmail
-        );
+        escapeHtml(email);
 
       const safePhone =
         escapeHtml(
-          finalPhone ||
+          phone ||
             "Not provided"
         );
 
@@ -569,35 +322,38 @@ router.post(
 
       const safeLocation =
         escapeHtml(
-          finalLocation ||
+          location ||
             "Not provided"
         );
 
       const safeMessage =
         escapeHtml(
-          finalMessage ||
+          message ||
             "No additional message provided."
         );
 
       /* ======================================================================
-         EMAIL 1 — ADMIN NOTIFICATION
+         EMAIL 1
+         ADMIN NOTIFICATION
       ====================================================================== */
 
       console.log(
-        `📧 Sending admin notification to ${config.adminEmail}`
+        `📧 Sending admin notification to ${adminEmail}`
       );
 
-      const adminMail: SendMailOptions =
-        {
-          from: config.smtpFrom,
+      const adminEmailResult =
+        await resend.emails.send({
+          from: fromEmail,
 
-          to: config.adminEmail,
+          to: [adminEmail],
 
           replyTo:
-            finalEmail,
+            String(email),
 
           subject:
-            `🎤 New Speaking Invitation — ${finalName}`,
+            `🎤 New Speaking Invitation — ${String(
+              name
+            )}`,
 
           html: `
 <!DOCTYPE html>
@@ -606,355 +362,364 @@ router.post(
 
 <head>
 
-<meta charset="UTF-8">
+  <meta charset="UTF-8" />
 
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
-<title>
-New Speaking Invitation
-</title>
+  <title>
+    New Speaking Invitation
+  </title>
 
 </head>
 
 <body
-style="
-margin:0;
-padding:0;
-background:#f4f1ec;
-font-family:Arial,Helvetica,sans-serif;
-"
+  style="
+    margin:0;
+    padding:0;
+    background:#f4f1ec;
+    font-family:Arial,Helvetica,sans-serif;
+  "
 >
 
-<div
-style="
-max-width:650px;
-margin:30px auto;
-background:#ffffff;
-border-radius:14px;
-overflow:hidden;
-box-shadow:0 4px 20px rgba(0,0,0,0.08);
-"
->
+  <div
+    style="
+      max-width:650px;
+      margin:30px auto;
+      background:#ffffff;
+      border-radius:14px;
+      overflow:hidden;
+      box-shadow:0 4px 20px rgba(0,0,0,0.08);
+    "
+  >
 
-<div
-style="
-background:#4A1F0E;
-color:#ffffff;
-padding:30px;
-"
->
+    <!-- HEADER -->
 
-<h1
-style="
-margin:0;
-font-size:25px;
-"
->
-🎤 New Speaking Invitation
-</h1>
+    <div
+      style="
+        background:#4A1F0E;
+        color:#ffffff;
+        padding:30px;
+      "
+    >
 
-<p
-style="
-margin:10px 0 0;
-color:#f3dfc8;
-font-size:14px;
-line-height:1.6;
-"
->
-A new speaking request has been
-submitted through David Emuria's website.
-</p>
+      <h1
+        style="
+          margin:0;
+          font-size:25px;
+        "
+      >
+        🎤 New Speaking Invitation
+      </h1>
 
-</div>
+      <p
+        style="
+          margin:10px 0 0;
+          color:#f3dfc8;
+          font-size:14px;
+          line-height:1.6;
+        "
+      >
+        A new speaking request has been
+        submitted through David Emuria's website.
+      </p>
 
-<div style="padding:30px;">
+    </div>
 
-<h2
-style="
-margin-top:0;
-color:#3B2314;
-"
->
-Invitation Details
-</h2>
+    <!-- CONTENT -->
 
-<table
-width="100%"
-cellpadding="10"
-cellspacing="0"
-style="
-border-collapse:collapse;
-font-size:14px;
-"
->
+    <div
+      style="
+        padding:30px;
+      "
+    >
 
-<tr>
-<td
-style="
-width:35%;
-font-weight:bold;
-color:#555;
-border-bottom:1px solid #eeeeee;
-"
->
-Full Name
-</td>
+      <h2
+        style="
+          margin-top:0;
+          color:#3B2314;
+        "
+      >
+        Invitation Details
+      </h2>
 
-<td
-style="
-border-bottom:1px solid #eeeeee;
-"
->
-${safeName}
-</td>
-</tr>
+      <table
+        width="100%"
+        cellpadding="10"
+        cellspacing="0"
+        style="
+          border-collapse:collapse;
+          font-size:14px;
+        "
+      >
 
-<tr>
+        <tr>
 
-<td
-style="
-font-weight:bold;
-color:#555;
-border-bottom:1px solid #eeeeee;
-"
->
-Email
-</td>
+          <td
+            style="
+              width:35%;
+              font-weight:bold;
+              color:#555;
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            Full Name
+          </td>
 
-<td
-style="
-border-bottom:1px solid #eeeeee;
-"
->
-${safeEmail}
-</td>
+          <td
+            style="
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            ${safeName}
+          </td>
 
-</tr>
+        </tr>
 
-<tr>
+        <tr>
 
-<td
-style="
-font-weight:bold;
-color:#555;
-border-bottom:1px solid #eeeeee;
-"
->
-Phone
-</td>
+          <td
+            style="
+              font-weight:bold;
+              color:#555;
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            Email
+          </td>
 
-<td
-style="
-border-bottom:1px solid #eeeeee;
-"
->
-${safePhone}
-</td>
+          <td
+            style="
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            ${safeEmail}
+          </td>
 
-</tr>
+        </tr>
 
-<tr>
+        <tr>
 
-<td
-style="
-font-weight:bold;
-color:#555;
-border-bottom:1px solid #eeeeee;
-"
->
-Event Type
-</td>
+          <td
+            style="
+              font-weight:bold;
+              color:#555;
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            Phone
+          </td>
 
-<td
-style="
-border-bottom:1px solid #eeeeee;
-"
->
-${safeEventType}
-</td>
+          <td
+            style="
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            ${safePhone}
+          </td>
 
-</tr>
+        </tr>
 
-<tr>
+        <tr>
 
-<td
-style="
-font-weight:bold;
-color:#555;
-border-bottom:1px solid #eeeeee;
-"
->
-Event Date
-</td>
+          <td
+            style="
+              font-weight:bold;
+              color:#555;
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            Event Type
+          </td>
 
-<td
-style="
-border-bottom:1px solid #eeeeee;
-"
->
-${safeDate}
-</td>
+          <td
+            style="
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            ${safeEventType}
+          </td>
 
-</tr>
+        </tr>
 
-<tr>
+        <tr>
 
-<td
-style="
-font-weight:bold;
-color:#555;
-"
->
-Location
-</td>
+          <td
+            style="
+              font-weight:bold;
+              color:#555;
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            Event Date
+          </td>
 
-<td>
-${safeLocation}
-</td>
+          <td
+            style="
+              border-bottom:1px solid #eeeeee;
+            "
+          >
+            ${safeDate}
+          </td>
 
-</tr>
+        </tr>
 
-</table>
+        <tr>
 
-<div
-style="
-margin-top:25px;
-padding:20px;
-background:#faf7f2;
-border-left:4px solid #C08A43;
-border-radius:8px;
-"
->
+          <td
+            style="
+              font-weight:bold;
+              color:#555;
+            "
+          >
+            Location
+          </td>
 
-<h3
-style="
-margin-top:0;
-color:#3B2314;
-"
->
-Message / Event Details
-</h3>
+          <td>
+            ${safeLocation}
+          </td>
 
-<p
-style="
-margin-bottom:0;
-line-height:1.7;
-color:#555;
-white-space:pre-line;
-"
->
-${safeMessage}
-</p>
+        </tr>
 
-</div>
+      </table>
 
-<div
-style="
-margin-top:25px;
-text-align:center;
-"
->
+      <!-- MESSAGE -->
 
-<a
-href="mailto:${safeEmail}"
-style="
-display:inline-block;
-background:#4A1F0E;
-color:#ffffff;
-text-decoration:none;
-padding:13px 24px;
-border-radius:25px;
-font-weight:bold;
-"
->
-Reply to ${safeName}
-</a>
+      <div
+        style="
+          margin-top:25px;
+          padding:20px;
+          background:#faf7f2;
+          border-left:4px solid #C08A43;
+          border-radius:8px;
+        "
+      >
 
-</div>
+        <h3
+          style="
+            margin-top:0;
+            color:#3B2314;
+          "
+        >
+          Message / Event Details
+        </h3>
 
-<hr
-style="
-margin:30px 0 20px;
-border:none;
-border-top:1px solid #eeeeee;
-"
-/>
+        <p
+          style="
+            margin-bottom:0;
+            line-height:1.7;
+            color:#555;
+            white-space:pre-line;
+          "
+        >
+          ${safeMessage}
+        </p>
 
-<p
-style="
-margin:0;
-color:#888;
-font-size:12px;
-text-align:center;
-"
->
-Submitted through David Emuria's official website.
-</p>
+      </div>
 
-</div>
+      <!-- REPLY BUTTON -->
 
-</div>
+      <div
+        style="
+          margin-top:25px;
+          text-align:center;
+        "
+      >
+
+        <a
+          href="mailto:${escapeHtml(
+            email
+          )}"
+          style="
+            display:inline-block;
+            background:#4A1F0E;
+            color:#ffffff;
+            text-decoration:none;
+            padding:13px 24px;
+            border-radius:25px;
+            font-weight:bold;
+          "
+        >
+          Reply to ${safeName}
+        </a>
+
+      </div>
+
+      <hr
+        style="
+          margin:30px 0 20px;
+          border:none;
+          border-top:1px solid #eeeeee;
+        "
+      />
+
+      <p
+        style="
+          margin:0;
+          color:#888;
+          font-size:12px;
+          text-align:center;
+        "
+      >
+        Submitted through David Emuria's official website.
+      </p>
+
+    </div>
+
+  </div>
 
 </body>
 
 </html>
           `,
-        };
+        });
 
-      try {
-        await transporter.sendMail(
-          adminMail
-        );
+      /* ======================================================================
+         HANDLE ADMIN EMAIL ERROR
+      ====================================================================== */
 
-        console.log(
-          "✅ Admin notification sent."
-        );
-      } catch (adminError: any) {
+      if (adminEmailResult.error) {
         console.error(
-          "❌ Admin email failed:"
-        );
-
-        console.error(
-          "Code:",
-          adminError?.code
-        );
-
-        console.error(
-          "Response:",
-          adminError?.response
-        );
-
-        console.error(
-          "Message:",
-          adminError?.message
+          "❌ Resend admin email error:",
+          adminEmailResult.error
         );
 
         return res.status(500).json({
           success: false,
           error:
-            "We received your request, but the notification email could not be sent. Please try again later.",
+            "Failed to send administrator notification.",
+          details:
+            adminEmailResult.error.message ||
+            "Resend failed to send the email.",
         });
       }
 
+      console.log(
+        "✅ Admin notification sent."
+      );
+
+      console.log(
+        "📨 Admin email ID:",
+        adminEmailResult.data?.id ||
+          "No ID returned"
+      );
+
       /* ======================================================================
-         EMAIL 2 — CUSTOMER CONFIRMATION
+         EMAIL 2
+         CUSTOMER CONFIRMATION
       ====================================================================== */
 
       console.log(
-        `📧 Sending confirmation to ${finalEmail}`
+        `📧 Sending confirmation to ${email}`
       );
 
-      const customerMail: SendMailOptions =
-        {
-          from: config.smtpFrom,
+      const customerEmailResult =
+        await resend.emails.send({
+          from: fromEmail,
 
-          to: finalEmail,
-
-          replyTo:
-            config.adminEmail,
+          to: [String(email)],
 
           subject:
             "✅ We received your speaking invitation",
@@ -966,243 +731,249 @@ Submitted through David Emuria's official website.
 
 <head>
 
-<meta charset="UTF-8">
+  <meta charset="UTF-8" />
 
-<meta
-name="viewport"
-content="width=device-width, initial-scale=1.0"
->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
-<title>
-Speaking Invitation Received
-</title>
+  <title>
+    Speaking Invitation Received
+  </title>
 
 </head>
 
 <body
-style="
-margin:0;
-padding:0;
-background:#f4f1ec;
-font-family:Arial,Helvetica,sans-serif;
-"
+  style="
+    margin:0;
+    padding:0;
+    background:#f4f1ec;
+    font-family:Arial,Helvetica,sans-serif;
+  "
 >
 
-<div
-style="
-max-width:650px;
-margin:30px auto;
-background:#ffffff;
-border-radius:14px;
-overflow:hidden;
-box-shadow:0 4px 20px rgba(0,0,0,0.08);
-"
->
+  <div
+    style="
+      max-width:650px;
+      margin:30px auto;
+      background:#ffffff;
+      border-radius:14px;
+      overflow:hidden;
+      box-shadow:0 4px 20px rgba(0,0,0,0.08);
+    "
+  >
 
-<div
-style="
-background:#4A1F0E;
-color:#ffffff;
-padding:30px;
-"
->
+    <!-- HEADER -->
 
-<h1
-style="
-margin:0;
-font-size:25px;
-"
->
-Thank You, ${safeName}!
-</h1>
+    <div
+      style="
+        background:#4A1F0E;
+        color:#ffffff;
+        padding:30px;
+      "
+    >
 
-<p
-style="
-margin:10px 0 0;
-color:#f3dfc8;
-line-height:1.6;
-"
->
-Your speaking invitation has been received.
-</p>
+      <h1
+        style="
+          margin:0;
+          font-size:25px;
+        "
+      >
+        Thank You, ${safeName}!
+      </h1>
 
-</div>
+      <p
+        style="
+          margin:10px 0 0;
+          color:#f3dfc8;
+          line-height:1.6;
+        "
+      >
+        Your speaking invitation has been received.
+      </p>
 
-<div style="padding:30px;">
+    </div>
 
-<p
-style="
-font-size:15px;
-line-height:1.7;
-color:#555;
-"
->
-Thank you for reaching out to David Emuria
-through the website. We have successfully
-received your speaking invitation.
-</p>
+    <!-- CONTENT -->
 
-<p
-style="
-font-size:15px;
-line-height:1.7;
-color:#555;
-"
->
-David's team will review your request
-and get back to you shortly.
-</p>
+    <div
+      style="
+        padding:30px;
+      "
+    >
 
-<div
-style="
-margin-top:25px;
-padding:22px;
-background:#faf7f2;
-border-radius:10px;
-"
->
+      <p
+        style="
+          font-size:15px;
+          line-height:1.7;
+          color:#555;
+        "
+      >
+        Thank you for reaching out to David Emuria
+        through the website. We have successfully
+        received your speaking invitation.
+      </p>
 
-<h2
-style="
-margin-top:0;
-color:#3B2314;
-font-size:18px;
-"
->
-Your Request
-</h2>
+      <p
+        style="
+          font-size:15px;
+          line-height:1.7;
+          color:#555;
+        "
+      >
+        David's team will review your request
+        and get back to you shortly.
+      </p>
 
-<p>
-<strong>Event Type:</strong>
-${safeEventType}
-</p>
+      <!-- REQUEST SUMMARY -->
 
-<p>
-<strong>Event Date:</strong>
-${safeDate}
-</p>
+      <div
+        style="
+          margin-top:25px;
+          padding:22px;
+          background:#faf7f2;
+          border-radius:10px;
+        "
+      >
 
-<p>
-<strong>Location:</strong>
-${safeLocation}
-</p>
+        <h2
+          style="
+            margin-top:0;
+            color:#3B2314;
+            font-size:18px;
+          "
+        >
+          Your Request
+        </h2>
 
-</div>
+        <p>
+          <strong>Event Type:</strong>
+          ${safeEventType}
+        </p>
 
-<p
-style="
-margin-top:25px;
-font-size:15px;
-line-height:1.7;
-color:#555;
-"
->
-We appreciate your interest in having
-David speak at your event.
-</p>
+        <p>
+          <strong>Event Date:</strong>
+          ${safeDate}
+        </p>
 
-<p
-style="
-margin-top:25px;
-color:#3B2314;
-"
->
+        <p>
+          <strong>Location:</strong>
+          ${safeLocation}
+        </p>
 
-Blessings,
+      </div>
 
-<br>
+      <p
+        style="
+          margin-top:25px;
+          font-size:15px;
+          line-height:1.7;
+          color:#555;
+        "
+      >
+        We appreciate your interest in having
+        David speak at your event.
+      </p>
 
-<strong>
-David Emuria's Team
-</strong>
+      <p
+        style="
+          margin-top:25px;
+          color:#3B2314;
+        "
+      >
 
-</p>
+        Blessings,
 
-<hr
-style="
-margin:30px 0 20px;
-border:none;
-border-top:1px solid #eeeeee;
-"
-/>
+        <br />
 
-<p
-style="
-margin:0;
-color:#888;
-font-size:12px;
-text-align:center;
-"
->
-This is an automated confirmation
-from David Emuria's official website.
-</p>
+        <strong>
+          David Emuria's Team
+        </strong>
 
-</div>
+      </p>
 
-</div>
+      <hr
+        style="
+          margin:30px 0 20px;
+          border:none;
+          border-top:1px solid #eeeeee;
+        "
+      />
+
+      <p
+        style="
+          margin:0;
+          color:#888;
+          font-size:12px;
+          text-align:center;
+        "
+      >
+        This is an automated confirmation
+        from David Emuria's official website.
+      </p>
+
+    </div>
+
+  </div>
 
 </body>
 
 </html>
           `,
-        };
+        });
 
-      try {
-        await transporter.sendMail(
-          customerMail
-        );
+      /* ======================================================================
+         HANDLE CUSTOMER EMAIL ERROR
+      ====================================================================== */
 
-        console.log(
-          "✅ Customer confirmation sent."
-        );
-      } catch (customerError: any) {
+      if (customerEmailResult.error) {
         console.error(
-          "❌ Customer confirmation failed:"
+          "❌ Resend customer email error:",
+          customerEmailResult.error
         );
 
-        console.error(
-          "Code:",
-          customerError?.code
-        );
-
-        console.error(
-          "Response:",
-          customerError?.response
-        );
-
-        console.error(
-          "Message:",
-          customerError?.message
-        );
-
-        /**
-         * Admin email already succeeded.
+        /*
+         * The admin email was already sent successfully.
          *
-         * We don't want the whole request to look like the
-         * invitation disappeared.
+         * We don't want to tell the frontend that the entire
+         * request failed when the administrator has already
+         * received the invitation.
          */
 
         return res.status(200).json({
           success: true,
 
           message:
-            "Speaking invitation received successfully. However, the confirmation email could not be sent.",
+            "Speaking invitation received, but the confirmation email could not be sent.",
 
           emailNotification: {
             admin: true,
             customer: false,
           },
+
+          customerEmailError:
+            customerEmailResult.error.message ||
+            "Resend failed to send the confirmation email.",
         });
       }
+
+      console.log(
+        "✅ Customer confirmation sent."
+      );
+
+      console.log(
+        "📨 Customer email ID:",
+        customerEmailResult.data?.id ||
+          "No ID returned"
+      );
 
       /* ======================================================================
          SUCCESS
       ====================================================================== */
 
-      console.log("");
       console.log(
-        "=========================================="
+        "========================================"
       );
 
       console.log(
@@ -1210,7 +981,7 @@ from David Emuria's official website.
       );
 
       console.log(
-        "=========================================="
+        "========================================"
       );
 
       return res.status(200).json({
@@ -1223,11 +994,27 @@ from David Emuria's official website.
           admin: true,
           customer: true,
         },
+
+        emailIds: {
+          admin:
+            adminEmailResult.data?.id ||
+            null,
+
+          customer:
+            customerEmailResult.data?.id ||
+            null,
+        },
       });
+
     } catch (error: any) {
+      /* ======================================================================
+         GENERAL ERROR
+      ====================================================================== */
+
       console.error("");
+
       console.error(
-        "=========================================="
+        "========================================"
       );
 
       console.error(
@@ -1235,27 +1022,12 @@ from David Emuria's official website.
       );
 
       console.error(
-        "=========================================="
+        "========================================"
       );
 
       console.error(
-        "Code:",
-        error?.code
-      );
-
-      console.error(
-        "Command:",
-        error?.command
-      );
-
-      console.error(
-        "Response code:",
-        error?.responseCode
-      );
-
-      console.error(
-        "Response:",
-        error?.response
+        "Error:",
+        error
       );
 
       console.error(
@@ -1264,18 +1036,14 @@ from David Emuria's official website.
       );
 
       console.error(
-        "Stack:",
-        error?.stack
-      );
-
-      console.error(
-        "=========================================="
+        "========================================"
       );
 
       return res.status(500).json({
         success: false,
 
         error:
+          error?.message ||
           "Failed to send speaking invitation. Please try again later.",
       });
     }

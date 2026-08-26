@@ -26,6 +26,12 @@ import orderRoutes from "./routes/order.routes";
 import paymentRoutes from "./routes/payment.routes";
 import bookPreviewRoutes from "./routes/bookPreview.routes";
 import authRoutes from "./routes/auth.routes";
+/* ==========================================================================
+   EMAIL SERVICE
+========================================================================== */
+import {
+  isEmailConfigured,
+} from "./services/email.service";
 
 /* ==========================================================================
    ENVIRONMENT
@@ -54,19 +60,19 @@ const BYPASS_AUTH =
   process.env.BYPASS_AUTH === "true";
 
 /* ==========================================================================
-   EMAIL CONFIGURATION STATUS
+   RESEND EMAIL CONFIGURATION
 ========================================================================== */
 
-const smtpConfigured = Boolean(
-  process.env.SMTP_HOST &&
-    process.env.SMTP_USER &&
-    process.env.SMTP_PASS
-);
+const resendConfigured =
+  Boolean(process.env.RESEND_API_KEY);
 
 const adminEmail =
   process.env.ADMIN_EMAIL ||
-  process.env.SMTP_USER ||
-  "davidemuria9780@gmail.com";
+  "mugenijames99@gmail.com";
+
+const resendFromEmail =
+  process.env.RESEND_FROM_EMAIL ||
+  "David Emuria Website <onboarding@resend.dev>";
 
 /* ==========================================================================
    ENVIRONMENT STATUS
@@ -136,35 +142,25 @@ console.log(
     : "✗ Missing"
 );
 
+/* ==========================================================================
+   RESEND STATUS
+========================================================================== */
+
+console.log("");
+console.log("========================================");
+console.log("📧 RESEND EMAIL CONFIGURATION");
+console.log("========================================");
+
 console.log(
-  "SMTP Host:",
-  process.env.SMTP_HOST
+  "Resend API Key:",
+  process.env.RESEND_API_KEY
     ? "✓ Loaded"
     : "✗ Missing"
 );
 
 console.log(
-  "SMTP User:",
-  process.env.SMTP_USER
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "SMTP Password:",
-  process.env.SMTP_PASS
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "SMTP Port:",
-  process.env.SMTP_PORT || "587"
-);
-
-console.log(
-  "SMTP Secure:",
-  process.env.SMTP_SECURE || "false"
+  "Resend From Email:",
+  resendFromEmail
 );
 
 console.log(
@@ -173,11 +169,27 @@ console.log(
 );
 
 console.log(
+  "Email Provider:",
+  "Resend"
+);
+
+console.log(
   "Email Service:",
-  smtpConfigured
+  resendConfigured
     ? "✓ CONFIGURED"
     : "✗ NOT CONFIGURED"
 );
+
+console.log(
+  "SMTP:",
+  "✗ Not used"
+);
+
+console.log("========================================");
+
+/* ==========================================================================
+   AUTH STATUS
+========================================================================== */
 
 console.log(
   "Authentication Bypass:",
@@ -390,9 +402,11 @@ app.get(
     res.status(200).json({
       status: "OK",
 
-      service: "Cozy Book Nook Backend",
+      service:
+        "Cozy Book Nook Backend",
 
-      environment: NODE_ENV,
+      environment:
+        NODE_ENV,
 
       timestamp:
         new Date().toISOString(),
@@ -438,36 +452,34 @@ app.get(
             .PAYPAL_CLIENT_ID
         ),
 
-        email: smtpConfigured,
+        resend:
+          resendConfigured,
+
+        email:
+          resendConfigured,
       },
 
       email: {
+        provider:
+          "Resend",
+
         configured:
-          smtpConfigured,
+          resendConfigured,
 
-        smtpHost: Boolean(
-          process.env.SMTP_HOST
-        ),
-
-        smtpUser: Boolean(
-          process.env.SMTP_USER
-        ),
-
-        smtpPassword: Boolean(
-          process.env.SMTP_PASS
-        ),
-
-        smtpPort:
-          Number(
-            process.env.SMTP_PORT ||
-              587
+        apiKey:
+          Boolean(
+            process.env
+              .RESEND_API_KEY
           ),
 
-        smtpSecure:
-          process.env.SMTP_SECURE ===
-          "true",
+        fromEmail:
+          resendFromEmail,
 
-        adminEmail,
+        adminEmail:
+          adminEmail,
+
+        smtpUsed:
+          false,
       },
     });
   }
@@ -487,14 +499,18 @@ app.get(
       message:
         "Cozy Book Nook API",
 
-      version: "2.1.0",
+      version:
+        "2.1.0",
 
-      status: "running",
+      status:
+        "running",
 
-      environment: NODE_ENV,
+      environment:
+        NODE_ENV,
 
       endpoints: {
-        health: "/health",
+        health:
+          "/health",
 
         books:
           "/api/books",
@@ -520,6 +536,12 @@ app.get(
         inquiryHealth:
           "/api/inquiries/health",
 
+        invitations:
+          "/api/invite",
+
+        invitationHealth:
+          "/api/invite/health",
+
         orders:
           "/api/orders",
 
@@ -532,9 +554,9 @@ app.get(
 
       services: {
         email:
-          smtpConfigured
-            ? "configured"
-            : "not configured",
+          resendConfigured
+            ? "Resend configured"
+            : "Resend not configured",
       },
     });
   }
@@ -593,20 +615,6 @@ app.use(
    INQUIRIES
 -------------------------------------------------------------------------- */
 
-/*
- * IMPORTANT:
- *
- * inquiry.routes.ts contains:
- *
- * router.post("/")
- * router.get("/health")
- *
- * Therefore:
- *
- * /api/inquiries
- * /api/inquiries/health
- */
-
 app.use(
   "/api/inquiries",
   inquiryRoutes
@@ -651,12 +659,6 @@ app.use(
 /* ==========================================================================
    API 404 HANDLER
 ========================================================================== */
-
-/*
- * IMPORTANT:
- *
- * This MUST remain AFTER every app.use("/api/...", ...)
- */
 
 app.use(
   (
@@ -745,7 +747,8 @@ app.use(
         "Internal Server Error",
 
       ...(isDevelopment && {
-        stack: err?.stack,
+        stack:
+          err?.stack,
       }),
     });
   }
@@ -802,6 +805,14 @@ const server = app.listen(
     );
 
     console.log(
+      `🎤 Invitations: http://localhost:${PORT}/api/invite`
+    );
+
+    console.log(
+      `❤️ Invitation Health: http://localhost:${PORT}/api/invite/health`
+    );
+
+    console.log(
       `🖼️ Cover Upload: http://localhost:${PORT}/api/upload-cover`
     );
 
@@ -832,7 +843,7 @@ const server = app.listen(
     );
 
     console.log(
-      "📧 EMAIL CONFIGURATION"
+      "📧 RESEND EMAIL CONFIGURATION"
     );
 
     console.log(
@@ -840,27 +851,20 @@ const server = app.listen(
     );
 
     console.log(
-      "SMTP Host:",
-      process.env.SMTP_HOST ||
-        "Missing"
+      "Email Provider:",
+      "Resend"
     );
 
     console.log(
-      "SMTP User:",
-      process.env.SMTP_USER ||
-        "Missing"
+      "Resend API Key:",
+      process.env.RESEND_API_KEY
+        ? "✓ Loaded"
+        : "✗ Missing"
     );
 
     console.log(
-      "SMTP Port:",
-      process.env.SMTP_PORT ||
-        "587"
-    );
-
-    console.log(
-      "SMTP Secure:",
-      process.env.SMTP_SECURE ||
-        "false"
+      "From Email:",
+      resendFromEmail
     );
 
     console.log(
@@ -869,17 +873,15 @@ const server = app.listen(
     );
 
     console.log(
-      "SMTP Password:",
-      process.env.SMTP_PASS
-        ? "✓ Loaded"
-        : "✗ Missing"
+      "Email Service:",
+      resendConfigured
+        ? "✓ READY"
+        : "✗ NOT CONFIGURED"
     );
 
     console.log(
-      "Email Service:",
-      smtpConfigured
-        ? "✓ READY"
-        : "✗ NOT CONFIGURED"
+      "SMTP:",
+      "✗ Not used"
     );
 
     console.log(
@@ -892,9 +894,13 @@ const server = app.listen(
       );
     }
 
-    if (!smtpConfigured) {
+    if (!resendConfigured) {
       console.warn(
-        "⚠️ WARNING: SMTP email service is NOT configured."
+        "⚠️ WARNING: Resend email service is NOT configured."
+      );
+
+      console.warn(
+        "⚠️ Add RESEND_API_KEY to your .env file."
       );
     }
 

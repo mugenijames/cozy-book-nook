@@ -1,76 +1,82 @@
-import nodemailer from "nodemailer";
+// backend/src/services/email.service.ts
+
+import { Resend } from "resend";
 
 /* =========================================================
-   EMAIL CONFIGURATION
+   RESEND CONFIGURATION
 ========================================================= */
 
-const SMTP_HOST =
-  process.env.SMTP_HOST || "smtp.gmail.com";
-
-const SMTP_PORT = Number(
-  process.env.SMTP_PORT || 587
-);
-
-const SMTP_SECURE =
-  String(process.env.SMTP_SECURE).toLowerCase() ===
-  "true";
-
-const SMTP_USER =
-  process.env.SMTP_USER ||
-  process.env.EMAIL_USER ||
-  "";
-
-const SMTP_PASS =
-  process.env.SMTP_PASS ||
-  process.env.EMAIL_PASS ||
-  "";
-
-const SMTP_FROM =
-  process.env.SMTP_FROM ||
-  `Cozy Book Nook <${SMTP_USER}>`;
+const RESEND_API_KEY =
+  process.env.RESEND_API_KEY || "";
 
 const ADMIN_EMAIL =
   process.env.ADMIN_EMAIL ||
-  SMTP_USER;
+  "mugenijames99@gmail.com";
+
+const RESEND_FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL ||
+  "David Emuria Website <onboarding@resend.dev>";
 
 /* =========================================================
-   TRANSPORTER
+   RESEND CLIENT
 ========================================================= */
 
-const transporter =
-  nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_SECURE,
-
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASS,
-    },
-  });
+const resend = RESEND_API_KEY
+  ? new Resend(RESEND_API_KEY)
+  : null;
 
 /* =========================================================
-   VERIFY SMTP
+   EMAIL CONFIGURATION CHECK
 ========================================================= */
 
-transporter.verify((error) => {
-  if (error) {
-    console.error(
-      "❌ SMTP verification failed:",
-      error.message
-    );
-  } else {
-    console.log(
-      "✅ SMTP server is ready to send emails"
-    );
-  }
-});
+export const isEmailConfigured = (): boolean => {
+  return Boolean(
+    RESEND_API_KEY &&
+      ADMIN_EMAIL &&
+      RESEND_FROM_EMAIL
+  );
+};
 
 /* =========================================================
-   HELPER
+   EMAIL STATUS
 ========================================================= */
 
-const escapeHtml = (value: any): string => {
+console.log("");
+console.log("========================================");
+console.log("📧 EMAIL SERVICE");
+console.log("========================================");
+console.log("Provider: Resend");
+console.log(
+  "API Key:",
+  RESEND_API_KEY
+    ? "✓ Loaded"
+    : "✗ Missing"
+);
+console.log(
+  "From:",
+  RESEND_FROM_EMAIL
+);
+console.log(
+  "Admin:",
+  ADMIN_EMAIL
+);
+console.log(
+  "Status:",
+  isEmailConfigured()
+    ? "✓ READY"
+    : "✗ NOT CONFIGURED"
+);
+console.log("SMTP: ✗ NOT USED");
+console.log("========================================");
+console.log("");
+
+/* =========================================================
+   HTML ESCAPE
+========================================================= */
+
+const escapeHtml = (
+  value: unknown
+): string => {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -80,270 +86,337 @@ const escapeHtml = (value: any): string => {
 };
 
 /* =========================================================
-   SPEAKING INVITATION
+   SEND EMAIL HELPER
 ========================================================= */
 
-export const sendInviteNotification = async (
-  formData: any
+const sendEmail = async (
+  options: {
+    to: string;
+    subject: string;
+    html: string;
+    replyTo?: string;
+  }
 ) => {
-  const {
-    name,
-    email,
-    phone,
-    program,
-    date,
-    preferredDate,
-    location,
-    message,
-  } = formData;
+  if (!resend) {
+    throw new Error(
+      "Resend email service is not configured. " +
+        "Please add RESEND_API_KEY to your environment variables."
+    );
+  }
 
-  const eventDate =
-    preferredDate || date || "Not provided";
+  const result =
+    await resend.emails.send({
+      from: RESEND_FROM_EMAIL,
 
-  await transporter.sendMail({
-    from: SMTP_FROM,
+      to: options.to,
 
-    to: ADMIN_EMAIL,
+      subject: options.subject,
 
-    replyTo: email,
+      html: options.html,
 
-    subject:
-      `🎤 New Speaking Invitation from ${name}`,
+      ...(options.replyTo
+        ? {
+            replyTo:
+              options.replyTo,
+          }
+        : {}),
+    });
 
-    html: `
-      <div style="
-        font-family: Arial, sans-serif;
-        max-width: 650px;
-        margin: auto;
-        color: #3B2314;
-      ">
+  if (result.error) {
+    console.error(
+      "❌ Resend email error:",
+      result.error
+    );
 
-        <div style="
-          background:#4A1F0E;
-          padding:24px;
-          border-radius:12px 12px 0 0;
-          color:white;
-        ">
-          <h2 style="margin:0;">
-            New Speaking Invitation
-          </h2>
+    throw new Error(
+      result.error.message ||
+        "Failed to send email through Resend."
+    );
+  }
 
-          <p style="margin:8px 0 0;">
-            A new speaking request has been
-            submitted from the website.
-          </p>
-        </div>
+  console.log(
+    "✅ Email sent successfully:",
+    result.data?.id || "No ID"
+  );
 
-        <div style="
-          padding:24px;
-          background:#FAF8F5;
-          border:1px solid #E6DED5;
-          border-top:0;
-        ">
-
-          <table style="
-            width:100%;
-            border-collapse:collapse;
-          ">
-
-            <tr>
-              <td style="padding:8px 0;">
-                <strong>Name:</strong>
-              </td>
-              <td style="padding:8px 0;">
-                ${escapeHtml(name)}
-              </td>
-            </tr>
-
-            <tr>
-              <td style="padding:8px 0;">
-                <strong>Email:</strong>
-              </td>
-              <td style="padding:8px 0;">
-                ${escapeHtml(email)}
-              </td>
-            </tr>
-
-            <tr>
-              <td style="padding:8px 0;">
-                <strong>Phone:</strong>
-              </td>
-              <td style="padding:8px 0;">
-                ${escapeHtml(phone || "Not provided")}
-              </td>
-            </tr>
-
-            <tr>
-              <td style="padding:8px 0;">
-                <strong>Program:</strong>
-              </td>
-              <td style="padding:8px 0;">
-                ${escapeHtml(program)}
-              </td>
-            </tr>
-
-            <tr>
-              <td style="padding:8px 0;">
-                <strong>Preferred Date:</strong>
-              </td>
-              <td style="padding:8px 0;">
-                ${escapeHtml(eventDate)}
-              </td>
-            </tr>
-
-            <tr>
-              <td style="padding:8px 0;">
-                <strong>Location:</strong>
-              </td>
-              <td style="padding:8px 0;">
-                ${escapeHtml(
-                  location || "Not provided"
-                )}
-              </td>
-            </tr>
-
-          </table>
-
-          <div style="margin-top:24px;">
-
-            <strong>Message:</strong>
-
-            <div style="
-              margin-top:8px;
-              background:white;
-              border:1px solid #E6DED5;
-              padding:16px;
-              border-radius:10px;
-              white-space:pre-wrap;
-            ">
-              ${escapeHtml(
-                message ||
-                  "No additional message"
-              )}
-            </div>
-
-          </div>
-
-          <p style="
-            margin-top:24px;
-            color:#777;
-            font-size:13px;
-          ">
-            Submitted from the David Emuria website.
-          </p>
-
-        </div>
-      </div>
-    `,
-  });
+  return result.data;
 };
 
 /* =========================================================
-   SPEAKING CUSTOMER CONFIRMATION
+   SPEAKING INVITATION — ADMIN
 ========================================================= */
 
-export const sendConfirmationEmail = async (
-  formData: any
-) => {
-  const {
-    name,
-    email,
-    program,
-    date,
-    preferredDate,
-  } = formData;
+export const sendInviteNotification =
+  async (formData: any) => {
+    const {
+      name,
+      email,
+      phone,
+      program,
+      date,
+      preferredDate,
+      location,
+      message,
+    } = formData;
 
-  const eventDate =
-    preferredDate || date || "Not provided";
+    const eventDate =
+      preferredDate ||
+      date ||
+      "Not provided";
 
-  await transporter.sendMail({
-    from: SMTP_FROM,
+    return sendEmail({
+      to: ADMIN_EMAIL,
 
-    to: email,
+      replyTo: email,
 
-    subject:
-      "✅ We received your speaking invitation",
+      subject:
+        `🎤 New Speaking Invitation from ${name}`,
 
-    html: `
-      <div style="
-        font-family: Arial, sans-serif;
-        max-width:650px;
-        margin:auto;
-        color:#3B2314;
-      ">
-
+      html: `
         <div style="
-          background:#4A1F0E;
-          padding:24px;
-          border-radius:12px 12px 0 0;
-          color:white;
+          font-family:Arial,sans-serif;
+          max-width:650px;
+          margin:auto;
+          color:#3B2314;
         ">
-
-          <h2 style="margin:0;">
-            Thank you, ${escapeHtml(name)}!
-          </h2>
-
-          <p style="margin:8px 0 0;">
-            Your speaking invitation has been
-            received successfully.
-          </p>
-
-        </div>
-
-        <div style="
-          padding:24px;
-          background:#FAF8F5;
-          border:1px solid #E6DED5;
-          border-top:0;
-        ">
-
-          <p>
-            Thank you for inviting David Emuria
-            to speak at your event.
-          </p>
 
           <div style="
-            background:#FFF8E1;
-            border:1px solid #D4AF37;
-            padding:16px;
-            border-radius:12px;
-            margin-top:18px;
+            background:#4A1F0E;
+            padding:24px;
+            border-radius:12px 12px 0 0;
+            color:white;
           ">
 
-            <p>
-              <strong>Program:</strong>
-              ${escapeHtml(program)}
-            </p>
+            <h2 style="margin:0;">
+              New Speaking Invitation
+            </h2>
 
-            <p>
-              <strong>Preferred Date:</strong>
-              ${escapeHtml(eventDate)}
+            <p style="margin:8px 0 0;">
+              A new speaking request has been
+              submitted from the website.
             </p>
 
           </div>
 
-          <p style="margin-top:20px;">
-            David's team will review your request
-            and get back to you using the contact
-            details you provided.
-          </p>
-
-          <p style="
-            margin-top:28px;
-            color:#666;
+          <div style="
+            padding:24px;
+            background:#FAF8F5;
+            border:1px solid #E6DED5;
+            border-top:0;
           ">
-            Blessings,<br/>
-            <strong>David Emuria's Team</strong>
-          </p>
 
+            <table style="
+              width:100%;
+              border-collapse:collapse;
+            ">
+
+              <tr>
+                <td style="padding:8px 0;">
+                  <strong>Name:</strong>
+                </td>
+
+                <td style="padding:8px 0;">
+                  ${escapeHtml(name)}
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:8px 0;">
+                  <strong>Email:</strong>
+                </td>
+
+                <td style="padding:8px 0;">
+                  ${escapeHtml(email)}
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:8px 0;">
+                  <strong>Phone:</strong>
+                </td>
+
+                <td style="padding:8px 0;">
+                  ${escapeHtml(
+                    phone ||
+                      "Not provided"
+                  )}
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:8px 0;">
+                  <strong>Program:</strong>
+                </td>
+
+                <td style="padding:8px 0;">
+                  ${escapeHtml(program)}
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:8px 0;">
+                  <strong>Preferred Date:</strong>
+                </td>
+
+                <td style="padding:8px 0;">
+                  ${escapeHtml(eventDate)}
+                </td>
+              </tr>
+
+              <tr>
+                <td style="padding:8px 0;">
+                  <strong>Location:</strong>
+                </td>
+
+                <td style="padding:8px 0;">
+                  ${escapeHtml(
+                    location ||
+                      "Not provided"
+                  )}
+                </td>
+              </tr>
+
+            </table>
+
+            <div style="margin-top:24px;">
+
+              <strong>Message:</strong>
+
+              <div style="
+                margin-top:8px;
+                background:white;
+                border:1px solid #E6DED5;
+                padding:16px;
+                border-radius:10px;
+                white-space:pre-wrap;
+              ">
+                ${escapeHtml(
+                  message ||
+                    "No additional message"
+                )}
+              </div>
+
+            </div>
+
+            <p style="
+              margin-top:24px;
+              color:#777;
+              font-size:13px;
+            ">
+              Submitted from the David Emuria website.
+            </p>
+
+          </div>
         </div>
-      </div>
-    `,
-  });
-};
+      `,
+    });
+  };
 
 /* =========================================================
-   BOOK INQUIRY — ADMIN NOTIFICATION
+   SPEAKING INVITATION — CUSTOMER
+========================================================= */
+
+export const sendConfirmationEmail =
+  async (formData: any) => {
+    const {
+      name,
+      email,
+      program,
+      date,
+      preferredDate,
+    } = formData;
+
+    const eventDate =
+      preferredDate ||
+      date ||
+      "Not provided";
+
+    return sendEmail({
+      to: email,
+
+      subject:
+        "✅ We received your speaking invitation",
+
+      html: `
+        <div style="
+          font-family:Arial,sans-serif;
+          max-width:650px;
+          margin:auto;
+          color:#3B2314;
+        ">
+
+          <div style="
+            background:#4A1F0E;
+            padding:24px;
+            border-radius:12px 12px 0 0;
+            color:white;
+          ">
+
+            <h2 style="margin:0;">
+              Thank you, ${escapeHtml(name)}!
+            </h2>
+
+            <p style="margin:8px 0 0;">
+              Your speaking invitation has been
+              received successfully.
+            </p>
+
+          </div>
+
+          <div style="
+            padding:24px;
+            background:#FAF8F5;
+            border:1px solid #E6DED5;
+            border-top:0;
+          ">
+
+            <p>
+              Thank you for inviting David Emuria
+              to speak at your event.
+            </p>
+
+            <div style="
+              background:#FFF8E1;
+              border:1px solid #D4AF37;
+              padding:16px;
+              border-radius:12px;
+              margin-top:18px;
+            ">
+
+              <p>
+                <strong>Program:</strong>
+                ${escapeHtml(program)}
+              </p>
+
+              <p>
+                <strong>Preferred Date:</strong>
+                ${escapeHtml(eventDate)}
+              </p>
+
+            </div>
+
+            <p style="margin-top:20px;">
+              David's team will review your request
+              and get back to you using the contact
+              details you provided.
+            </p>
+
+            <p style="
+              margin-top:28px;
+              color:#666;
+            ">
+              Blessings,<br/>
+              <strong>David Emuria's Team</strong>
+            </p>
+
+          </div>
+        </div>
+      `,
+    });
+  };
+
+/* =========================================================
+   BOOK INQUIRY — ADMIN
 ========================================================= */
 
 export const sendInquiryAdminNotification =
@@ -370,15 +443,15 @@ export const sendInquiryAdminNotification =
       orderId ||
       "Not provided";
 
-    await transporter.sendMail({
-      from: SMTP_FROM,
-
+    return sendEmail({
       to: ADMIN_EMAIL,
 
       replyTo: email,
 
       subject:
-        `📚 New Book Inquiry — ${bookTitle || "Book"}`,
+        `📚 New Book Inquiry — ${
+          bookTitle || "Book"
+        }`,
 
       html: `
         <div style="
@@ -438,7 +511,8 @@ export const sendInquiryAdminNotification =
                 font-size:20px;
               ">
                 ${escapeHtml(
-                  bookTitle || "Unknown Book"
+                  bookTitle ||
+                    "Unknown Book"
                 )}
               </h3>
 
@@ -450,7 +524,8 @@ export const sendInquiryAdminNotification =
                       font-size:12px;
                       color:#777;
                     ">
-                      Book ID: ${escapeHtml(bookId)}
+                      Book ID:
+                      ${escapeHtml(bookId)}
                     </p>
                   `
                   : ""
@@ -558,7 +633,7 @@ export const sendInquiryAdminNotification =
   };
 
 /* =========================================================
-   BOOK INQUIRY — CUSTOMER CONFIRMATION
+   BOOK INQUIRY — CUSTOMER
 ========================================================= */
 
 export const sendInquiryCustomerConfirmation =
@@ -581,14 +656,13 @@ export const sendInquiryCustomerConfirmation =
       orderId ||
       null;
 
-    await transporter.sendMail({
-      from: SMTP_FROM,
-
+    return sendEmail({
       to: email,
 
       subject:
         `✅ Inquiry Received — ${
-          bookTitle || "Cozy Book Nook"
+          bookTitle ||
+          "Cozy Book Nook"
         }`,
 
       html: `
@@ -716,7 +790,7 @@ export const sendInquiryCustomerConfirmation =
             </p>
 
             <p style="
-              margin-top:28px;
+              margin-top:24px;
               color:#666;
             ">
               Thank you for choosing Cozy Book Nook.
@@ -737,8 +811,8 @@ export const sendInquiryCustomerConfirmation =
   };
 
 /* =========================================================
-   GENERIC ORDER ADMIN NOTIFICATION
-   ========================================================= */
+   ORDER — ADMIN
+========================================================= */
 
 export const sendOrderAdminNotification =
   async (formData: any) => {
@@ -757,16 +831,15 @@ export const sendOrderAdminNotification =
       notes,
     } = formData;
 
-    await transporter.sendMail({
-      from: SMTP_FROM,
-
+    return sendEmail({
       to: ADMIN_EMAIL,
 
       replyTo: email,
 
       subject:
         `🛒 New Order — ${
-          bookTitle || "Cozy Book Nook"
+          bookTitle ||
+          "Cozy Book Nook"
         }`,
 
       html: `
@@ -793,14 +866,16 @@ export const sendOrderAdminNotification =
           <p>
             <strong>Phone:</strong>
             ${escapeHtml(
-              phoneNumber || "Not provided"
+              phoneNumber ||
+                "Not provided"
             )}
           </p>
 
           <p>
             <strong>Book:</strong>
             ${escapeHtml(
-              bookTitle || "Not provided"
+              bookTitle ||
+                "Not provided"
             )}
           </p>
 
@@ -812,7 +887,8 @@ export const sendOrderAdminNotification =
           <p>
             <strong>Payment Method:</strong>
             ${escapeHtml(
-              paymentMethod || "Not provided"
+              paymentMethod ||
+                "Not provided"
             )}
           </p>
 
@@ -827,13 +903,17 @@ export const sendOrderAdminNotification =
 
           <p>
             <strong>Status:</strong>
-            ${escapeHtml(status || "PENDING")}
+            ${escapeHtml(
+              status ||
+                "PENDING"
+            )}
           </p>
 
           <p>
             <strong>Payment Status:</strong>
             ${escapeHtml(
-              paymentStatus || "UNPAID"
+              paymentStatus ||
+                "UNPAID"
             )}
           </p>
 
@@ -863,8 +943,8 @@ export const sendOrderAdminNotification =
   };
 
 /* =========================================================
-   GENERIC ORDER CUSTOMER CONFIRMATION
-   ========================================================= */
+   ORDER — CUSTOMER
+========================================================= */
 
 export const sendOrderCustomerConfirmation =
   async (formData: any) => {
@@ -878,14 +958,13 @@ export const sendOrderCustomerConfirmation =
       status,
     } = formData;
 
-    await transporter.sendMail({
-      from: SMTP_FROM,
-
+    return sendEmail({
       to: email,
 
       subject:
         `✅ Order Received — ${
-          bookTitle || "Cozy Book Nook"
+          bookTitle ||
+          "Cozy Book Nook"
         }`,
 
       html: `
@@ -896,7 +975,8 @@ export const sendOrderCustomerConfirmation =
         ">
 
           <h2>
-            Thank you, ${escapeHtml(customerName)}!
+            Thank you,
+            ${escapeHtml(customerName)}!
           </h2>
 
           <p>
@@ -906,7 +986,8 @@ export const sendOrderCustomerConfirmation =
           <p>
             <strong>Book:</strong>
             ${escapeHtml(
-              bookTitle || "Not provided"
+              bookTitle ||
+                "Not provided"
             )}
           </p>
 
@@ -923,7 +1004,10 @@ export const sendOrderCustomerConfirmation =
 
           <p>
             <strong>Status:</strong>
-            ${escapeHtml(status || "PENDING")}
+            ${escapeHtml(
+              status ||
+                "PENDING"
+            )}
           </p>
 
           <p>
