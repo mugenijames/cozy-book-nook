@@ -1,8 +1,4 @@
-import {
-  FormEvent,
-  useState,
-} from "react";
-
+import { FormEvent, useState } from "react";
 import {
   Calendar,
   CheckCircle2,
@@ -41,9 +37,7 @@ export default function BookingModal({
   onClose,
 }: BookingModalProps) {
   const [formData, setFormData] =
-    useState<FormData>(
-      initialFormData
-    );
+    useState<FormData>(initialFormData);
 
   const [isSubmitting, setIsSubmitting] =
     useState(false);
@@ -58,37 +52,32 @@ export default function BookingModal({
     return null;
   }
 
-  /* ============================================================
-     HANDLE INPUT
-  ============================================================ */
+  // ============================================================
+  // HANDLE INPUT
+  // ============================================================
 
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement |
-      HTMLTextAreaElement |
-      HTMLSelectElement
+        HTMLTextAreaElement |
+        HTMLSelectElement
     >
   ) => {
-    const {
-      name,
-      value,
-    } = e.target;
+    const { name, value } = e.target;
 
-    setFormData(
-      (previous) => ({
-        ...previous,
-        [name]: value,
-      })
-    );
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
 
     if (error) {
       setError("");
     }
   };
 
-  /* ============================================================
-     SUBMIT
-  ============================================================ */
+  // ============================================================
+  // SUBMIT
+  // ============================================================
 
   const handleSubmit = async (
     e: FormEvent<HTMLFormElement>
@@ -97,9 +86,9 @@ export default function BookingModal({
 
     setError("");
 
-    /* ----------------------------------------------------------
-       VALIDATION
-    ---------------------------------------------------------- */
+    // ----------------------------------------------------------
+    // VALIDATION
+    // ----------------------------------------------------------
 
     if (
       !formData.name.trim() ||
@@ -110,93 +99,92 @@ export default function BookingModal({
       setError(
         "Please fill in all required fields."
       );
-
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      /* --------------------------------------------------------
-         API BASE URL
+      // ========================================================
+      // API CONFIGURATION
+      // ========================================================
 
-         VITE_API_BASE_URL should be:
+      const configuredApiUrl =
+        import.meta.env.VITE_API_BASE_URL;
 
-         https://cozy-book-nook-1.onrender.com
+      const defaultLocalUrl =
+        "http://localhost:5000";
 
-         WITHOUT /api
-      -------------------------------------------------------- */
+      const defaultProductionUrl =
+        "https://cozy-book-nook-1.onrender.com";
 
-      const API_BASE_URL =
-        import.meta.env
-          .VITE_API_BASE_URL ||
-        (
-          import.meta.env.DEV
-            ? "http://localhost:5000"
-            : "https://cozy-book-nook-1.onrender.com"
-        );
+      const apiBaseUrl =
+        configuredApiUrl ||
+        (import.meta.env.DEV
+          ? defaultLocalUrl
+          : defaultProductionUrl);
 
+      // Remove trailing slash
       const normalizedBaseUrl =
-        String(
-          API_BASE_URL
-        ).replace(/\/+$/, "");
+        String(apiBaseUrl).replace(/\/+$/, "");
 
-      /* --------------------------------------------------------
-         CORRECT BACKEND ENDPOINT
-
-         server.ts:
-
-         app.use(
-           "/api/invite",
-           invitationRoutes
-         );
-
-         invitation.routes.ts:
-
-         router.post("/", ...)
-      -------------------------------------------------------- */
+      // IMPORTANT:
+      // Backend route:
+      // app.use("/api/invite-david", invitationRoutes)
+      //
+      // Therefore the final endpoint is:
+      // /api/invite-david
 
       const endpoint =
-        `${normalizedBaseUrl}/api/invite`;
+        `${normalizedBaseUrl}/api/invite-david`;
 
       console.log(
-        "📡 Speaking API URL:",
+        "===================================="
+      );
+
+      console.log(
+        "📡 API BASE URL:",
+        normalizedBaseUrl
+      );
+
+      console.log(
+        "📡 SPEAKING INVITATION ENDPOINT:",
         endpoint
       );
 
       console.log(
-        "📨 Submitting speaking request:",
+        "📨 FORM DATA:",
         formData
       );
 
-      /* --------------------------------------------------------
-         SEND REQUEST
-      -------------------------------------------------------- */
+      console.log(
+        "===================================="
+      );
 
-      const response =
-        await fetch(
-          endpoint,
-          {
-            method: "POST",
+      // ========================================================
+      // SEND REQUEST
+      // ========================================================
 
-            headers: {
-              "Content-Type":
-                "application/json",
+      const response = await fetch(
+        endpoint,
+        {
+          method: "POST",
 
-              Accept:
-                "application/json",
-            },
+          headers: {
+            "Content-Type":
+              "application/json",
 
-            body:
-              JSON.stringify(
-                formData
-              ),
-          }
-        );
+            Accept:
+              "application/json",
+          },
 
-      /* --------------------------------------------------------
-         HANDLE RESPONSE
-      -------------------------------------------------------- */
+          body: JSON.stringify(formData),
+        }
+      );
+
+      // ========================================================
+      // READ RESPONSE
+      // ========================================================
 
       const contentType =
         response.headers.get(
@@ -210,8 +198,7 @@ export default function BookingModal({
           "application/json"
         )
       ) {
-        data =
-          await response.json();
+        data = await response.json();
       } else {
         const text =
           await response.text();
@@ -222,68 +209,81 @@ export default function BookingModal({
       }
 
       console.log(
-        "📨 Speaking API response:",
+        "📨 BACKEND RESPONSE:",
         data
       );
 
-      /* --------------------------------------------------------
-         HANDLE HTTP ERRORS
-      -------------------------------------------------------- */
+      console.log(
+        "📊 HTTP STATUS:",
+        response.status
+      );
+
+      // ========================================================
+      // HTTP ERROR
+      // ========================================================
 
       if (!response.ok) {
         throw new Error(
           data?.error ||
-          data?.message ||
-          `Request failed with status ${response.status}`
+            data?.message ||
+            `Request failed with status ${response.status}`
         );
       }
 
-      /* --------------------------------------------------------
-         HANDLE APPLICATION ERRORS
-      -------------------------------------------------------- */
+      // ========================================================
+      // APPLICATION ERROR
+      // ========================================================
 
       if (
         data?.success === false
       ) {
         throw new Error(
           data?.error ||
-          data?.message ||
-          "Failed to submit speaking invitation."
+            data?.message ||
+            "Failed to submit speaking invitation."
         );
       }
 
-      /* --------------------------------------------------------
-         SUCCESS
-      -------------------------------------------------------- */
+      // ========================================================
+      // SUCCESS
+      // ========================================================
 
       console.log(
-        "✅ Speaking request submitted successfully."
+        "✅ Speaking invitation submitted successfully."
       );
 
-      console.log(
-        "📧 Email notification status:",
+      if (
         data?.emailNotification
-      );
+      ) {
+        console.log(
+          "📧 Email notification:",
+          data.emailNotification
+        );
+      }
 
       setSubmitted(true);
 
       setFormData(
         initialFormData
       );
-
     } catch (err) {
       console.error(
-        "❌ Speaking request error:",
+        "❌ Speaking invitation error:",
         err
       );
 
+      // --------------------------------------------------------
+      // NETWORK / CORS ERROR
+      // --------------------------------------------------------
+
       if (
         err instanceof TypeError &&
-        err.message ===
-          "Failed to fetch"
+        err.message
+          .toLowerCase()
+          .includes("fetch")
       ) {
         setError(
-          "Unable to connect to the server. Please check your internet connection or try again."
+          "Unable to connect to the server. Please check your internet connection and try again."
         );
       } else {
         setError(
@@ -292,15 +292,14 @@ export default function BookingModal({
             : "Something went wrong. Please try again."
         );
       }
-
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  /* ============================================================
-     CLOSE
-  ============================================================ */
+  // ============================================================
+  // CLOSE
+  // ============================================================
 
   const handleClose = () => {
     if (isSubmitting) {
@@ -318,9 +317,9 @@ export default function BookingModal({
     onClose();
   };
 
-  /* ============================================================
-     UI
-  ============================================================ */
+  // ============================================================
+  // UI
+  // ============================================================
 
   return (
     <div
@@ -349,7 +348,6 @@ export default function BookingModal({
       aria-modal="true"
       aria-labelledby="book-david-title"
     >
-
       <div
         className="
           relative
@@ -362,10 +360,9 @@ export default function BookingModal({
           shadow-2xl
         "
       >
-
-        {/* ======================================================
+        {/* =====================================================
             HEADER
-        ======================================================= */}
+        ====================================================== */}
 
         <div
           className="
@@ -383,9 +380,7 @@ export default function BookingModal({
             sm:px-8
           "
         >
-
           <div>
-
             <p
               className="
                 text-xs
@@ -425,7 +420,6 @@ export default function BookingModal({
               our team will get back to you
               shortly.
             </p>
-
           </div>
 
           <button
@@ -452,15 +446,13 @@ export default function BookingModal({
           >
             <X className="h-5 w-5" />
           </button>
-
         </div>
 
-        {/* ======================================================
+        {/* =====================================================
             SUCCESS
-        ======================================================= */}
+        ====================================================== */}
 
         {submitted ? (
-
           <div
             className="
               px-6
@@ -469,7 +461,6 @@ export default function BookingModal({
               sm:px-8
             "
           >
-
             <div
               className="
                 mx-auto
@@ -482,7 +473,6 @@ export default function BookingModal({
                 bg-green-50
               "
             >
-
               <CheckCircle2
                 className="
                   h-9
@@ -490,7 +480,6 @@ export default function BookingModal({
                   text-green-600
                 "
               />
-
             </div>
 
             <h3
@@ -552,11 +541,8 @@ export default function BookingModal({
             >
               Done
             </button>
-
           </div>
-
         ) : (
-
           <form
             onSubmit={handleSubmit}
             className="
@@ -565,13 +551,11 @@ export default function BookingModal({
               sm:px-8
             "
           >
-
-            {/* ==================================================
+            {/* =================================================
                 ERROR
-            =================================================== */}
+            ================================================== */}
 
             {error && (
-
               <div
                 role="alert"
                 className="
@@ -589,12 +573,11 @@ export default function BookingModal({
               >
                 {error}
               </div>
-
             )}
 
-            {/* ==================================================
+            {/* =================================================
                 FORM GRID
-            =================================================== */}
+            ================================================== */}
 
             <div
               className="
@@ -603,11 +586,9 @@ export default function BookingModal({
                 sm:grid-cols-2
               "
             >
-
               {/* NAME */}
 
               <div>
-
                 <label
                   htmlFor="invite-name"
                   className="
@@ -651,13 +632,11 @@ export default function BookingModal({
                     focus:ring-[#C17B4F]/20
                   "
                 />
-
               </div>
 
               {/* EMAIL */}
 
               <div>
-
                 <label
                   htmlFor="invite-email"
                   className="
@@ -701,13 +680,11 @@ export default function BookingModal({
                     focus:ring-[#C17B4F]/20
                   "
                 />
-
               </div>
 
               {/* PHONE */}
 
               <div>
-
                 <label
                   htmlFor="invite-phone"
                   className="
@@ -747,13 +724,11 @@ export default function BookingModal({
                     focus:ring-[#C17B4F]/20
                   "
                 />
-
               </div>
 
               {/* EVENT TYPE */}
 
               <div>
-
                 <label
                   htmlFor="invite-eventType"
                   className="
@@ -773,9 +748,7 @@ export default function BookingModal({
                 <select
                   id="invite-eventType"
                   name="eventType"
-                  value={
-                    formData.eventType
-                  }
+                  value={formData.eventType}
                   onChange={handleChange}
                   required
                   className="
@@ -795,7 +768,6 @@ export default function BookingModal({
                     focus:ring-[#C17B4F]/20
                   "
                 >
-
                   <option value="">
                     Select event type
                   </option>
@@ -835,15 +807,12 @@ export default function BookingModal({
                   <option value="Other">
                     Other
                   </option>
-
                 </select>
-
               </div>
 
               {/* DATE */}
 
               <div>
-
                 <label
                   htmlFor="invite-date"
                   className="
@@ -861,7 +830,6 @@ export default function BookingModal({
                 </label>
 
                 <div className="relative">
-
                   <Calendar
                     className="
                       pointer-events-none
@@ -879,9 +847,7 @@ export default function BookingModal({
                     id="invite-date"
                     name="date"
                     type="date"
-                    value={
-                      formData.date
-                    }
+                    value={formData.date}
                     onChange={handleChange}
                     required
                     className="
@@ -902,15 +868,12 @@ export default function BookingModal({
                       focus:ring-[#C17B4F]/20
                     "
                   />
-
                 </div>
-
               </div>
 
               {/* LOCATION */}
 
               <div>
-
                 <label
                   htmlFor="invite-location"
                   className="
@@ -925,7 +888,6 @@ export default function BookingModal({
                 </label>
 
                 <div className="relative">
-
                   <MapPin
                     className="
                       pointer-events-none
@@ -943,9 +905,7 @@ export default function BookingModal({
                     id="invite-location"
                     name="location"
                     type="text"
-                    value={
-                      formData.location
-                    }
+                    value={formData.location}
                     onChange={handleChange}
                     placeholder="City, venue or online"
                     className="
@@ -967,19 +927,15 @@ export default function BookingModal({
                       focus:ring-[#C17B4F]/20
                     "
                   />
-
                 </div>
-
               </div>
-
             </div>
 
-            {/* ==================================================
+            {/* =================================================
                 MESSAGE
-            =================================================== */}
+            ================================================== */}
 
             <div className="mt-5">
-
               <label
                 htmlFor="invite-message"
                 className="
@@ -996,9 +952,7 @@ export default function BookingModal({
               <textarea
                 id="invite-message"
                 name="message"
-                value={
-                  formData.message
-                }
+                value={formData.message}
                 onChange={handleChange}
                 rows={5}
                 placeholder="Tell us more about your event, audience, expected number of attendees, and what you would like David to speak about..."
@@ -1022,12 +976,11 @@ export default function BookingModal({
                   focus:ring-[#C17B4F]/20
                 "
               />
-
             </div>
 
-            {/* ==================================================
+            {/* =================================================
                 FOOTER
-            =================================================== */}
+            ================================================== */}
 
             <div
               className="
@@ -1039,7 +992,6 @@ export default function BookingModal({
                 sm:justify-end
               "
             >
-
               <button
                 type="button"
                 onClick={handleClose}
@@ -1086,9 +1038,7 @@ export default function BookingModal({
                   disabled:opacity-60
                 "
               >
-
                 {isSubmitting ? (
-
                   <>
                     <Loader2
                       className="
@@ -1097,18 +1047,12 @@ export default function BookingModal({
                         animate-spin
                       "
                     />
-
                     Sending...
                   </>
-
                 ) : (
-
                   "Send Speaking Invitation"
-
                 )}
-
               </button>
-
             </div>
 
             <p
@@ -1124,13 +1068,9 @@ export default function BookingModal({
               be used to respond to your
               speaking request.
             </p>
-
           </form>
-
         )}
-
       </div>
-
     </div>
   );
 }
