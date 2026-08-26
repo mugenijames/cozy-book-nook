@@ -16,6 +16,10 @@ interface InquiryBody {
   participationType?: string;
   subject?: string;
   message?: string;
+
+  bookId?: string;
+  bookTitle?: string;
+  bookAuthor?: string;
 }
 
 /* ==========================================================================
@@ -23,8 +27,13 @@ interface InquiryBody {
    ========================================================================== */
 
 const smtpHost = process.env.SMTP_HOST;
-const smtpPort = Number(process.env.SMTP_PORT || 587);
+
+const smtpPort = Number(
+  process.env.SMTP_PORT || 587
+);
+
 const smtpUser = process.env.SMTP_USER;
+
 const smtpPass = process.env.SMTP_PASS;
 
 const adminEmail =
@@ -33,16 +42,22 @@ const adminEmail =
   "davidemuria9780@gmail.com";
 
 /*
- * We create the transporter once when the server starts.
+ * Create the transporter once when the server starts.
  */
+
 const transporter =
-  smtpHost && smtpUser && smtpPass
+  smtpHost &&
+  smtpUser &&
+  smtpPass
     ? nodemailer.createTransport({
         host: smtpHost,
+
         port: smtpPort,
+
         secure:
           process.env.SMTP_SECURE === "true" ||
           smtpPort === 465,
+
         auth: {
           user: smtpUser,
           pass: smtpPass,
@@ -54,7 +69,9 @@ const transporter =
    HELPERS
    ========================================================================== */
 
-const escapeHtml = (value: string): string => {
+const escapeHtml = (
+  value: string
+): string => {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -63,21 +80,40 @@ const escapeHtml = (value: string): string => {
     .replace(/'/g, "&#039;");
 };
 
+/* --------------------------------------------------------------------------
+   NORMALIZE PARTICIPATION TYPE
+   -------------------------------------------------------------------------- */
+
 const normalizeParticipationType = (
   value: string
 ): string => {
-  const normalized = value.trim().toLowerCase();
+  const normalized = value
+    .trim()
+    .toLowerCase();
 
-  if (normalized === "donate") {
+  if (
+    normalized === "donate"
+  ) {
     return "Donate";
   }
 
-  if (normalized === "sponsor") {
+  if (
+    normalized === "sponsor"
+  ) {
     return "Sponsor";
   }
 
-  if (normalized === "partner") {
+  if (
+    normalized === "partner"
+  ) {
     return "Partner";
+  }
+
+  if (
+    normalized === "book inquiry" ||
+    normalized === "book"
+  ) {
+    return "Book Inquiry";
   }
 
   return value.trim();
@@ -88,18 +124,17 @@ const normalizeParticipationType = (
    ========================================================================== */
 
 /**
- * Dear Dad Initiative inquiry endpoint.
+ * Handles:
  *
- * Supports:
- *
- * Donate
- * Sponsor
- * Partner
+ * 1. Book inquiries
+ * 2. Donate inquiries
+ * 3. Sponsor inquiries
+ * 4. Partner inquiries
  *
  * Sends:
  *
- * 1. Notification to admin
- * 2. Confirmation to participant
+ * 1. Notification email to administrator
+ * 2. Confirmation email to customer
  */
 
 router.post(
@@ -116,59 +151,80 @@ router.post(
         participationType,
         subject,
         message,
-      } = req.body as InquiryBody;
+        bookId,
+        bookTitle,
+        bookAuthor,
+      } =
+        req.body as InquiryBody;
 
-      /* --------------------------------------------------------------------
+      /* ====================================================================
          VALIDATION
-         -------------------------------------------------------------------- */
+      ==================================================================== */
 
       if (!name?.trim()) {
         return res.status(400).json({
           success: false,
-          error: "Name is required.",
+          error:
+            "Name is required.",
         });
       }
 
       if (!email?.trim()) {
         return res.status(400).json({
           success: false,
-          error: "Email address is required.",
+          error:
+            "Email address is required.",
         });
       }
 
-      if (!participationType?.trim()) {
-        return res.status(400).json({
-          success: false,
-          error:
-            "Please select how you would like to participate.",
-        });
-      }
+      /*
+       * Book inquiries are automatically treated as
+       * "Book Inquiry" if no participationType is supplied.
+       */
+
+      const requestedType =
+        participationType?.trim() ||
+        "Book Inquiry";
 
       const normalizedType =
         normalizeParticipationType(
-          participationType
+          requestedType
         );
 
+      const allowedTypes = [
+        "Donate",
+        "Sponsor",
+        "Partner",
+        "Book Inquiry",
+      ];
+
       if (
-        !["Donate", "Sponsor", "Partner"].includes(
+        !allowedTypes.includes(
           normalizedType
         )
       ) {
         return res.status(400).json({
           success: false,
           error:
-            "Invalid participation type. Please choose Donate, Sponsor, or Partner.",
+            "Invalid inquiry type.",
         });
       }
 
-      /* --------------------------------------------------------------------
+      /* ====================================================================
          EMAIL VALIDATION
-         -------------------------------------------------------------------- */
+
+         IMPORTANT:
+         Correct email regex.
+      ==================================================================== */
 
       const emailRegex =
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-      if (!emailRegex.test(email.trim())) {
+      if (
+        !emailRegex.test(
+          email.trim()
+        )
+      ) {
         return res.status(400).json({
           success: false,
           error:
@@ -176,46 +232,105 @@ router.post(
         });
       }
 
-      /* --------------------------------------------------------------------
+      /* ====================================================================
          CLEAN DATA
-         -------------------------------------------------------------------- */
+      ==================================================================== */
 
-      const cleanName = name.trim();
-      const cleanEmail = email.trim();
+      const cleanName =
+        name.trim();
+
+      const cleanEmail =
+        email.trim().toLowerCase();
+
       const cleanPhone =
-        phone?.trim() || "Not provided";
+        phone?.trim() ||
+        "Not provided";
+
+      const cleanBookTitle =
+        bookTitle?.trim() ||
+        "Not specified";
+
+      const cleanBookAuthor =
+        bookAuthor?.trim() ||
+        "Not specified";
+
+      const cleanBookId =
+        bookId?.trim() ||
+        "Not specified";
+
       const cleanSubject =
         subject?.trim() ||
-        `Dear Dad Initiative - ${normalizedType}`;
+        `${cleanBookTitle} - ${normalizedType}`;
+
       const cleanMessage =
         message?.trim() ||
         "No additional message provided.";
 
+      /* ====================================================================
+         LOG INQUIRY
+      ==================================================================== */
+
       console.log("");
-      console.log(
-        "========================================"
-      );
-      console.log(
-        "📨 NEW DEAR DAD INQUIRY"
-      );
-      console.log(
-        "========================================"
-      );
-      console.log("Name:", cleanName);
-      console.log("Email:", cleanEmail);
-      console.log("Phone:", cleanPhone);
-      console.log(
-        "Participation:",
-        normalizedType
-      );
-      console.log("Subject:", cleanSubject);
+
       console.log(
         "========================================"
       );
 
-      /* --------------------------------------------------------------------
+      console.log(
+        "📨 NEW INQUIRY"
+      );
+
+      console.log(
+        "========================================"
+      );
+
+      console.log(
+        "Name:",
+        cleanName
+      );
+
+      console.log(
+        "Email:",
+        cleanEmail
+      );
+
+      console.log(
+        "Phone:",
+        cleanPhone
+      );
+
+      console.log(
+        "Type:",
+        normalizedType
+      );
+
+      console.log(
+        "Book:",
+        cleanBookTitle
+      );
+
+      console.log(
+        "Author:",
+        cleanBookAuthor
+      );
+
+      console.log(
+        "Book ID:",
+        cleanBookId
+      );
+
+      console.log(
+        "Subject:",
+        cleanSubject
+      );
+
+      console.log(
+        "========================================"
+      );
+
+      /* ====================================================================
          CHECK EMAIL CONFIGURATION
-         -------------------------------------------------------------------- */
+      ==================================================================== */
 
       if (!transporter) {
         console.error(
@@ -229,16 +344,65 @@ router.post(
         });
       }
 
-      /* --------------------------------------------------------------------
+      /* ====================================================================
+         BOOK INFORMATION HTML
+      ==================================================================== */
+
+      const bookInformationHtml =
+        normalizedType ===
+        "Book Inquiry"
+          ? `
+            <div
+              style="
+                margin:25px 0;
+                padding:22px;
+                background:#f8f6f2;
+                border-radius:14px;
+              "
+            >
+
+              <p>
+                <strong>Book:</strong>
+                ${escapeHtml(
+                  cleanBookTitle
+                )}
+              </p>
+
+              <p>
+                <strong>Author:</strong>
+                ${escapeHtml(
+                  cleanBookAuthor
+                )}
+              </p>
+
+              <p>
+                <strong>Book ID:</strong>
+                ${escapeHtml(
+                  cleanBookId
+                )}
+              </p>
+
+            </div>
+          `
+          : "";
+
+      /* ====================================================================
          ADMIN EMAIL
-         -------------------------------------------------------------------- */
+      ==================================================================== */
 
       const adminHtml = `
         <!DOCTYPE html>
+
         <html>
+
           <head>
+
             <meta charset="UTF-8" />
-            <title>Dear Dad Initiative Inquiry</title>
+
+            <title>
+              New Cozy Book Nook Inquiry
+            </title>
+
           </head>
 
           <body
@@ -250,6 +414,7 @@ router.post(
               color:#2e1208;
             "
           >
+
             <div
               style="
                 max-width:680px;
@@ -261,6 +426,8 @@ router.post(
               "
             >
 
+              <!-- HEADER -->
+
               <div
                 style="
                   background:#4a1f0e;
@@ -268,6 +435,7 @@ router.post(
                   color:#ffffff;
                 "
               >
+
                 <p
                   style="
                     margin:0 0 8px;
@@ -278,7 +446,7 @@ router.post(
                     color:#d4a017;
                   "
                 >
-                  Dear Dad Initiative
+                  Cozy Book Nook
                 </p>
 
                 <h1
@@ -289,11 +457,18 @@ router.post(
                 >
                   New ${escapeHtml(
                     normalizedType
-                  )} Inquiry
+                  )}
                 </h1>
+
               </div>
 
-              <div style="padding:32px">
+              <!-- CONTENT -->
+
+              <div
+                style="
+                  padding:32px;
+                "
+              >
 
                 <p
                   style="
@@ -303,9 +478,12 @@ router.post(
                     color:#5c4436;
                   "
                 >
-                  A new person has expressed interest
-                  in supporting the Dear Dad Initiative.
+                  A new inquiry has been
+                  submitted through the
+                  Cozy Book Nook website.
                 </p>
+
+                <!-- CUSTOMER -->
 
                 <div
                   style="
@@ -317,39 +495,69 @@ router.post(
                 >
 
                   <p>
-                    <strong>Participation:</strong>
+                    <strong>
+                      Inquiry Type:
+                    </strong>
+
                     ${escapeHtml(
                       normalizedType
                     )}
                   </p>
 
                   <p>
-                    <strong>Name:</strong>
-                    ${escapeHtml(cleanName)}
+                    <strong>
+                      Name:
+                    </strong>
+
+                    ${escapeHtml(
+                      cleanName
+                    )}
                   </p>
 
                   <p>
-                    <strong>Email:</strong>
-                    ${escapeHtml(cleanEmail)}
+                    <strong>
+                      Email:
+                    </strong>
+
+                    ${escapeHtml(
+                      cleanEmail
+                    )}
                   </p>
 
                   <p>
-                    <strong>Phone:</strong>
-                    ${escapeHtml(cleanPhone)}
+                    <strong>
+                      Phone:
+                    </strong>
+
+                    ${escapeHtml(
+                      cleanPhone
+                    )}
                   </p>
 
                   <p>
-                    <strong>Subject:</strong>
-                    ${escapeHtml(cleanSubject)}
+                    <strong>
+                      Subject:
+                    </strong>
+
+                    ${escapeHtml(
+                      cleanSubject
+                    )}
                   </p>
 
                 </div>
+
+                <!-- BOOK -->
+
+                ${bookInformationHtml}
+
+                <!-- MESSAGE -->
 
                 <div
                   style="
                     margin-top:24px;
                   "
                 >
+
                   <h3
                     style="
                       margin-bottom:10px;
@@ -373,7 +581,10 @@ router.post(
                       cleanMessage
                     )}
                   </div>
+
                 </div>
+
+                <!-- FOOTER -->
 
                 <div
                   style="
@@ -384,26 +595,92 @@ router.post(
                     color:#777;
                   "
                 >
-                  This inquiry was submitted through
-                  the Dear Dad Initiative website.
+                  This inquiry was submitted
+                  through the Cozy Book Nook website.
                 </div>
 
               </div>
+
             </div>
+
           </body>
+
         </html>
       `;
 
-      /* --------------------------------------------------------------------
-         PARTICIPANT CONFIRMATION EMAIL
-         -------------------------------------------------------------------- */
+      /* ====================================================================
+         PARTICIPANT EMAIL
+      ==================================================================== */
+
+      const participantBookHtml =
+        normalizedType ===
+        "Book Inquiry"
+          ? `
+              <div
+                style="
+                  margin:25px 0;
+                  padding:20px;
+                  background:#f8f6f2;
+                  border-radius:14px;
+                "
+              >
+
+                <p
+                  style="
+                    margin:0;
+                    font-weight:bold;
+                    color:#4a1f0e;
+                  "
+                >
+                  Book
+                </p>
+
+                <p
+                  style="
+                    margin-bottom:0;
+                    color:#5c4436;
+                  "
+                >
+                  ${escapeHtml(
+                    cleanBookTitle
+                  )}
+                </p>
+
+                ${
+                  cleanBookAuthor !==
+                  "Not specified"
+                    ? `
+                      <p
+                        style="
+                          margin-bottom:0;
+                          color:#777;
+                        "
+                      >
+                        by ${escapeHtml(
+                          cleanBookAuthor
+                        )}
+                      </p>
+                    `
+                    : ""
+                }
+
+              </div>
+            `
+          : "";
 
       const participantHtml = `
         <!DOCTYPE html>
+
         <html>
+
           <head>
+
             <meta charset="UTF-8" />
-            <title>Thank You - Dear Dad Initiative</title>
+
+            <title>
+              Thank You - Cozy Book Nook
+            </title>
+
           </head>
 
           <body
@@ -427,13 +704,16 @@ router.post(
               "
             >
 
+              <!-- HEADER -->
+
               <div
                 style="
                   background:#4a1f0e;
                   padding:30px;
-                  color:white;
+                  color:#ffffff;
                 "
               >
+
                 <p
                   style="
                     margin:0 0 8px;
@@ -444,7 +724,7 @@ router.post(
                     color:#d4a017;
                   "
                 >
-                  Dear Dad Initiative
+                  Cozy Book Nook
                 </p>
 
                 <h1
@@ -453,13 +733,21 @@ router.post(
                     font-size:28px;
                   "
                 >
-                  Thank You, ${escapeHtml(
+                  Thank You,
+                  ${escapeHtml(
                     cleanName
                   )}!
                 </h1>
+
               </div>
 
-              <div style="padding:32px">
+              <!-- CONTENT -->
+
+              <div
+                style="
+                  padding:32px;
+                "
+              >
 
                 <p
                   style="
@@ -468,9 +756,10 @@ router.post(
                     color:#5c4436;
                   "
                 >
-                  Thank you for your interest in
-                  supporting the
-                  <strong>Dear Dad Initiative</strong>.
+                  Thank you for contacting
+                  <strong>
+                    Cozy Book Nook
+                  </strong>.
                 </p>
 
                 <p
@@ -481,11 +770,17 @@ router.post(
                   "
                 >
                   We have received your
-                  <strong>${escapeHtml(
-                    normalizedType
-                  )}</strong>
-                  inquiry successfully.
+                  <strong>
+                    ${escapeHtml(
+                      normalizedType
+                    )}
+                  </strong>
+                  successfully.
                 </p>
+
+                ${participantBookHtml}
+
+                <!-- INQUIRY -->
 
                 <div
                   style="
@@ -495,6 +790,7 @@ router.post(
                     border-radius:14px;
                   "
                 >
+
                   <p
                     style="
                       margin:0;
@@ -515,6 +811,7 @@ router.post(
                       cleanSubject
                     )}
                   </p>
+
                 </div>
 
                 <p
@@ -524,9 +821,9 @@ router.post(
                     color:#5c4436;
                   "
                 >
-                  Our team will review your message
-                  and contact you shortly with the
-                  next steps.
+                  Our team will review your
+                  message and contact you
+                  shortly with the next steps.
                 </p>
 
                 <div
@@ -538,11 +835,12 @@ router.post(
                     border-left:4px solid #d4a017;
                   "
                 >
+
                   <strong>
-                    Thank you for helping us make a
-                    difference in the lives of children
-                    and families.
+                    Thank you for choosing
+                    Cozy Book Nook.
                   </strong>
+
                 </div>
 
                 <p
@@ -552,99 +850,184 @@ router.post(
                     color:#777;
                   "
                 >
-                  With gratitude,<br />
+                  With gratitude,
+                  <br />
+
                   <strong>
-                    Dear Dad Initiative Team
+                    Cozy Book Nook Team
                   </strong>
+
                 </p>
 
               </div>
+
             </div>
+
           </body>
+
         </html>
       `;
 
-      /* --------------------------------------------------------------------
-         SEND BOTH EMAILS
-         -------------------------------------------------------------------- */
+      /* ====================================================================
+         SEND ADMIN EMAIL
+      ==================================================================== */
 
-      await transporter.sendMail({
-        from:
-          process.env.SMTP_FROM ||
-          smtpUser,
-        to: adminEmail,
-        replyTo: cleanEmail,
-        subject: `Dear Dad ${normalizedType} Inquiry - ${cleanName}`,
-        html: adminHtml,
-        text: `
-Dear Dad Initiative - New ${normalizedType} Inquiry
+      const adminMailResult =
+        await transporter.sendMail({
+          from:
+            process.env.SMTP_FROM ||
+            smtpUser,
+
+          to: adminEmail,
+
+          replyTo: cleanEmail,
+
+          subject:
+            `Cozy Book Nook - ${normalizedType} - ${cleanName}`,
+
+          html: adminHtml,
+
+          text: `
+Cozy Book Nook - New ${normalizedType}
 
 Name: ${cleanName}
 Email: ${cleanEmail}
 Phone: ${cleanPhone}
-Participation: ${normalizedType}
+
+Book: ${cleanBookTitle}
+Author: ${cleanBookAuthor}
+Book ID: ${cleanBookId}
+
 Subject: ${cleanSubject}
 
 Message:
-${cleanMessage}
-        `,
-      });
 
-      await transporter.sendMail({
-        from:
-          process.env.SMTP_FROM ||
-          smtpUser,
-        to: cleanEmail,
-        subject:
-          "Thank You for Supporting the Dear Dad Initiative",
-        html: participantHtml,
-        text: `
+${cleanMessage}
+          `,
+        });
+
+      console.log(
+        "✅ Admin email sent:",
+        adminMailResult.messageId
+      );
+
+      /* ====================================================================
+         SEND CUSTOMER CONFIRMATION
+      ==================================================================== */
+
+      const participantMailResult =
+        await transporter.sendMail({
+          from:
+            process.env.SMTP_FROM ||
+            smtpUser,
+
+          to: cleanEmail,
+
+          replyTo:
+            adminEmail,
+
+          subject:
+            "Thank You for Contacting Cozy Book Nook",
+
+          html: participantHtml,
+
+          text: `
 Dear ${cleanName},
 
-Thank you for your interest in supporting the Dear Dad Initiative.
+Thank you for contacting Cozy Book Nook.
 
-We have received your ${normalizedType} inquiry successfully.
+We have received your ${normalizedType} successfully.
+
+${
+  normalizedType ===
+  "Book Inquiry"
+    ? `
+
+Book:
+${cleanBookTitle}
+
+Author:
+${cleanBookAuthor}
+`
+    : ""
+}
 
 Our team will review your message and contact you shortly.
 
 With gratitude,
-Dear Dad Initiative Team
-        `,
-      });
 
-      /* --------------------------------------------------------------------
+Cozy Book Nook Team
+          `,
+        });
+
+      console.log(
+        "✅ Customer confirmation email sent:",
+        participantMailResult.messageId
+      );
+
+      /* ====================================================================
          SUCCESS
-         -------------------------------------------------------------------- */
+      ==================================================================== */
 
       return res.status(201).json({
         success: true,
+
         message:
           "Your inquiry has been submitted successfully. A confirmation email has been sent to you.",
+
+        emailNotifications: {
+          admin: true,
+          customer: true,
+        },
+
         data: {
           participationType:
             normalizedType,
-          name: cleanName,
-          email: cleanEmail,
+
+          name:
+            cleanName,
+
+          email:
+            cleanEmail,
+
+          bookId:
+            cleanBookId,
+
+          bookTitle:
+            cleanBookTitle,
+
+          bookAuthor:
+            cleanBookAuthor,
         },
       });
     } catch (error) {
+      /* ====================================================================
+         ERROR
+      ==================================================================== */
+
       console.error("");
+
       console.error(
         "========================================"
       );
+
       console.error(
-        "❌ DEAR DAD INQUIRY ERROR"
+        "❌ INQUIRY SUBMISSION ERROR"
       );
+
       console.error(
         "========================================"
       );
+
       console.error(error);
+
       console.error(
         "========================================"
       );
 
       return res.status(500).json({
         success: false,
+
         error:
           "We could not submit your inquiry at this time. Please try again later.",
       });
@@ -664,9 +1047,24 @@ router.get(
   ) => {
     res.json({
       success: true,
-      service: "Dear Dad Inquiry",
+
+      service:
+        "Cozy Book Nook Inquiry",
+
       emailConfigured:
         Boolean(transporter),
+
+      smtpHost:
+        Boolean(smtpHost),
+
+      smtpUser:
+        Boolean(smtpUser),
+
+      smtpPassword:
+        Boolean(smtpPass),
+
+      adminEmail:
+        adminEmail,
     });
   }
 );

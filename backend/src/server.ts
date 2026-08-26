@@ -32,7 +32,8 @@ import authRoutes from "./routes/auth.routes";
    ========================================================================== */
 
 const NODE_ENV =
-  process.env.NODE_ENV || "development";
+  process.env.NODE_ENV ||
+  "development";
 
 const PORT = parseInt(
   process.env.PORT || "5000",
@@ -51,9 +52,18 @@ const BYPASS_AUTH =
    ========================================================================== */
 
 console.log("");
-console.log("========================================");
-console.log("📚 COZY BOOK NOOK BACKEND");
-console.log("========================================");
+
+console.log(
+  "========================================"
+);
+
+console.log(
+  "📚 COZY BOOK NOOK BACKEND"
+);
+
+console.log(
+  "========================================"
+);
 
 console.log(
   "Environment:",
@@ -128,7 +138,10 @@ console.log(
     : "✓ Disabled"
 );
 
-console.log("========================================");
+console.log(
+  "========================================"
+);
+
 console.log("");
 
 /* ==========================================================================
@@ -141,16 +154,24 @@ const app = express();
    UPLOADS DIRECTORY
    ========================================================================== */
 
-const uploadsDir = path.resolve(
-  __dirname,
-  "../uploads"
-);
+const uploadsDir =
+  path.resolve(
+    __dirname,
+    "../uploads"
+  );
 
 try {
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, {
-      recursive: true,
-    });
+  if (
+    !fs.existsSync(
+      uploadsDir
+    )
+  ) {
+    fs.mkdirSync(
+      uploadsDir,
+      {
+        recursive: true,
+      }
+    );
 
     console.log(
       "📁 Created uploads directory:",
@@ -174,20 +195,25 @@ try {
    ========================================================================== */
 
 /*
- * Frontend:
+ * Local frontend:
  *
  * http://localhost:8080
+ * http://localhost:3000
  *
- * Backend:
+ * Production frontend:
  *
- * http://localhost:5000
+ * https://emuriadavid.netlify.app
+ *
+ * FRONTEND_URL can also be configured on Render.
  */
 
 const allowedOrigins = [
   "http://localhost:8080",
+
   "http://127.0.0.1:8080",
 
   "http://localhost:3000",
+
   "http://127.0.0.1:3000",
 
   "http://192.168.100.8:8080",
@@ -195,13 +221,12 @@ const allowedOrigins = [
   "https://emuriadavid.netlify.app",
 
   process.env.FRONTEND_URL,
-]
-  .filter(
-    (
-      origin
-    ): origin is string =>
-      Boolean(origin)
-  );
+].filter(
+  (
+    origin
+  ): origin is string =>
+    Boolean(origin)
+);
 
 console.log(
   "🌐 Allowed CORS origins:",
@@ -215,12 +240,11 @@ app.use(
       callback
     ) => {
       /*
-       * Allow requests without an Origin header.
+       * Requests without Origin:
        *
-       * This is useful for:
        * - Postman
        * - curl
-       * - server-to-server requests
+       * - server-to-server
        */
 
       if (!origin) {
@@ -233,6 +257,28 @@ app.use(
       if (
         allowedOrigins.includes(
           origin
+        )
+      ) {
+        return callback(
+          null,
+          true
+        );
+      }
+
+      /*
+       * During development we allow
+       * localhost origins.
+       */
+
+      if (
+        isDevelopment &&
+        (
+          origin.startsWith(
+            "http://localhost:"
+          ) ||
+          origin.startsWith(
+            "http://127.0.0.1:"
+          )
         )
       ) {
         return callback(
@@ -304,10 +350,13 @@ app.use(
     next: NextFunction
   ) => {
     const url =
-      req.originalUrl || req.url;
+      req.originalUrl ||
+      req.url;
 
     if (
-      !url.includes("favicon")
+      !url.includes(
+        "favicon"
+      )
     ) {
       console.log(
         `>>> ${req.method} ${url}`
@@ -340,7 +389,8 @@ app.get(
     res: Response
   ) => {
     res.json({
-      status: "OK",
+      status:
+        "OK",
 
       environment:
         NODE_ENV,
@@ -398,7 +448,9 @@ app.get(
 
         email:
           Boolean(
-            process.env.SMTP_HOST
+            process.env.SMTP_HOST &&
+            process.env.SMTP_USER &&
+            process.env.SMTP_PASS
           ),
       },
     });
@@ -420,7 +472,7 @@ app.get(
         "Cozy Book Nook API",
 
       version:
-        "2.0.0",
+        "2.1.0",
 
       status:
         "running",
@@ -450,11 +502,20 @@ app.get(
         bookPreview:
           "/api/books/:id/generate-preview",
 
+        inquiries:
+          "/api/inquiries",
+
+        inquiryHealth:
+          "/api/inquiries/health",
+
         orders:
           "/api/orders",
 
         payments:
           "/api/payments",
+
+        auth:
+          "/api/auth",
       },
     });
   }
@@ -466,17 +527,6 @@ app.get(
 
 /* --------------------------------------------------------------------------
    PUBLIC BOOK ROUTES
-
-   Mounted as:
-
-   GET    /api/books
-   GET    /api/books/:id
-   POST   /api/books
-   PUT    /api/books/:id
-   DELETE /api/books/:id
-
-   IMPORTANT:
-   Public controller should sanitize pdfUrl.
    -------------------------------------------------------------------------- */
 
 app.use(
@@ -486,22 +536,6 @@ app.use(
 
 /* --------------------------------------------------------------------------
    ADMIN BOOK ROUTES
-
-   Mounted as:
-
-   GET    /api/admin/books
-   GET    /api/admin/books/:id
-   POST   /api/admin/books
-   PUT    /api/admin/books/:id
-   DELETE /api/admin/books/:id
-
-   IMPORTANT:
-   The admin controller MUST export:
-
-   getAdminBooks
-   getAdminBook
-
-   Otherwise TypeScript will fail.
    -------------------------------------------------------------------------- */
 
 app.use(
@@ -511,12 +545,6 @@ app.use(
 
 /* --------------------------------------------------------------------------
    UPLOAD ROUTES
-
-   Mounted as:
-
-   POST /api/upload-cover
-   POST /api/upload-pdf
-   GET  /api/upload-test
    -------------------------------------------------------------------------- */
 
 app.use(
@@ -543,18 +571,14 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   DEAR DAD INQUIRIES
-
-   Mounted as:
-
-   POST /api/inquiries
-   GET  /api/inquiries/health
+   DEAR DAD / BOOK INQUIRIES
    -------------------------------------------------------------------------- */
 
 app.use(
   "/api/inquiries",
   inquiryRoutes
 );
+
 /* --------------------------------------------------------------------------
    ORDERS
    -------------------------------------------------------------------------- */
@@ -575,15 +599,29 @@ app.use(
 
 /* --------------------------------------------------------------------------
    BOOK PREVIEW / AI ROUTES
-
-   Mounted under /api.
-
-   Your bookPreview.routes.ts determines the exact endpoints.
    -------------------------------------------------------------------------- */
 
 app.use(
   "/api",
   bookPreviewRoutes
+);
+
+/* --------------------------------------------------------------------------
+   ADMIN AUTHENTICATION
+   --------------------------------------------------------------------------
+
+   IMPORTANT:
+
+   This MUST be registered before the
+   API 404 handler.
+
+   Otherwise /api/auth routes will
+   incorrectly return 404.
+   -------------------------------------------------------------------------- */
+
+app.use(
+  "/api/auth",
+  authRoutes
 );
 
 /* ==========================================================================
@@ -602,6 +640,9 @@ app.use(
     );
 
     res.status(404).json({
+      success:
+        false,
+
       error:
         "API endpoint not found",
 
@@ -612,15 +653,6 @@ app.use(
         req.originalUrl,
     });
   }
-);
-
-/* --------------------------------------------------------------------------
-   ADMIN AUTHENTICATION
-   -------------------------------------------------------------------------- */
-
-app.use(
-  "/api/auth",
-  authRoutes
 );
 
 /* ==========================================================================
@@ -635,12 +667,15 @@ app.use(
     _next: NextFunction
   ) => {
     console.error("");
+
     console.error(
       "========================================"
     );
+
     console.error(
       "❌ GLOBAL SERVER ERROR"
     );
+
     console.error(
       "========================================"
     );
@@ -663,6 +698,7 @@ app.use(
     console.error(
       "========================================"
     );
+
     console.error("");
 
     if (
@@ -672,11 +708,20 @@ app.use(
     }
 
     const status =
-      Number(err?.status) ||
-      Number(err?.statusCode) ||
+      Number(
+        err?.status
+      ) ||
+      Number(
+        err?.statusCode
+      ) ||
       500;
 
-    res.status(status).json({
+    res.status(
+      status
+    ).json({
+      success:
+        false,
+
       error:
         err?.message ||
         "Internal Server Error",
@@ -699,12 +744,15 @@ const server =
     "0.0.0.0",
     () => {
       console.log("");
+
       console.log(
         "========================================"
       );
+
       console.log(
         "🚀 COZY BOOK NOOK SERVER STARTED"
       );
+
       console.log(
         "========================================"
       );
@@ -730,6 +778,22 @@ const server =
       );
 
       console.log(
+        `📨 Inquiries: http://localhost:${PORT}/api/inquiries`
+      );
+
+      console.log(
+        `📨 Inquiry Health: http://localhost:${PORT}/api/inquiries/health`
+      );
+
+      console.log(
+        `🛒 Orders: http://localhost:${PORT}/api/orders`
+      );
+
+      console.log(
+        `💳 Payments: http://localhost:${PORT}/api/payments`
+      );
+
+      console.log(
         `🖼️ Cover Upload: http://localhost:${PORT}/api/upload-cover`
       );
 
@@ -746,9 +810,10 @@ const server =
       );
 
       console.log(
-        `🔐 Auth Bypass: ${BYPASS_AUTH
-          ? "⚠️ ENABLED"
-          : "✓ DISABLED"
+        `🔐 Auth Bypass: ${
+          BYPASS_AUTH
+            ? "⚠️ ENABLED"
+            : "✓ DISABLED"
         }`
       );
 
@@ -775,7 +840,8 @@ const server =
       console.log(
         "Admin Email:",
         process.env.ADMIN_EMAIL ||
-        "Missing"
+        process.env.SMTP_USER ||
+        "davidemuria9780@gmail.com"
       );
 
       console.log(
@@ -786,10 +852,19 @@ const server =
       );
 
       console.log(
+        "SMTP From:",
+        process.env.SMTP_FROM ||
+        process.env.SMTP_USER ||
+        "Missing"
+      );
+
+      console.log(
         "========================================"
       );
 
-      if (BYPASS_AUTH) {
+      if (
+        BYPASS_AUTH
+      ) {
         console.warn(
           "⚠️ WARNING: Authentication is BYPASSED"
         );
@@ -830,6 +905,7 @@ const shutdown = (
   signal: string
 ) => {
   console.log("");
+
   console.log(
     `🛑 Received ${signal}. Shutting down server...`
   );
@@ -840,7 +916,9 @@ const shutdown = (
         "✅ HTTP server closed."
       );
 
-      process.exit(0);
+      process.exit(
+        0
+      );
     }
   );
 
@@ -850,7 +928,9 @@ const shutdown = (
         "⚠️ Forced shutdown."
       );
 
-      process.exit(1);
+      process.exit(
+        1
+      );
     },
     10000
   );
@@ -858,12 +938,18 @@ const shutdown = (
 
 process.on(
   "SIGTERM",
-  () => shutdown("SIGTERM")
+  () =>
+    shutdown(
+      "SIGTERM"
+    )
 );
 
 process.on(
   "SIGINT",
-  () => shutdown("SIGINT")
+  () =>
+    shutdown(
+      "SIGINT"
+    )
 );
 
 /* ==========================================================================

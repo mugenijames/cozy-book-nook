@@ -16,13 +16,9 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-import {
-  submitBookInquiry,
-} from "@/services/api";
-
-// ============================================================
-// TYPES
-// ============================================================
+/* ==========================================================================
+   TYPES
+   ========================================================================== */
 
 interface Book {
   id: string;
@@ -35,117 +31,194 @@ interface InquiryModalProps {
   onClose: () => void;
 }
 
-// ============================================================
-// COMPONENT
-// ============================================================
+/* ==========================================================================
+   API CONFIGURATION
+   ========================================================================== */
+
+const getApiBaseUrl =
+  (): string => {
+    const configured =
+      import.meta.env
+        .VITE_API_BASE_URL ||
+      import.meta.env
+        .VITE_API_URL;
+
+    /* ----------------------------------------------------------------------
+       DEVELOPMENT
+    ---------------------------------------------------------------------- */
+
+    if (
+      import.meta.env.DEV
+    ) {
+      const base =
+        configured ||
+        "http://localhost:5000";
+
+      return base.endsWith(
+        "/api"
+      )
+        ? base
+        : `${base}/api`;
+    }
+
+    /* ----------------------------------------------------------------------
+       PRODUCTION
+    ---------------------------------------------------------------------- */
+
+    const base =
+      configured ||
+      "https://cozy-book-nook-1.onrender.com";
+
+    return base.endsWith(
+      "/api"
+    )
+      ? base
+      : `${base}/api`;
+  };
+
+const API_BASE_URL =
+  getApiBaseUrl();
+
+console.log(
+  "📡 Inquiry API Base URL:",
+  API_BASE_URL
+);
+
+/* ==========================================================================
+   COMPONENT
+   ========================================================================== */
 
 export default function InquiryModal({
   book,
   onClose,
 }: InquiryModalProps) {
-  const [customerName, setCustomerName] =
-    useState("");
+  const [
+    customerName,
+    setCustomerName,
+  ] = useState("");
 
-  const [email, setEmail] =
-    useState("");
+  const [
+    email,
+    setEmail,
+  ] = useState("");
 
-  const [phoneNumber, setPhoneNumber] =
-    useState("");
+  const [
+    phoneNumber,
+    setPhoneNumber,
+  ] = useState("");
 
-  const [message, setMessage] =
-    useState("");
+  const [
+    message,
+    setMessage,
+  ] = useState("");
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
 
-  const [success, setSuccess] =
-    useState(false);
+  const [
+    success,
+    setSuccess,
+  ] = useState(false);
 
-  const [orderNumber, setOrderNumber] =
-    useState<string | null>(null);
+  const [
+    error,
+    setError,
+  ] = useState("");
 
-  const [error, setError] =
-    useState("");
+  /* =========================================================================
+     SUBMIT
+     ========================================================================= */
 
-  // ==========================================================
-  // SUBMIT
-  // ==========================================================
-
-  const handleSubmit = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
-    setError("");
-
-    // --------------------------------------------------------
-    // VALIDATION
-    // --------------------------------------------------------
-
-    if (!customerName.trim()) {
-      setError(
-        "Please enter your name."
-      );
-
-      return;
-    }
-
-    if (!email.trim()) {
-      setError(
-        "Please enter your email address."
-      );
-
-      return;
-    }
-
-    if (!message.trim()) {
-      setError(
-        "Please enter your inquiry."
-      );
-
-      return;
-    }
-
-    // Basic email validation
-    const emailPattern =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (
-      !emailPattern.test(
-        email.trim()
-      )
-    ) {
-      setError(
-        "Please enter a valid email address."
-      );
-
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
+  const handleSubmit =
+    async (
+      event: FormEvent<HTMLFormElement>
+    ) => {
+      event.preventDefault();
 
       setError("");
 
-      // ------------------------------------------------------
-      // SUBMIT THROUGH CENTRAL API SERVICE
-      // ------------------------------------------------------
+      /* --------------------------------------------------------------------
+         VALIDATION
+      -------------------------------------------------------------------- */
 
-      console.log(
-        "📨 Sending inquiry for book:",
-        {
-          bookId: book.id,
-          bookTitle: book.title,
-          customerName,
-          email,
-        }
+      if (
+        !customerName.trim()
+      ) {
+        setError(
+          "Please enter your name."
+        );
+
+        return;
+      }
+
+      if (
+        !email.trim()
+      ) {
+        setError(
+          "Please enter your email address."
+        );
+
+        return;
+      }
+
+      if (
+        !message.trim()
+      ) {
+        setError(
+          "Please enter your inquiry."
+        );
+
+        return;
+      }
+
+      /* --------------------------------------------------------------------
+         EMAIL VALIDATION
+      -------------------------------------------------------------------- */
+
+      const emailRegex =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (
+        !emailRegex.test(
+          email.trim()
+        )
+      ) {
+        setError(
+          "Please enter a valid email address."
+        );
+
+        return;
+      }
+
+      setIsSubmitting(
+        true
       );
 
-      const data =
-        await submitBookInquiry({
-          orderType: "INQUIRY",
+      try {
+        /* ------------------------------------------------------------------
+           ENDPOINT
 
-          customerName:
+           Backend:
+
+           POST /api/inquiries
+        ------------------------------------------------------------------ */
+
+        const endpoint =
+          `${API_BASE_URL}/inquiries`;
+
+        /* ------------------------------------------------------------------
+           PAYLOAD
+
+           IMPORTANT:
+
+           participationType is now explicitly
+           "Book Inquiry".
+        ------------------------------------------------------------------ */
+
+        const payload = {
+          name:
             customerName.trim(),
 
           email:
@@ -153,78 +226,182 @@ export default function InquiryModal({
               .trim()
               .toLowerCase(),
 
-          phoneNumber:
+          phone:
             phoneNumber.trim() ||
-            null,
+            "",
 
-          notes:
+          participationType:
+            "Book Inquiry",
+
+          subject:
+            `Book Inquiry - ${book.title}`,
+
+          message:
             message.trim(),
 
-          deliveryNotes:
-            message.trim(),
+          bookId:
+            book.id,
 
-          items: [
+          bookTitle:
+            book.title,
+
+          bookAuthor:
+            book.author ||
+            "",
+        };
+
+        console.log(
+          "📨 Submitting book inquiry:",
+          {
+            endpoint,
+            payload,
+          }
+        );
+
+        /* ------------------------------------------------------------------
+           REQUEST
+        ------------------------------------------------------------------ */
+
+        const response =
+          await fetch(
+            endpoint,
             {
-              bookId:
-                book.id,
+              method:
+                "POST",
 
-              quantity: 1,
-            },
-          ],
-        });
+              headers: {
+                "Content-Type":
+                  "application/json",
 
-      // ------------------------------------------------------
-      // SUCCESS
-      // ------------------------------------------------------
+                Accept:
+                  "application/json",
+              },
 
-      console.log(
-        "✅ Inquiry submitted successfully:",
-        data
-      );
+              body:
+                JSON.stringify(
+                  payload
+                ),
+            }
+          );
 
-      const createdOrder =
-        data?.order;
+        /* ------------------------------------------------------------------
+           RESPONSE
+        ------------------------------------------------------------------ */
 
-      const reference =
-        createdOrder?.id ||
-        createdOrder?.orderNumber ||
-        data?.id ||
-        data?.orderNumber ||
-        null;
+        const contentType =
+          response.headers.get(
+            "content-type"
+          ) || "";
 
-      setOrderNumber(
-        reference
-      );
+        let data: any =
+          null;
 
-      setSuccess(true);
+        if (
+          contentType.includes(
+            "application/json"
+          )
+        ) {
+          try {
+            data =
+              await response.json();
+          } catch {
+            data =
+              null;
+          }
+        } else {
+          const text =
+            await response.text();
 
-      // ------------------------------------------------------
-      // EMAIL STATUS
-      // ------------------------------------------------------
+          data = {
+            error:
+              text ||
+              "The server returned an unexpected response.",
+          };
+        }
 
-      console.log(
-        "📧 Inquiry email notification status:",
-        data?.emailNotifications
-      );
-    } catch (err) {
-      console.error(
-        "❌ Inquiry submission error:",
+        /* ------------------------------------------------------------------
+           ERROR
+        ------------------------------------------------------------------ */
+
+        if (
+          !response.ok
+        ) {
+          if (
+            response.status ===
+            404
+          ) {
+            throw new Error(
+              `Inquiry API endpoint not found: ${endpoint}`
+            );
+          }
+
+          if (
+            response.status ===
+            400
+          ) {
+            throw new Error(
+              data?.error ||
+              "Please check the information you entered."
+            );
+          }
+
+          if (
+            response.status >=
+            500
+          ) {
+            throw new Error(
+              data?.error ||
+              "The server could not process your inquiry. Please try again later."
+            );
+          }
+
+          throw new Error(
+            data?.error ||
+            data?.message ||
+            "Unable to submit your inquiry. Please try again."
+          );
+        }
+
+        /* ------------------------------------------------------------------
+           SUCCESS
+        ------------------------------------------------------------------ */
+
+        console.log(
+          "✅ Inquiry submitted successfully:",
+          data
+        );
+
+        console.log(
+          "📧 Email notification status:",
+          data?.emailNotifications
+        );
+
+        setSuccess(
+          true
+        );
+      } catch (
         err
-      );
+      ) {
+        console.error(
+          "❌ Inquiry submission error:",
+          err
+        );
 
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong while submitting your inquiry. Please try again."
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Something went wrong while submitting your inquiry."
+        );
+      } finally {
+        setIsSubmitting(
+          false
+        );
+      }
+    };
 
-  // ==========================================================
-  // RENDER
-  // ==========================================================
+  /* =========================================================================
+     RENDER
+     ========================================================================= */
 
   return (
     <div
@@ -239,12 +416,16 @@ export default function InquiryModal({
         p-4
         backdrop-blur-sm
       "
-      onMouseDown={(event) => {
+      onMouseDown={(
+        event
+      ) => {
         if (
           event.target ===
           event.currentTarget
         ) {
-          if (!isSubmitting) {
+          if (
+            !isSubmitting
+          ) {
             onClose();
           }
         }
@@ -263,9 +444,10 @@ export default function InquiryModal({
           dark:bg-slate-900
         "
       >
-        {/* ==================================================
+
+        {/* ================================================================
             HEADER
-        ================================================== */}
+        ================================================================= */}
 
         <div
           className="
@@ -284,7 +466,15 @@ export default function InquiryModal({
             dark:bg-slate-900
           "
         >
-          <div className="flex items-center gap-3">
+
+          <div
+            className="
+              flex
+              items-center
+              gap-3
+            "
+          >
+
             <div
               className="
                 flex
@@ -297,6 +487,7 @@ export default function InquiryModal({
                 text-[#C17B4F]
               "
             >
+
               {success ? (
                 <CheckCircle2
                   size={22}
@@ -306,9 +497,11 @@ export default function InquiryModal({
                   size={22}
                 />
               )}
+
             </div>
 
             <div>
+
               <h2
                 className="
                   text-lg
@@ -333,13 +526,19 @@ export default function InquiryModal({
                   Ask us about this book.
                 </p>
               )}
+
             </div>
+
           </div>
 
           <button
             type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
+            onClick={
+              onClose
+            }
+            disabled={
+              isSubmitting
+            }
             className="
               rounded-lg
               p-2
@@ -354,15 +553,19 @@ export default function InquiryModal({
             "
             aria-label="Close inquiry"
           >
-            <X size={22} />
+            <X
+              size={22}
+            />
           </button>
+
         </div>
 
-        {/* ==================================================
+        {/* ================================================================
             SUCCESS
-        ================================================== */}
+        ================================================================= */}
 
         {success ? (
+
           <div
             className="
               px-6
@@ -370,6 +573,7 @@ export default function InquiryModal({
               text-center
             "
           >
+
             <div
               className="
                 mx-auto
@@ -386,9 +590,11 @@ export default function InquiryModal({
                 dark:text-green-400
               "
             >
+
               <CheckCircle2
                 size={34}
               />
+
             </div>
 
             <h3
@@ -416,9 +622,10 @@ export default function InquiryModal({
               <strong>
                 {book.title}
               </strong>{" "}
-              has been received. We will
-              contact you using the details
-              you provided.
+              has been received
+              successfully. We will
+              contact you using the
+              details you provided.
             </p>
 
             <p
@@ -431,54 +638,16 @@ export default function InquiryModal({
                 dark:text-slate-400
               "
             >
-              A confirmation has also been
-              sent to your email address.
+              A confirmation has also
+              been sent to your email
+              address.
             </p>
-
-            {orderNumber && (
-              <div
-                className="
-                  mx-auto
-                  mt-5
-                  max-w-md
-                  rounded-xl
-                  bg-slate-100
-                  p-4
-                  dark:bg-slate-800
-                "
-              >
-                <p
-                  className="
-                    text-xs
-                    font-medium
-                    uppercase
-                    tracking-wide
-                    text-slate-500
-                    dark:text-slate-400
-                  "
-                >
-                  Reference
-                </p>
-
-                <p
-                  className="
-                    mt-1
-                    break-all
-                    font-mono
-                    text-sm
-                    font-semibold
-                    text-slate-900
-                    dark:text-white
-                  "
-                >
-                  {orderNumber}
-                </p>
-              </div>
-            )}
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={
+                onClose
+              }
               className="
                 mt-7
                 rounded-xl
@@ -493,16 +662,21 @@ export default function InquiryModal({
             >
               Done
             </button>
+
           </div>
+
         ) : (
-          /* ==================================================
+
+          /* ===============================================================
              FORM
-          ================================================== */
+          ================================================================= */
 
           <form
-            onSubmit={handleSubmit}
-            noValidate
+            onSubmit={
+              handleSubmit
+            }
           >
+
             <div
               className="
                 space-y-6
@@ -510,9 +684,8 @@ export default function InquiryModal({
                 sm:p-6
               "
             >
-              {/* ==================================================
-                  BOOK
-              ================================================== */}
+
+              {/* BOOK */}
 
               <div
                 className="
@@ -523,6 +696,7 @@ export default function InquiryModal({
                   p-4
                 "
               >
+
                 <p
                   className="
                     text-xs
@@ -553,16 +727,17 @@ export default function InquiryModal({
                       text-gray-600
                     "
                   >
-                    by {book.author}
+                    by{" "}
+                    {book.author}
                   </p>
                 )}
+
               </div>
 
-              {/* ==================================================
-                  CUSTOMER INFORMATION
-              ================================================== */}
+              {/* CUSTOMER INFORMATION */}
 
               <section>
+
                 <h3
                   className="
                     mb-4
@@ -575,12 +750,17 @@ export default function InquiryModal({
                   Your Information
                 </h3>
 
-                <div className="space-y-4">
+                <div
+                  className="
+                    space-y-4
+                  "
+                >
+
                   {/* NAME */}
 
                   <div>
+
                     <label
-                      htmlFor="inquiry-name"
                       className="
                         mb-1.5
                         block
@@ -593,7 +773,12 @@ export default function InquiryModal({
                       Full Name *
                     </label>
 
-                    <div className="relative">
+                    <div
+                      className="
+                        relative
+                      "
+                    >
+
                       <User
                         size={18}
                         className="
@@ -606,22 +791,24 @@ export default function InquiryModal({
                       />
 
                       <input
-                        id="inquiry-name"
                         type="text"
                         value={
                           customerName
                         }
-                        onChange={(event) =>
+                        onChange={(
+                          event
+                        ) =>
                           setCustomerName(
-                            event.target.value
+                            event.target
+                              .value
                           )
                         }
                         placeholder="Your full name"
                         required
-                        autoComplete="name"
                         disabled={
                           isSubmitting
                         }
+                        autoComplete="name"
                         className="
                           w-full
                           rounded-xl
@@ -643,14 +830,16 @@ export default function InquiryModal({
                           dark:text-white
                         "
                       />
+
                     </div>
+
                   </div>
 
                   {/* EMAIL */}
 
                   <div>
+
                     <label
-                      htmlFor="inquiry-email"
                       className="
                         mb-1.5
                         block
@@ -663,7 +852,12 @@ export default function InquiryModal({
                       Email Address *
                     </label>
 
-                    <div className="relative">
+                    <div
+                      className="
+                        relative
+                      "
+                    >
+
                       <Mail
                         size={18}
                         className="
@@ -676,21 +870,24 @@ export default function InquiryModal({
                       />
 
                       <input
-                        id="inquiry-email"
                         type="email"
-                        value={email}
-                        onChange={(event) =>
+                        value={
+                          email
+                        }
+                        onChange={(
+                          event
+                        ) =>
                           setEmail(
-                            event.target.value
+                            event.target
+                              .value
                           )
                         }
                         placeholder="you@example.com"
                         required
-                        autoComplete="email"
-                        inputMode="email"
                         disabled={
                           isSubmitting
                         }
+                        autoComplete="email"
                         className="
                           w-full
                           rounded-xl
@@ -712,14 +909,16 @@ export default function InquiryModal({
                           dark:text-white
                         "
                       />
+
                     </div>
+
                   </div>
 
                   {/* PHONE */}
 
                   <div>
+
                     <label
-                      htmlFor="inquiry-phone"
                       className="
                         mb-1.5
                         block
@@ -732,7 +931,12 @@ export default function InquiryModal({
                       Phone Number
                     </label>
 
-                    <div className="relative">
+                    <div
+                      className="
+                        relative
+                      "
+                    >
+
                       <Phone
                         size={18}
                         className="
@@ -745,22 +949,23 @@ export default function InquiryModal({
                       />
 
                       <input
-                        id="inquiry-phone"
                         type="tel"
                         value={
                           phoneNumber
                         }
-                        onChange={(event) =>
+                        onChange={(
+                          event
+                        ) =>
                           setPhoneNumber(
-                            event.target.value
+                            event.target
+                              .value
                           )
                         }
                         placeholder="e.g. 0712 345 678"
-                        autoComplete="tel"
-                        inputMode="tel"
                         disabled={
                           isSubmitting
                         }
+                        autoComplete="tel"
                         className="
                           w-full
                           rounded-xl
@@ -782,18 +987,20 @@ export default function InquiryModal({
                           dark:text-white
                         "
                       />
+
                     </div>
+
                   </div>
+
                 </div>
+
               </section>
 
-              {/* ==================================================
-                  MESSAGE
-              ================================================== */}
+              {/* MESSAGE */}
 
               <section>
+
                 <label
-                  htmlFor="inquiry-message"
                   className="
                     mb-1.5
                     block
@@ -806,7 +1013,12 @@ export default function InquiryModal({
                   Your Inquiry *
                 </label>
 
-                <div className="relative">
+                <div
+                  className="
+                    relative
+                  "
+                >
+
                   <MessageSquare
                     size={18}
                     className="
@@ -818,11 +1030,15 @@ export default function InquiryModal({
                   />
 
                   <textarea
-                    id="inquiry-message"
-                    value={message}
-                    onChange={(event) =>
+                    value={
+                      message
+                    }
+                    onChange={(
+                      event
+                    ) =>
                       setMessage(
-                        event.target.value
+                        event.target
+                          .value
                       )
                     }
                     rows={5}
@@ -853,16 +1069,15 @@ export default function InquiryModal({
                       dark:text-white
                     "
                   />
+
                 </div>
+
               </section>
 
-              {/* ==================================================
-                  ERROR
-              ================================================== */}
+              {/* ERROR */}
 
               {error && (
                 <div
-                  role="alert"
                   className="
                     rounded-xl
                     border
@@ -880,11 +1095,10 @@ export default function InquiryModal({
                   {error}
                 </div>
               )}
+
             </div>
 
-            {/* ==================================================
-                FOOTER
-            ================================================== */}
+            {/* FOOTER */}
 
             <div
               className="
@@ -901,9 +1115,12 @@ export default function InquiryModal({
                 dark:bg-slate-900
               "
             >
+
               <button
                 type="button"
-                onClick={onClose}
+                onClick={
+                  onClose
+                }
                 disabled={
                   isSubmitting
                 }
@@ -949,6 +1166,7 @@ export default function InquiryModal({
                   disabled:opacity-60
                 "
               >
+
                 {isSubmitting ? (
                   <>
                     <Loader2
@@ -967,10 +1185,14 @@ export default function InquiryModal({
                     Send Inquiry
                   </>
                 )}
+
               </button>
+
             </div>
+
           </form>
         )}
+
       </div>
     </div>
   );
