@@ -39,6 +39,10 @@ export const getOrders = async (
 
     return res.status(500).json({
       error: "Failed to fetch orders",
+      details:
+        error instanceof Error
+          ? error.message
+          : String(error),
     });
   }
 };
