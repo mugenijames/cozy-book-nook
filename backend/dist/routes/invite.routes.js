@@ -79,3 +79,4 @@ router.post("/invite", async (req, res) => {
     }
 });
 exports.default = router;
+//# sourceMappingURL=invite.routes.js.map

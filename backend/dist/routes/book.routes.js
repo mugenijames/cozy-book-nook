@@ -28,3 +28,4 @@ router.post("/", authMiddleware_1.isAdmin, book_controller_1.createBook);
 router.put("/:id", authMiddleware_1.isAdmin, book_controller_1.updateBook);
 router.delete("/:id", authMiddleware_1.isAdmin, book_controller_1.deleteBook);
 exports.default = router;
+//# sourceMappingURL=book.routes.js.map

@@ -31,3 +31,4 @@ const isSuperAdmin = (req, res, next) => {
     next();
 };
 exports.isSuperAdmin = isSuperAdmin;
+//# sourceMappingURL=admin.js.map

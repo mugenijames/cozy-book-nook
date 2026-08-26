@@ -11,7 +11,7 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 /* ==========================================================================
    ROUTES
-   ========================================================================== */
+========================================================================== */
 const book_routes_1 = __importDefault(require("./routes/book.routes"));
 const admin_book_routes_1 = __importDefault(require("./routes/admin.book.routes"));
 const checkout_routes_1 = __importDefault(require("./routes/checkout.routes"));
@@ -24,15 +24,24 @@ const bookPreview_routes_1 = __importDefault(require("./routes/bookPreview.route
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 /* ==========================================================================
    ENVIRONMENT
-   ========================================================================== */
-const NODE_ENV = process.env.NODE_ENV || "development";
+========================================================================== */
+const NODE_ENV = process.env.NODE_ENV ||
+    "development";
 const PORT = parseInt(process.env.PORT || "5000", 10);
 const isDevelopment = NODE_ENV === "development";
-const BYPASS_AUTH = isDevelopment ||
-    process.env.BYPASS_AUTH === "true";
+/*
+ * Authentication bypass should NEVER automatically
+ * happen just because NODE_ENV is development.
+ *
+ * Development bypass can still be enabled explicitly
+ * with:
+ *
+ * BYPASS_AUTH=true
+ */
+const BYPASS_AUTH = process.env.BYPASS_AUTH === "true";
 /* ==========================================================================
    ENVIRONMENT STATUS
-   ========================================================================== */
+========================================================================== */
 console.log("");
 console.log("========================================");
 console.log("📚 COZY BOOK NOOK BACKEND");
@@ -70,11 +79,11 @@ console.log("========================================");
 console.log("");
 /* ==========================================================================
    EXPRESS APP
-   ========================================================================== */
+========================================================================== */
 const app = (0, express_1.default)();
 /* ==========================================================================
    UPLOADS DIRECTORY
-   ========================================================================== */
+========================================================================== */
 const uploadsDir = path_1.default.resolve(__dirname, "../uploads");
 try {
     if (!fs_1.default.existsSync(uploadsDir)) {
@@ -92,16 +101,7 @@ catch (error) {
 }
 /* ==========================================================================
    CORS
-   ========================================================================== */
-/*
- * Frontend:
- *
- * http://localhost:8080
- *
- * Backend:
- *
- * http://localhost:5000
- */
+========================================================================== */
 const allowedOrigins = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
@@ -116,12 +116,11 @@ console.log("🌐 Allowed CORS origins:", allowedOrigins);
 app.use((0, cors_1.default)({
     origin: (origin, callback) => {
         /*
-         * Allow requests without an Origin header.
+         * Requests without Origin:
          *
-         * This is useful for:
          * - Postman
          * - curl
-         * - server-to-server requests
+         * - server-to-server
          */
         if (!origin) {
             return callback(null, true);
@@ -152,7 +151,7 @@ app.use((0, cors_1.default)({
 }));
 /* ==========================================================================
    BODY PARSERS
-   ========================================================================== */
+========================================================================== */
 app.use(express_1.default.json({
     limit: "50mb",
 }));
@@ -162,9 +161,10 @@ app.use(express_1.default.urlencoded({
 }));
 /* ==========================================================================
    REQUEST LOGGER
-   ========================================================================== */
+========================================================================== */
 app.use((req, _res, next) => {
-    const url = req.originalUrl || req.url;
+    const url = req.originalUrl ||
+        req.url;
     if (!url.includes("favicon")) {
         console.log(`>>> ${req.method} ${url}`);
     }
@@ -172,12 +172,12 @@ app.use((req, _res, next) => {
 });
 /* ==========================================================================
    STATIC UPLOADS
-   ========================================================================== */
+========================================================================== */
 app.use("/uploads", express_1.default.static(uploadsDir));
 /* ==========================================================================
    HEALTH CHECK
-   ========================================================================== */
-app.get("/health", async (_req, res) => {
+========================================================================== */
+app.get("/health", (_req, res) => {
     res.json({
         status: "OK",
         environment: NODE_ENV,
@@ -200,17 +200,19 @@ app.get("/health", async (_req, res) => {
                 .MPESA_CONSUMER_KEY),
             paypal: Boolean(process.env
                 .PAYPAL_CLIENT_ID),
-            email: Boolean(process.env.SMTP_HOST),
+            email: Boolean(process.env.SMTP_HOST &&
+                process.env.SMTP_USER &&
+                process.env.SMTP_PASS),
         },
     });
 });
 /* ==========================================================================
    ROOT
-   ========================================================================== */
+========================================================================== */
 app.get("/", (_req, res) => {
     res.json({
         message: "Cozy Book Nook API",
-        version: "2.0.0",
+        version: "2.1.0",
         status: "running",
         environment: NODE_ENV,
         endpoints: {
@@ -221,110 +223,75 @@ app.get("/", (_req, res) => {
             uploadCover: "/api/upload-cover",
             uploadPdf: "/api/upload-pdf",
             bookPreview: "/api/books/:id/generate-preview",
+            inquiries: "/api/inquiries",
+            inquiryHealth: "/api/inquiries/health",
             orders: "/api/orders",
             payments: "/api/payments",
+            auth: "/api/auth",
         },
     });
 });
 /* ==========================================================================
    API ROUTES
-   ========================================================================== */
+========================================================================== */
 /* --------------------------------------------------------------------------
    PUBLIC BOOK ROUTES
-
-   Mounted as:
-
-   GET    /api/books
-   GET    /api/books/:id
-   POST   /api/books
-   PUT    /api/books/:id
-   DELETE /api/books/:id
-
-   IMPORTANT:
-   Public controller should sanitize pdfUrl.
-   -------------------------------------------------------------------------- */
+-------------------------------------------------------------------------- */
 app.use("/api/books", book_routes_1.default);
 /* --------------------------------------------------------------------------
    ADMIN BOOK ROUTES
-
-   Mounted as:
-
-   GET    /api/admin/books
-   GET    /api/admin/books/:id
-   POST   /api/admin/books
-   PUT    /api/admin/books/:id
-   DELETE /api/admin/books/:id
-
-   IMPORTANT:
-   The admin controller MUST export:
-
-   getAdminBooks
-   getAdminBook
-
-   Otherwise TypeScript will fail.
-   -------------------------------------------------------------------------- */
+-------------------------------------------------------------------------- */
 app.use("/api/admin/books", admin_book_routes_1.default);
 /* --------------------------------------------------------------------------
    UPLOAD ROUTES
-
-   Mounted as:
-
-   POST /api/upload-cover
-   POST /api/upload-pdf
-   GET  /api/upload-test
-   -------------------------------------------------------------------------- */
+-------------------------------------------------------------------------- */
 app.use("/api", upload_routes_1.default);
 /* --------------------------------------------------------------------------
    CHECKOUT
-   -------------------------------------------------------------------------- */
+-------------------------------------------------------------------------- */
 app.use("/api/checkout", checkout_routes_1.default);
 /* --------------------------------------------------------------------------
    INVITATIONS
-   -------------------------------------------------------------------------- */
+-------------------------------------------------------------------------- */
 app.use("/api/invite", invitation_routes_1.default);
 /* --------------------------------------------------------------------------
-   DEAR DAD INQUIRIES
-
-   Mounted as:
-
-   POST /api/inquiries
-   GET  /api/inquiries/health
-   -------------------------------------------------------------------------- */
+   INQUIRIES
+-------------------------------------------------------------------------- */
 app.use("/api/inquiries", inquiry_routes_1.default);
 /* --------------------------------------------------------------------------
    ORDERS
-   -------------------------------------------------------------------------- */
+-------------------------------------------------------------------------- */
 app.use("/api/orders", order_routes_1.default);
 /* --------------------------------------------------------------------------
    PAYMENTS
-   -------------------------------------------------------------------------- */
+-------------------------------------------------------------------------- */
 app.use("/api/payments", payment_routes_1.default);
 /* --------------------------------------------------------------------------
-   BOOK PREVIEW / AI ROUTES
-
-   Mounted under /api.
-
-   Your bookPreview.routes.ts determines the exact endpoints.
-   -------------------------------------------------------------------------- */
+   BOOK PREVIEW / AI
+-------------------------------------------------------------------------- */
 app.use("/api", bookPreview_routes_1.default);
+/* --------------------------------------------------------------------------
+   ADMIN AUTHENTICATION
+-------------------------------------------------------------------------- */
+app.use("/api/auth", auth_routes_1.default);
 /* ==========================================================================
    API 404 HANDLER
-   ========================================================================== */
+
+   IMPORTANT:
+   This MUST be AFTER all API routes.
+========================================================================== */
 app.use((req, res) => {
     console.warn("❌ API route not found:", req.method, req.originalUrl);
     res.status(404).json({
+        success: false,
         error: "API endpoint not found",
         method: req.method,
         path: req.originalUrl,
     });
 });
-/* --------------------------------------------------------------------------
-   ADMIN AUTHENTICATION
-   -------------------------------------------------------------------------- */
-app.use("/api/auth", auth_routes_1.default);
 /* ==========================================================================
    GLOBAL ERROR HANDLER
-   ========================================================================== */
+========================================================================== */
 app.use((err, req, res, _next) => {
     console.error("");
     console.error("========================================");
@@ -342,6 +309,7 @@ app.use((err, req, res, _next) => {
         Number(err?.statusCode) ||
         500;
     res.status(status).json({
+        success: false,
         error: err?.message ||
             "Internal Server Error",
         ...(isDevelopment && {
@@ -351,7 +319,7 @@ app.use((err, req, res, _next) => {
 });
 /* ==========================================================================
    SERVER START
-   ========================================================================== */
+========================================================================== */
 const server = app.listen(PORT, "0.0.0.0", () => {
     console.log("");
     console.log("========================================");
@@ -362,6 +330,8 @@ const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`❤️ Health: http://localhost:${PORT}/health`);
     console.log(`📚 Books: http://localhost:${PORT}/api/books`);
     console.log(`🔐 Admin Books: http://localhost:${PORT}/api/admin/books`);
+    console.log(`📨 Inquiries: http://localhost:${PORT}/api/inquiries`);
+    console.log(`📨 Inquiry Health: http://localhost:${PORT}/api/inquiries/health`);
     console.log(`🖼️ Cover Upload: http://localhost:${PORT}/api/upload-cover`);
     console.log(`📕 PDF Upload: http://localhost:${PORT}/api/upload-pdf`);
     console.log(`📁 Uploads: http://localhost:${PORT}/uploads`);
@@ -388,7 +358,7 @@ const server = app.listen(PORT, "0.0.0.0", () => {
 });
 /* ==========================================================================
    SERVER ERROR HANDLING
-   ========================================================================== */
+========================================================================== */
 server.on("error", (error) => {
     console.error("❌ HTTP SERVER ERROR:", error);
     if (error?.code ===
@@ -398,7 +368,7 @@ server.on("error", (error) => {
 });
 /* ==========================================================================
    GRACEFUL SHUTDOWN
-   ========================================================================== */
+========================================================================== */
 const shutdown = (signal) => {
     console.log("");
     console.log(`🛑 Received ${signal}. Shutting down server...`);
@@ -415,7 +385,7 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 /* ==========================================================================
    UNHANDLED ERRORS
-   ========================================================================== */
+========================================================================== */
 process.on("unhandledRejection", (reason) => {
     console.error("❌ UNHANDLED PROMISE REJECTION:", reason);
 });
@@ -423,3 +393,4 @@ process.on("uncaughtException", (error) => {
     console.error("❌ UNCAUGHT EXCEPTION:", error);
 });
 exports.default = app;
+//# sourceMappingURL=server.js.map

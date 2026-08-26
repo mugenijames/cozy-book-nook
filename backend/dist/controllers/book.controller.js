@@ -528,3 +528,4 @@ const deleteBook = async (req, res) => {
     }
 };
 exports.deleteBook = deleteBook;
+//# sourceMappingURL=book.controller.js.map

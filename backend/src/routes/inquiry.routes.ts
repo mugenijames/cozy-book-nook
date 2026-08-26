@@ -1,5 +1,3 @@
-// backend/src/routes/inquiry.routes.ts
-
 import { Router, Request, Response } from "express";
 import nodemailer from "nodemailer";
 
@@ -7,7 +5,7 @@ const router = Router();
 
 /* ==========================================================================
    TYPES
-========================================================================== */
+   ========================================================================== */
 
 interface InquiryBody {
   name?: string;
@@ -23,47 +21,35 @@ interface InquiryBody {
 
 /* ==========================================================================
    EMAIL CONFIGURATION
-========================================================================== */
+   ========================================================================== */
 
 const smtpHost = process.env.SMTP_HOST?.trim();
 
-const smtpPort = Number(
-  process.env.SMTP_PORT || "587"
-);
+const smtpPort = Number(process.env.SMTP_PORT || 587);
 
 const smtpUser = process.env.SMTP_USER?.trim();
 
-const smtpPass = process.env.SMTP_PASS;
-
-const smtpSecure =
-  process.env.SMTP_SECURE === "true" ||
-  smtpPort === 465;
-
-const smtpFrom =
-  process.env.SMTP_FROM?.trim() ||
-  smtpUser ||
-  "";
+const smtpPass = process.env.SMTP_PASS?.trim();
 
 const adminEmail =
   process.env.ADMIN_EMAIL?.trim() ||
   smtpUser ||
   "davidemuria9780@gmail.com";
 
+const smtpSecure =
+  process.env.SMTP_SECURE === "true" ||
+  smtpPort === 465;
+
 /* ==========================================================================
-   EMAIL TRANSPORTER
-========================================================================== */
+   SMTP TRANSPORTER
+   ========================================================================== */
 
 const transporter =
-  smtpHost &&
-  smtpUser &&
-  smtpPass
+  smtpHost && smtpUser && smtpPass
     ? nodemailer.createTransport({
         host: smtpHost,
-
         port: smtpPort,
-
         secure: smtpSecure,
-
         auth: {
           user: smtpUser,
           pass: smtpPass,
@@ -72,59 +58,10 @@ const transporter =
     : null;
 
 /* ==========================================================================
-   STARTUP EMAIL STATUS
-========================================================================== */
-
-console.log(
-  "📨 Inquiry email configuration:"
-);
-
-console.log(
-  "SMTP Host:",
-  smtpHost || "Missing"
-);
-
-console.log(
-  "SMTP Port:",
-  smtpPort
-);
-
-console.log(
-  "SMTP User:",
-  smtpUser || "Missing"
-);
-
-console.log(
-  "SMTP From:",
-  smtpFrom || "Missing"
-);
-
-console.log(
-  "Admin Email:",
-  adminEmail || "Missing"
-);
-
-console.log(
-  "SMTP Password:",
-  smtpPass
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "SMTP Transporter:",
-  transporter
-    ? "✓ Ready"
-    : "✗ Not configured"
-);
-
-/* ==========================================================================
    HELPERS
-========================================================================== */
+   ========================================================================== */
 
-const escapeHtml = (
-  value: string
-): string => {
+const escapeHtml = (value: string): string => {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -135,15 +72,10 @@ const escapeHtml = (
 
 /* --------------------------------------------------------------------------
    NORMALIZE PARTICIPATION TYPE
--------------------------------------------------------------------------- */
+   -------------------------------------------------------------------------- */
 
-const normalizeParticipationType = (
-  value: string
-): string => {
-  const normalized =
-    value
-      .trim()
-      .toLowerCase();
+const normalizeParticipationType = (value: string): string => {
+  const normalized = value.trim().toLowerCase();
 
   if (normalized === "donate") {
     return "Donate";
@@ -168,44 +100,13 @@ const normalizeParticipationType = (
 };
 
 /* ==========================================================================
-   ROUTE REGISTRATION LOG
-========================================================================== */
-
-console.log(
-  "📨 Registering inquiry routes at /api/inquiries"
-);
-
-/* ==========================================================================
-   POST /
-   
-   Mounted by server.ts as:
-
    POST /api/inquiries
-========================================================================== */
+   ========================================================================== */
 
 router.post(
   "/",
-  async (
-    req: Request,
-    res: Response
-  ) => {
+  async (req: Request, res: Response) => {
     try {
-      console.log("");
-      console.log(
-        "📨 POST /api/inquiries received"
-      );
-
-      console.log(
-        "Request body:",
-        {
-          ...req.body,
-          email:
-            req.body?.email
-              ? "[provided]"
-              : undefined,
-        }
-      );
-
       const {
         name,
         email,
@@ -216,56 +117,48 @@ router.post(
         bookId,
         bookTitle,
         bookAuthor,
-      } =
-        req.body as InquiryBody;
+      } = req.body as InquiryBody;
 
-      /* ================================================================
+      /* ====================================================================
          VALIDATION
-      ================================================================ */
+         ==================================================================== */
 
       if (!name?.trim()) {
         return res.status(400).json({
           success: false,
-          error:
-            "Name is required.",
+          error: "Name is required.",
         });
       }
 
       if (!email?.trim()) {
         return res.status(400).json({
           success: false,
-          error:
-            "Email address is required.",
+          error: "Email address is required.",
         });
       }
 
-      const emailRegex =
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      /* ====================================================================
+         EMAIL VALIDATION
+         ==================================================================== */
 
-      if (
-        !emailRegex.test(
-          email.trim()
-        )
-      ) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailRegex.test(email.trim())) {
         return res.status(400).json({
           success: false,
-          error:
-            "Please provide a valid email address.",
+          error: "Please provide a valid email address.",
         });
       }
 
-      /* ================================================================
+      /* ====================================================================
          PARTICIPATION TYPE
-      ================================================================ */
+         ==================================================================== */
 
       const requestedType =
-        participationType?.trim() ||
-        "Book Inquiry";
+        participationType?.trim() || "Book Inquiry";
 
       const normalizedType =
-        normalizeParticipationType(
-          requestedType
-        );
+        normalizeParticipationType(requestedType);
 
       const allowedTypes = [
         "Donate",
@@ -274,45 +167,33 @@ router.post(
         "Book Inquiry",
       ];
 
-      if (
-        !allowedTypes.includes(
-          normalizedType
-        )
-      ) {
+      if (!allowedTypes.includes(normalizedType)) {
         return res.status(400).json({
           success: false,
-          error:
-            "Invalid inquiry type.",
+          error: "Invalid inquiry type.",
         });
       }
 
-      /* ================================================================
+      /* ====================================================================
          CLEAN DATA
-      ================================================================ */
+         ==================================================================== */
 
-      const cleanName =
-        name.trim();
+      const cleanName = name.trim();
 
       const cleanEmail =
-        email
-          .trim()
-          .toLowerCase();
+        email.trim().toLowerCase();
 
       const cleanPhone =
-        phone?.trim() ||
-        "Not provided";
+        phone?.trim() || "Not provided";
 
       const cleanBookTitle =
-        bookTitle?.trim() ||
-        "Not specified";
+        bookTitle?.trim() || "Not specified";
 
       const cleanBookAuthor =
-        bookAuthor?.trim() ||
-        "Not specified";
+        bookAuthor?.trim() || "Not specified";
 
       const cleanBookId =
-        bookId?.trim() ||
-        "Not specified";
+        bookId?.trim() || "Not specified";
 
       const cleanSubject =
         subject?.trim() ||
@@ -322,94 +203,55 @@ router.post(
         message?.trim() ||
         "No additional message provided.";
 
-      /* ================================================================
-         LOG
-      ================================================================ */
+      /* ====================================================================
+         LOG INQUIRY
+         ==================================================================== */
 
       console.log("");
-      console.log(
-        "========================================"
-      );
+      console.log("========================================");
+      console.log("📨 NEW INQUIRY");
+      console.log("========================================");
 
-      console.log(
-        "📨 NEW INQUIRY"
-      );
+      console.log("Name:", cleanName);
+      console.log("Email:", cleanEmail);
+      console.log("Phone:", cleanPhone);
+      console.log("Type:", normalizedType);
+      console.log("Book:", cleanBookTitle);
+      console.log("Author:", cleanBookAuthor);
+      console.log("Book ID:", cleanBookId);
+      console.log("Subject:", cleanSubject);
 
-      console.log(
-        "========================================"
-      );
+      console.log("========================================");
 
-      console.log(
-        "Name:",
-        cleanName
-      );
-
-      console.log(
-        "Email:",
-        cleanEmail
-      );
-
-      console.log(
-        "Phone:",
-        cleanPhone
-      );
-
-      console.log(
-        "Type:",
-        normalizedType
-      );
-
-      console.log(
-        "Book:",
-        cleanBookTitle
-      );
-
-      console.log(
-        "Author:",
-        cleanBookAuthor
-      );
-
-      console.log(
-        "Book ID:",
-        cleanBookId
-      );
-
-      console.log(
-        "Subject:",
-        cleanSubject
-      );
-
-      console.log(
-        "========================================"
-      );
-
-      /* ================================================================
-         SMTP CHECK
-      ================================================================ */
+      /* ====================================================================
+         CHECK EMAIL CONFIGURATION
+         ==================================================================== */
 
       if (!transporter) {
         console.error(
           "❌ SMTP is not configured."
         );
 
-        return res.status(503).json({
+        console.error({
+          smtpHost: Boolean(smtpHost),
+          smtpUser: Boolean(smtpUser),
+          smtpPass: Boolean(smtpPass),
+          adminEmail: Boolean(adminEmail),
+        });
+
+        return res.status(500).json({
           success: false,
           error:
-            "Email service is temporarily unavailable. Please try again later or contact us directly.",
-          emailNotifications: {
-            admin: false,
-            customer: false,
-          },
+            "Email service is not configured on the server. Please contact us directly.",
         });
       }
 
-      /* ================================================================
+      /* ====================================================================
          BOOK INFORMATION - ADMIN
-      ================================================================ */
+         ==================================================================== */
 
       const bookInformationHtml =
-        normalizedType ===
-        "Book Inquiry"
+        normalizedType === "Book Inquiry"
           ? `
             <div
               style="
@@ -419,530 +261,431 @@ router.post(
                 border-radius:14px;
               "
             >
-
               <p>
                 <strong>Book:</strong>
-                ${escapeHtml(
-                  cleanBookTitle
-                )}
+                ${escapeHtml(cleanBookTitle)}
               </p>
 
               <p>
                 <strong>Author:</strong>
-                ${escapeHtml(
-                  cleanBookAuthor
-                )}
+                ${escapeHtml(cleanBookAuthor)}
               </p>
 
               <p>
                 <strong>Book ID:</strong>
-                ${escapeHtml(
-                  cleanBookId
-                )}
+                ${escapeHtml(cleanBookId)}
               </p>
+            </div>
+          `
+          : "";
+
+      /* ====================================================================
+         ADMIN EMAIL HTML
+         ==================================================================== */
+
+      const adminHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>New Cozy Book Nook Inquiry</title>
+</head>
+
+<body
+  style="
+    margin:0;
+    padding:0;
+    background:#f7f4ef;
+    font-family:Arial,Helvetica,sans-serif;
+    color:#2e1208;
+  "
+>
+  <div
+    style="
+      max-width:680px;
+      margin:40px auto;
+      background:#ffffff;
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow:0 8px 30px rgba(0,0,0,0.08);
+    "
+  >
+
+    <!-- HEADER -->
+
+    <div
+      style="
+        background:#4a1f0e;
+        padding:30px;
+        color:#ffffff;
+      "
+    >
+      <p
+        style="
+          margin:0 0 8px;
+          font-size:12px;
+          font-weight:bold;
+          letter-spacing:2px;
+          text-transform:uppercase;
+          color:#d4a017;
+        "
+      >
+        Cozy Book Nook
+      </p>
+
+      <h1
+        style="
+          margin:0;
+          font-size:28px;
+        "
+      >
+        New ${escapeHtml(normalizedType)}
+      </h1>
+    </div>
+
+    <!-- CONTENT -->
+
+    <div style="padding:32px;">
+
+      <p
+        style="
+          margin-top:0;
+          font-size:16px;
+          line-height:1.7;
+          color:#5c4436;
+        "
+      >
+        A new inquiry has been submitted through the
+        Cozy Book Nook website.
+      </p>
+
+      <!-- CUSTOMER -->
+
+      <div
+        style="
+          margin:25px 0;
+          padding:22px;
+          background:#f8f6f2;
+          border-radius:14px;
+        "
+      >
+
+        <p>
+          <strong>Inquiry Type:</strong>
+          ${escapeHtml(normalizedType)}
+        </p>
+
+        <p>
+          <strong>Name:</strong>
+          ${escapeHtml(cleanName)}
+        </p>
+
+        <p>
+          <strong>Email:</strong>
+          ${escapeHtml(cleanEmail)}
+        </p>
+
+        <p>
+          <strong>Phone:</strong>
+          ${escapeHtml(cleanPhone)}
+        </p>
+
+        <p>
+          <strong>Subject:</strong>
+          ${escapeHtml(cleanSubject)}
+        </p>
+
+      </div>
+
+      <!-- BOOK -->
+
+      ${bookInformationHtml}
+
+      <!-- MESSAGE -->
+
+      <div style="margin-top:24px;">
+
+        <h3
+          style="
+            margin-bottom:10px;
+            color:#4a1f0e;
+          "
+        >
+          Message
+        </h3>
+
+        <div
+          style="
+            padding:18px;
+            background:#fffaf4;
+            border-left:4px solid #d4a017;
+            border-radius:8px;
+            line-height:1.7;
+            white-space:pre-wrap;
+          "
+        >
+          ${escapeHtml(cleanMessage)}
+        </div>
+
+      </div>
+
+      <!-- FOOTER -->
+
+      <div
+        style="
+          margin-top:30px;
+          padding-top:20px;
+          border-top:1px solid #eee;
+          font-size:12px;
+          color:#777;
+        "
+      >
+        This inquiry was submitted through the
+        Cozy Book Nook website.
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+      /* ====================================================================
+         PARTICIPANT BOOK HTML
+         ==================================================================== */
+
+      const participantBookHtml =
+        normalizedType === "Book Inquiry"
+          ? `
+            <div
+              style="
+                margin:25px 0;
+                padding:20px;
+                background:#f8f6f2;
+                border-radius:14px;
+              "
+            >
+
+              <p
+                style="
+                  margin:0;
+                  font-weight:bold;
+                  color:#4a1f0e;
+                "
+              >
+                Book
+              </p>
+
+              <p
+                style="
+                  margin-bottom:0;
+                  color:#5c4436;
+                "
+              >
+                ${escapeHtml(cleanBookTitle)}
+              </p>
+
+              ${
+                cleanBookAuthor !== "Not specified"
+                  ? `
+                    <p
+                      style="
+                        margin-bottom:0;
+                        color:#777;
+                      "
+                    >
+                      by ${escapeHtml(cleanBookAuthor)}
+                    </p>
+                  `
+                  : ""
+              }
 
             </div>
           `
           : "";
 
-      /* ================================================================
-         ADMIN EMAIL HTML
-      ================================================================ */
-
-      const adminHtml = `
-        <!DOCTYPE html>
-
-        <html>
-
-          <head>
-            <meta charset="UTF-8" />
-
-            <title>
-              New Cozy Book Nook Inquiry
-            </title>
-          </head>
-
-          <body
-            style="
-              margin:0;
-              padding:0;
-              background:#f7f4ef;
-              font-family:Arial,Helvetica,sans-serif;
-              color:#2e1208;
-            "
-          >
-
-            <div
-              style="
-                max-width:680px;
-                margin:40px auto;
-                background:#ffffff;
-                border-radius:18px;
-                overflow:hidden;
-                box-shadow:0 8px 30px rgba(0,0,0,0.08);
-              "
-            >
-
-              <!-- HEADER -->
-
-              <div
-                style="
-                  background:#4a1f0e;
-                  padding:30px;
-                  color:#ffffff;
-                "
-              >
-
-                <p
-                  style="
-                    margin:0 0 8px;
-                    font-size:12px;
-                    font-weight:bold;
-                    letter-spacing:2px;
-                    text-transform:uppercase;
-                    color:#d4a017;
-                  "
-                >
-                  Cozy Book Nook
-                </p>
-
-                <h1
-                  style="
-                    margin:0;
-                    font-size:28px;
-                  "
-                >
-                  New ${escapeHtml(
-                    normalizedType
-                  )}
-                </h1>
-
-              </div>
-
-              <!-- CONTENT -->
-
-              <div
-                style="
-                  padding:32px;
-                "
-              >
-
-                <p
-                  style="
-                    margin-top:0;
-                    font-size:16px;
-                    line-height:1.7;
-                    color:#5c4436;
-                  "
-                >
-                  A new inquiry has been
-                  submitted through the
-                  Cozy Book Nook website.
-                </p>
-
-                <!-- CUSTOMER -->
-
-                <div
-                  style="
-                    margin:25px 0;
-                    padding:22px;
-                    background:#f8f6f2;
-                    border-radius:14px;
-                  "
-                >
-
-                  <p>
-                    <strong>
-                      Inquiry Type:
-                    </strong>
-
-                    ${escapeHtml(
-                      normalizedType
-                    )}
-                  </p>
-
-                  <p>
-                    <strong>
-                      Name:
-                    </strong>
-
-                    ${escapeHtml(
-                      cleanName
-                    )}
-                  </p>
-
-                  <p>
-                    <strong>
-                      Email:
-                    </strong>
-
-                    ${escapeHtml(
-                      cleanEmail
-                    )}
-                  </p>
-
-                  <p>
-                    <strong>
-                      Phone:
-                    </strong>
-
-                    ${escapeHtml(
-                      cleanPhone
-                    )}
-                  </p>
-
-                  <p>
-                    <strong>
-                      Subject:
-                    </strong>
-
-                    ${escapeHtml(
-                      cleanSubject
-                    )}
-                  </p>
-
-                </div>
-
-                <!-- BOOK -->
-
-                ${bookInformationHtml}
-
-                <!-- MESSAGE -->
-
-                <div
-                  style="
-                    margin-top:24px;
-                  "
-                >
-
-                  <h3
-                    style="
-                      margin-bottom:10px;
-                      color:#4a1f0e;
-                    "
-                  >
-                    Message
-                  </h3>
-
-                  <div
-                    style="
-                      padding:18px;
-                      background:#fffaf4;
-                      border-left:4px solid #d4a017;
-                      border-radius:8px;
-                      line-height:1.7;
-                      white-space:pre-wrap;
-                    "
-                  >
-                    ${escapeHtml(
-                      cleanMessage
-                    )}
-                  </div>
-
-                </div>
-
-                <!-- FOOTER -->
-
-                <div
-                  style="
-                    margin-top:30px;
-                    padding-top:20px;
-                    border-top:1px solid #eee;
-                    font-size:12px;
-                    color:#777;
-                  "
-                >
-                  This inquiry was submitted
-                  through the Cozy Book Nook website.
-                </div>
-
-              </div>
-
-            </div>
-
-          </body>
-
-        </html>
-      `;
-
-      /* ================================================================
-         CUSTOMER BOOK HTML
-      ================================================================ */
-
-      const participantBookHtml =
-        normalizedType ===
-        "Book Inquiry"
-          ? `
-              <div
-                style="
-                  margin:25px 0;
-                  padding:20px;
-                  background:#f8f6f2;
-                  border-radius:14px;
-                "
-              >
-
-                <p
-                  style="
-                    margin:0;
-                    font-weight:bold;
-                    color:#4a1f0e;
-                  "
-                >
-                  Book
-                </p>
-
-                <p
-                  style="
-                    margin-bottom:0;
-                    color:#5c4436;
-                  "
-                >
-                  ${escapeHtml(
-                    cleanBookTitle
-                  )}
-                </p>
-
-                ${
-                  cleanBookAuthor !==
-                  "Not specified"
-                    ? `
-                      <p
-                        style="
-                          margin-bottom:0;
-                          color:#777;
-                        "
-                      >
-                        by ${escapeHtml(
-                          cleanBookAuthor
-                        )}
-                      </p>
-                    `
-                    : ""
-                }
-
-              </div>
-            `
-          : "";
-
-      /* ================================================================
-         CUSTOMER EMAIL HTML
-      ================================================================ */
+      /* ====================================================================
+         PARTICIPANT EMAIL HTML
+         ==================================================================== */
 
       const participantHtml = `
-        <!DOCTYPE html>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Thank You - Cozy Book Nook</title>
+</head>
 
-        <html>
+<body
+  style="
+    margin:0;
+    padding:0;
+    background:#f7f4ef;
+    font-family:Arial,Helvetica,sans-serif;
+    color:#2e1208;
+  "
+>
 
-          <head>
+  <div
+    style="
+      max-width:680px;
+      margin:40px auto;
+      background:#ffffff;
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow:0 8px 30px rgba(0,0,0,0.08);
+    "
+  >
 
-            <meta charset="UTF-8" />
+    <!-- HEADER -->
 
-            <title>
-              Thank You - Cozy Book Nook
-            </title>
+    <div
+      style="
+        background:#4a1f0e;
+        padding:30px;
+        color:#ffffff;
+      "
+    >
 
-          </head>
+      <p
+        style="
+          margin:0 0 8px;
+          font-size:12px;
+          font-weight:bold;
+          letter-spacing:2px;
+          text-transform:uppercase;
+          color:#d4a017;
+        "
+      >
+        Cozy Book Nook
+      </p>
 
-          <body
-            style="
-              margin:0;
-              padding:0;
-              background:#f7f4ef;
-              font-family:Arial,Helvetica,sans-serif;
-              color:#2e1208;
-            "
-          >
+      <h1
+        style="
+          margin:0;
+          font-size:28px;
+        "
+      >
+        Thank You, ${escapeHtml(cleanName)}!
+      </h1>
 
-            <div
-              style="
-                max-width:680px;
-                margin:40px auto;
-                background:#ffffff;
-                border-radius:18px;
-                overflow:hidden;
-                box-shadow:0 8px 30px rgba(0,0,0,0.08);
-              "
-            >
+    </div>
 
-              <!-- HEADER -->
+    <!-- CONTENT -->
 
-              <div
-                style="
-                  background:#4a1f0e;
-                  padding:30px;
-                  color:#ffffff;
-                "
-              >
+    <div style="padding:32px;">
 
-                <p
-                  style="
-                    margin:0 0 8px;
-                    font-size:12px;
-                    font-weight:bold;
-                    letter-spacing:2px;
-                    text-transform:uppercase;
-                    color:#d4a017;
-                  "
-                >
-                  Cozy Book Nook
-                </p>
+      <p
+        style="
+          font-size:16px;
+          line-height:1.8;
+          color:#5c4436;
+        "
+      >
+        Thank you for contacting
+        <strong>Cozy Book Nook</strong>.
+      </p>
 
-                <h1
-                  style="
-                    margin:0;
-                    font-size:28px;
-                  "
-                >
-                  Thank You,
-                  ${escapeHtml(
-                    cleanName
-                  )}!
-                </h1>
+      <p
+        style="
+          font-size:16px;
+          line-height:1.8;
+          color:#5c4436;
+        "
+      >
+        We have received your
+        <strong>${escapeHtml(normalizedType)}</strong>
+        successfully.
+      </p>
 
-              </div>
+      ${participantBookHtml}
 
-              <!-- CONTENT -->
+      <!-- INQUIRY -->
 
-              <div
-                style="
-                  padding:32px;
-                "
-              >
+      <div
+        style="
+          margin:25px 0;
+          padding:20px;
+          background:#f8f6f2;
+          border-radius:14px;
+        "
+      >
 
-                <p
-                  style="
-                    font-size:16px;
-                    line-height:1.8;
-                    color:#5c4436;
-                  "
-                >
-                  Thank you for contacting
-                  <strong>
-                    Cozy Book Nook
-                  </strong>.
-                </p>
+        <p
+          style="
+            margin:0;
+            font-weight:bold;
+            color:#4a1f0e;
+          "
+        >
+          Your inquiry
+        </p>
 
-                <p
-                  style="
-                    font-size:16px;
-                    line-height:1.8;
-                    color:#5c4436;
-                  "
-                >
-                  We have received your
-                  <strong>
-                    ${escapeHtml(
-                      normalizedType
-                    )}
-                  </strong>
-                  successfully.
-                </p>
+        <p
+          style="
+            margin-bottom:0;
+            color:#5c4436;
+          "
+        >
+          ${escapeHtml(cleanSubject)}
+        </p>
 
-                ${participantBookHtml}
+      </div>
 
-                <!-- INQUIRY -->
+      <p
+        style="
+          font-size:16px;
+          line-height:1.8;
+          color:#5c4436;
+        "
+      >
+        Our team will review your message and contact
+        you shortly with the next steps.
+      </p>
 
-                <div
-                  style="
-                    margin:25px 0;
-                    padding:20px;
-                    background:#f8f6f2;
-                    border-radius:14px;
-                  "
-                >
+      <div
+        style="
+          margin-top:30px;
+          padding:20px;
+          background:#fffaf4;
+          border-radius:12px;
+          border-left:4px solid #d4a017;
+        "
+      >
+        <strong>
+          Thank you for choosing Cozy Book Nook.
+        </strong>
+      </div>
 
-                  <p
-                    style="
-                      margin:0;
-                      font-weight:bold;
-                      color:#4a1f0e;
-                    "
-                  >
-                    Your inquiry
-                  </p>
+      <p
+        style="
+          margin-top:30px;
+          font-size:14px;
+          color:#777;
+        "
+      >
+        With gratitude,
+        <br />
+        <strong>Cozy Book Nook Team</strong>
+      </p>
 
-                  <p
-                    style="
-                      margin-bottom:0;
-                      color:#5c4436;
-                    "
-                  >
-                    ${escapeHtml(
-                      cleanSubject
-                    )}
-                  </p>
+    </div>
 
-                </div>
+  </div>
 
-                <p
-                  style="
-                    font-size:16px;
-                    line-height:1.8;
-                    color:#5c4436;
-                  "
-                >
-                  Our team will review your
-                  message and contact you
-                  shortly with the next steps.
-                </p>
+</body>
+</html>
+`;
 
-                <div
-                  style="
-                    margin-top:30px;
-                    padding:20px;
-                    background:#fffaf4;
-                    border-radius:12px;
-                    border-left:4px solid #d4a017;
-                  "
-                >
-
-                  <strong>
-                    Thank you for choosing
-                    Cozy Book Nook.
-                  </strong>
-
-                </div>
-
-                <p
-                  style="
-                    margin-top:30px;
-                    font-size:14px;
-                    color:#777;
-                  "
-                >
-
-                  With gratitude,
-
-                  <br />
-
-                  <strong>
-                    Cozy Book Nook Team
-                  </strong>
-
-                </p>
-
-              </div>
-
-            </div>
-
-          </body>
-
-        </html>
-      `;
-
-      /* ================================================================
+      /* ====================================================================
          SEND ADMIN EMAIL
-      ================================================================ */
-
-      console.log(
-        "📧 Sending administrator email to:",
-        adminEmail
-      );
+         ==================================================================== */
 
       const adminMailResult =
         await transporter.sendMail({
-          from: smtpFrom,
+          from:
+            process.env.SMTP_FROM?.trim() ||
+            smtpUser,
 
           to: adminEmail,
 
@@ -967,7 +710,6 @@ Book ID: ${cleanBookId}
 Subject: ${cleanSubject}
 
 Message:
-
 ${cleanMessage}
           `,
         });
@@ -977,18 +719,15 @@ ${cleanMessage}
         adminMailResult.messageId
       );
 
-      /* ================================================================
+      /* ====================================================================
          SEND CUSTOMER CONFIRMATION
-      ================================================================ */
-
-      console.log(
-        "📧 Sending customer confirmation to:",
-        cleanEmail
-      );
+         ==================================================================== */
 
       const participantMailResult =
         await transporter.sendMail({
-          from: smtpFrom,
+          from:
+            process.env.SMTP_FROM?.trim() ||
+            smtpUser,
 
           to: cleanEmail,
 
@@ -1007,17 +746,13 @@ Thank you for contacting Cozy Book Nook.
 We have received your ${normalizedType} successfully.
 
 ${
-  normalizedType ===
-  "Book Inquiry"
+  normalizedType === "Book Inquiry"
     ? `
 Book:
 ${cleanBookTitle}
 
 Author:
 ${cleanBookAuthor}
-
-Book ID:
-${cleanBookId}
 `
     : ""
 }
@@ -1035,9 +770,9 @@ Cozy Book Nook Team
         participantMailResult.messageId
       );
 
-      /* ================================================================
+      /* ====================================================================
          SUCCESS
-      ================================================================ */
+         ==================================================================== */
 
       return res.status(201).json({
         success: true,
@@ -1051,30 +786,20 @@ Cozy Book Nook Team
         },
 
         data: {
-          participationType:
-            normalizedType,
-
-          name:
-            cleanName,
-
-          email:
-            cleanEmail,
-
-          phone:
-            cleanPhone,
-
-          bookId:
-            cleanBookId,
-
-          bookTitle:
-            cleanBookTitle,
-
-          bookAuthor:
-            cleanBookAuthor,
+          participationType: normalizedType,
+          name: cleanName,
+          email: cleanEmail,
+          bookId: cleanBookId,
+          bookTitle: cleanBookTitle,
+          bookAuthor: cleanBookAuthor,
         },
       });
 
     } catch (error) {
+
+      /* ====================================================================
+         ERROR
+         ==================================================================== */
 
       console.error("");
 
@@ -1090,9 +815,7 @@ Cozy Book Nook Team
         "========================================"
       );
 
-      console.error(
-        error
-      );
+      console.error(error);
 
       console.error(
         "========================================"
@@ -1100,72 +823,25 @@ Cozy Book Nook Team
 
       return res.status(500).json({
         success: false,
-
         error:
           "We could not submit your inquiry at this time. Please try again later.",
-
-        emailNotifications: {
-          admin: false,
-          customer: false,
-        },
       });
     }
   }
 );
 
 /* ==========================================================================
-   GET /
-   
-   Simple route test
-   
-   GET /api/inquiries
-========================================================================== */
-
-router.get(
-  "/",
-  (
-    _req: Request,
-    res: Response
-  ) => {
-    res.json({
-      success: true,
-
-      service:
-        "Cozy Book Nook Inquiry API",
-
-      route:
-        "/api/inquiries",
-
-      methods: {
-        post:
-          "POST /api/inquiries",
-
-        health:
-          "GET /api/inquiries/health",
-      },
-
-      emailConfigured:
-        Boolean(transporter),
-
-      timestamp:
-        new Date().toISOString(),
-    });
-  }
-);
-
-/* ==========================================================================
    HEALTH CHECK
-
-   GET /api/inquiries/health
-========================================================================== */
+   ========================================================================== */
 
 router.get(
   "/health",
-  (
+  async (
     _req: Request,
     res: Response
   ) => {
-    res.json({
+
+    return res.json({
       success: true,
 
       service:
@@ -1177,31 +853,22 @@ router.get(
       smtpHost:
         Boolean(smtpHost),
 
-      smtpPort,
-
       smtpUser:
         Boolean(smtpUser),
 
       smtpPassword:
         Boolean(smtpPass),
 
-      smtpSecure,
-
       adminEmail:
         adminEmail,
 
-      timestamp:
-        new Date().toISOString(),
+      smtpPort:
+        smtpPort,
+
+      smtpSecure:
+        smtpSecure,
     });
   }
-);
-
-/* ==========================================================================
-   ROUTES REGISTERED
-========================================================================== */
-
-console.log(
-  "✅ Inquiry routes registered"
 );
 
 export default router;

@@ -15,3 +15,4 @@ const updateBook = (id, data) => prisma_1.prisma.book.update({
 exports.updateBook = updateBook;
 const deleteBook = (id) => prisma_1.prisma.book.delete({ where: { id } });
 exports.deleteBook = deleteBook;
+//# sourceMappingURL=book.service.js.map

@@ -56,3 +56,4 @@ exports.createBookSchema = bookBaseSchema
     .extend({})
     .required({ title: true, author: true });
 exports.updateBookSchema = bookBaseSchema.partial();
+//# sourceMappingURL=book.schema.js.map

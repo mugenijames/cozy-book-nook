@@ -27,3 +27,4 @@ exports.upload = (0, multer_1.default)({
         cb(new Error('Only image files allowed'));
     },
 });
+//# sourceMappingURL=uploadMiddleware.js.map

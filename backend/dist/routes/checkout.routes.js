@@ -32,3 +32,4 @@ router.get('/test', (req, res) => {
     });
 });
 exports.default = router;
+//# sourceMappingURL=checkout.routes.js.map

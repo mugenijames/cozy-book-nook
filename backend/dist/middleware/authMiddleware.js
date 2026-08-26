@@ -96,3 +96,4 @@ exports.requireSuperAdmin = requireSuperAdmin;
    BACKWARD COMPATIBILITY
    ============================================================ */
 exports.isAdmin = exports.requireAdmin;
+//# sourceMappingURL=authMiddleware.js.map
