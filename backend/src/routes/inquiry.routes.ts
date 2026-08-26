@@ -7,7 +7,7 @@ const router = Router();
 
 /* ==========================================================================
    TYPES
-   ========================================================================== */
+========================================================================== */
 
 interface InquiryBody {
   name?: string;
@@ -16,7 +16,6 @@ interface InquiryBody {
   participationType?: string;
   subject?: string;
   message?: string;
-
   bookId?: string;
   bookTitle?: string;
   bookAuthor?: string;
@@ -24,26 +23,35 @@ interface InquiryBody {
 
 /* ==========================================================================
    EMAIL CONFIGURATION
-   ========================================================================== */
+========================================================================== */
 
-const smtpHost = process.env.SMTP_HOST;
+const smtpHost = process.env.SMTP_HOST?.trim();
 
 const smtpPort = Number(
-  process.env.SMTP_PORT || 587
+  process.env.SMTP_PORT || "587"
 );
 
-const smtpUser = process.env.SMTP_USER;
+const smtpUser = process.env.SMTP_USER?.trim();
 
 const smtpPass = process.env.SMTP_PASS;
 
+const smtpSecure =
+  process.env.SMTP_SECURE === "true" ||
+  smtpPort === 465;
+
+const smtpFrom =
+  process.env.SMTP_FROM?.trim() ||
+  smtpUser ||
+  "";
+
 const adminEmail =
-  process.env.ADMIN_EMAIL ||
-  process.env.SMTP_USER ||
+  process.env.ADMIN_EMAIL?.trim() ||
+  smtpUser ||
   "davidemuria9780@gmail.com";
 
-/*
- * Create the transporter once when the server starts.
- */
+/* ==========================================================================
+   EMAIL TRANSPORTER
+========================================================================== */
 
 const transporter =
   smtpHost &&
@@ -54,9 +62,7 @@ const transporter =
 
         port: smtpPort,
 
-        secure:
-          process.env.SMTP_SECURE === "true" ||
-          smtpPort === 465,
+        secure: smtpSecure,
 
         auth: {
           user: smtpUser,
@@ -66,8 +72,55 @@ const transporter =
     : null;
 
 /* ==========================================================================
+   STARTUP EMAIL STATUS
+========================================================================== */
+
+console.log(
+  "📨 Inquiry email configuration:"
+);
+
+console.log(
+  "SMTP Host:",
+  smtpHost || "Missing"
+);
+
+console.log(
+  "SMTP Port:",
+  smtpPort
+);
+
+console.log(
+  "SMTP User:",
+  smtpUser || "Missing"
+);
+
+console.log(
+  "SMTP From:",
+  smtpFrom || "Missing"
+);
+
+console.log(
+  "Admin Email:",
+  adminEmail || "Missing"
+);
+
+console.log(
+  "SMTP Password:",
+  smtpPass
+    ? "✓ Loaded"
+    : "✗ Missing"
+);
+
+console.log(
+  "SMTP Transporter:",
+  transporter
+    ? "✓ Ready"
+    : "✗ Not configured"
+);
+
+/* ==========================================================================
    HELPERS
-   ========================================================================== */
+========================================================================== */
 
 const escapeHtml = (
   value: string
@@ -82,30 +135,25 @@ const escapeHtml = (
 
 /* --------------------------------------------------------------------------
    NORMALIZE PARTICIPATION TYPE
-   -------------------------------------------------------------------------- */
+-------------------------------------------------------------------------- */
 
 const normalizeParticipationType = (
   value: string
 ): string => {
-  const normalized = value
-    .trim()
-    .toLowerCase();
+  const normalized =
+    value
+      .trim()
+      .toLowerCase();
 
-  if (
-    normalized === "donate"
-  ) {
+  if (normalized === "donate") {
     return "Donate";
   }
 
-  if (
-    normalized === "sponsor"
-  ) {
+  if (normalized === "sponsor") {
     return "Sponsor";
   }
 
-  if (
-    normalized === "partner"
-  ) {
+  if (normalized === "partner") {
     return "Partner";
   }
 
@@ -120,22 +168,20 @@ const normalizeParticipationType = (
 };
 
 /* ==========================================================================
-   POST /api/inquiries
-   ========================================================================== */
+   ROUTE REGISTRATION LOG
+========================================================================== */
 
-/**
- * Handles:
- *
- * 1. Book inquiries
- * 2. Donate inquiries
- * 3. Sponsor inquiries
- * 4. Partner inquiries
- *
- * Sends:
- *
- * 1. Notification email to administrator
- * 2. Confirmation email to customer
- */
+console.log(
+  "📨 Registering inquiry routes at /api/inquiries"
+);
+
+/* ==========================================================================
+   POST /
+   
+   Mounted by server.ts as:
+
+   POST /api/inquiries
+========================================================================== */
 
 router.post(
   "/",
@@ -144,6 +190,22 @@ router.post(
     res: Response
   ) => {
     try {
+      console.log("");
+      console.log(
+        "📨 POST /api/inquiries received"
+      );
+
+      console.log(
+        "Request body:",
+        {
+          ...req.body,
+          email:
+            req.body?.email
+              ? "[provided]"
+              : undefined,
+        }
+      );
+
       const {
         name,
         email,
@@ -157,9 +219,9 @@ router.post(
       } =
         req.body as InquiryBody;
 
-      /* ====================================================================
+      /* ================================================================
          VALIDATION
-      ==================================================================== */
+      ================================================================ */
 
       if (!name?.trim()) {
         return res.status(400).json({
@@ -177,10 +239,24 @@ router.post(
         });
       }
 
-      /*
-       * Book inquiries are automatically treated as
-       * "Book Inquiry" if no participationType is supplied.
-       */
+      const emailRegex =
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (
+        !emailRegex.test(
+          email.trim()
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Please provide a valid email address.",
+        });
+      }
+
+      /* ================================================================
+         PARTICIPATION TYPE
+      ================================================================ */
 
       const requestedType =
         participationType?.trim() ||
@@ -210,37 +286,17 @@ router.post(
         });
       }
 
-      /* ====================================================================
-         EMAIL VALIDATION
-
-         IMPORTANT:
-         Correct email regex.
-      ==================================================================== */
-
-      const emailRegex =
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-      if (
-        !emailRegex.test(
-          email.trim()
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          error:
-            "Please provide a valid email address.",
-        });
-      }
-
-      /* ====================================================================
+      /* ================================================================
          CLEAN DATA
-      ==================================================================== */
+      ================================================================ */
 
       const cleanName =
         name.trim();
 
       const cleanEmail =
-        email.trim().toLowerCase();
+        email
+          .trim()
+          .toLowerCase();
 
       const cleanPhone =
         phone?.trim() ||
@@ -266,12 +322,11 @@ router.post(
         message?.trim() ||
         "No additional message provided.";
 
-      /* ====================================================================
-         LOG INQUIRY
-      ==================================================================== */
+      /* ================================================================
+         LOG
+      ================================================================ */
 
       console.log("");
-
       console.log(
         "========================================"
       );
@@ -328,25 +383,29 @@ router.post(
         "========================================"
       );
 
-      /* ====================================================================
-         CHECK EMAIL CONFIGURATION
-      ==================================================================== */
+      /* ================================================================
+         SMTP CHECK
+      ================================================================ */
 
       if (!transporter) {
         console.error(
           "❌ SMTP is not configured."
         );
 
-        return res.status(500).json({
+        return res.status(503).json({
           success: false,
           error:
-            "Email service is not configured on the server. Please contact us directly.",
+            "Email service is temporarily unavailable. Please try again later or contact us directly.",
+          emailNotifications: {
+            admin: false,
+            customer: false,
+          },
         });
       }
 
-      /* ====================================================================
-         BOOK INFORMATION HTML
-      ==================================================================== */
+      /* ================================================================
+         BOOK INFORMATION - ADMIN
+      ================================================================ */
 
       const bookInformationHtml =
         normalizedType ===
@@ -386,9 +445,9 @@ router.post(
           `
           : "";
 
-      /* ====================================================================
-         ADMIN EMAIL
-      ==================================================================== */
+      /* ================================================================
+         ADMIN EMAIL HTML
+      ================================================================ */
 
       const adminHtml = `
         <!DOCTYPE html>
@@ -396,13 +455,11 @@ router.post(
         <html>
 
           <head>
-
             <meta charset="UTF-8" />
 
             <title>
               New Cozy Book Nook Inquiry
             </title>
-
           </head>
 
           <body
@@ -608,9 +665,9 @@ router.post(
         </html>
       `;
 
-      /* ====================================================================
-         PARTICIPANT EMAIL
-      ==================================================================== */
+      /* ================================================================
+         CUSTOMER BOOK HTML
+      ================================================================ */
 
       const participantBookHtml =
         normalizedType ===
@@ -667,6 +724,10 @@ router.post(
               </div>
             `
           : "";
+
+      /* ================================================================
+         CUSTOMER EMAIL HTML
+      ================================================================ */
 
       const participantHtml = `
         <!DOCTYPE html>
@@ -850,7 +911,9 @@ router.post(
                     color:#777;
                   "
                 >
+
                   With gratitude,
+
                   <br />
 
                   <strong>
@@ -868,15 +931,18 @@ router.post(
         </html>
       `;
 
-      /* ====================================================================
+      /* ================================================================
          SEND ADMIN EMAIL
-      ==================================================================== */
+      ================================================================ */
+
+      console.log(
+        "📧 Sending administrator email to:",
+        adminEmail
+      );
 
       const adminMailResult =
         await transporter.sendMail({
-          from:
-            process.env.SMTP_FROM ||
-            smtpUser,
+          from: smtpFrom,
 
           to: adminEmail,
 
@@ -911,20 +977,22 @@ ${cleanMessage}
         adminMailResult.messageId
       );
 
-      /* ====================================================================
+      /* ================================================================
          SEND CUSTOMER CONFIRMATION
-      ==================================================================== */
+      ================================================================ */
+
+      console.log(
+        "📧 Sending customer confirmation to:",
+        cleanEmail
+      );
 
       const participantMailResult =
         await transporter.sendMail({
-          from:
-            process.env.SMTP_FROM ||
-            smtpUser,
+          from: smtpFrom,
 
           to: cleanEmail,
 
-          replyTo:
-            adminEmail,
+          replyTo: adminEmail,
 
           subject:
             "Thank You for Contacting Cozy Book Nook",
@@ -942,12 +1010,14 @@ ${
   normalizedType ===
   "Book Inquiry"
     ? `
-
 Book:
 ${cleanBookTitle}
 
 Author:
 ${cleanBookAuthor}
+
+Book ID:
+${cleanBookId}
 `
     : ""
 }
@@ -965,9 +1035,9 @@ Cozy Book Nook Team
         participantMailResult.messageId
       );
 
-      /* ====================================================================
+      /* ================================================================
          SUCCESS
-      ==================================================================== */
+      ================================================================ */
 
       return res.status(201).json({
         success: true,
@@ -990,6 +1060,9 @@ Cozy Book Nook Team
           email:
             cleanEmail,
 
+          phone:
+            cleanPhone,
+
           bookId:
             cleanBookId,
 
@@ -1000,10 +1073,8 @@ Cozy Book Nook Team
             cleanBookAuthor,
         },
       });
+
     } catch (error) {
-      /* ====================================================================
-         ERROR
-      ==================================================================== */
 
       console.error("");
 
@@ -1019,7 +1090,9 @@ Cozy Book Nook Team
         "========================================"
       );
 
-      console.error(error);
+      console.error(
+        error
+      );
 
       console.error(
         "========================================"
@@ -1030,18 +1103,65 @@ Cozy Book Nook Team
 
         error:
           "We could not submit your inquiry at this time. Please try again later.",
+
+        emailNotifications: {
+          admin: false,
+          customer: false,
+        },
       });
     }
   }
 );
 
 /* ==========================================================================
+   GET /
+   
+   Simple route test
+   
+   GET /api/inquiries
+========================================================================== */
+
+router.get(
+  "/",
+  (
+    _req: Request,
+    res: Response
+  ) => {
+    res.json({
+      success: true,
+
+      service:
+        "Cozy Book Nook Inquiry API",
+
+      route:
+        "/api/inquiries",
+
+      methods: {
+        post:
+          "POST /api/inquiries",
+
+        health:
+          "GET /api/inquiries/health",
+      },
+
+      emailConfigured:
+        Boolean(transporter),
+
+      timestamp:
+        new Date().toISOString(),
+    });
+  }
+);
+
+/* ==========================================================================
    HEALTH CHECK
-   ========================================================================== */
+
+   GET /api/inquiries/health
+========================================================================== */
 
 router.get(
   "/health",
-  async (
+  (
     _req: Request,
     res: Response
   ) => {
@@ -1057,16 +1177,31 @@ router.get(
       smtpHost:
         Boolean(smtpHost),
 
+      smtpPort,
+
       smtpUser:
         Boolean(smtpUser),
 
       smtpPassword:
         Boolean(smtpPass),
 
+      smtpSecure,
+
       adminEmail:
         adminEmail,
+
+      timestamp:
+        new Date().toISOString(),
     });
   }
+);
+
+/* ==========================================================================
+   ROUTES REGISTERED
+========================================================================== */
+
+console.log(
+  "✅ Inquiry routes registered"
 );
 
 export default router;

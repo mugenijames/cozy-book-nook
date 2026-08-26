@@ -32,18 +32,29 @@ import authRoutes from "./routes/auth.routes";
 ========================================================================== */
 
 const NODE_ENV =
-  process.env.NODE_ENV || "development";
+  process.env.NODE_ENV ||
+  "development";
 
-const PORT = parseInt(
-  process.env.PORT || "5000",
-  10
-);
+const PORT =
+  parseInt(
+    process.env.PORT || "5000",
+    10
+  );
 
 const isDevelopment =
   NODE_ENV === "development";
 
+/*
+ * Authentication bypass should NEVER automatically
+ * happen just because NODE_ENV is development.
+ *
+ * Development bypass can still be enabled explicitly
+ * with:
+ *
+ * BYPASS_AUTH=true
+ */
+
 const BYPASS_AUTH =
-  isDevelopment ||
   process.env.BYPASS_AUTH === "true";
 
 /* ==========================================================================
@@ -51,9 +62,18 @@ const BYPASS_AUTH =
 ========================================================================== */
 
 console.log("");
-console.log("========================================");
-console.log("📚 COZY BOOK NOOK BACKEND");
-console.log("========================================");
+
+console.log(
+  "========================================"
+);
+
+console.log(
+  "📚 COZY BOOK NOOK BACKEND"
+);
+
+console.log(
+  "========================================"
+);
 
 console.log(
   "Environment:",
@@ -128,41 +148,59 @@ console.log(
     : "✓ Disabled"
 );
 
-console.log("========================================");
+console.log(
+  "========================================"
+);
+
 console.log("");
 
 /* ==========================================================================
    EXPRESS APP
 ========================================================================== */
 
-const app = express();
+const app =
+  express();
 
 /* ==========================================================================
    UPLOADS DIRECTORY
 ========================================================================== */
 
-const uploadsDir = path.resolve(
-  __dirname,
-  "../uploads"
-);
+const uploadsDir =
+  path.resolve(
+    __dirname,
+    "../uploads"
+  );
 
 try {
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, {
-      recursive: true,
-    });
+
+  if (
+    !fs.existsSync(
+      uploadsDir
+    )
+  ) {
+
+    fs.mkdirSync(
+      uploadsDir,
+      {
+        recursive: true,
+      }
+    );
 
     console.log(
       "📁 Created uploads directory:",
       uploadsDir
     );
+
   } else {
+
     console.log(
       "📁 Uploads directory:",
       uploadsDir
     );
   }
+
 } catch (error) {
+
   console.error(
     "❌ Failed to create uploads directory:",
     error
@@ -175,9 +213,11 @@ try {
 
 const allowedOrigins = [
   "http://localhost:8080",
+
   "http://127.0.0.1:8080",
 
   "http://localhost:3000",
+
   "http://127.0.0.1:3000",
 
   "http://192.168.100.8:8080",
@@ -204,6 +244,15 @@ app.use(
       origin,
       callback
     ) => {
+
+      /*
+       * Requests without Origin:
+       *
+       * - Postman
+       * - curl
+       * - server-to-server
+       */
+
       if (!origin) {
         return callback(
           null,
@@ -216,6 +265,7 @@ app.use(
           origin
         )
       ) {
+
         return callback(
           null,
           true
@@ -253,7 +303,8 @@ app.use(
 
     credentials: true,
 
-    optionsSuccessStatus: 204,
+    optionsSuccessStatus:
+      204,
   })
 );
 
@@ -284,12 +335,17 @@ app.use(
     _res: Response,
     next: NextFunction
   ) => {
+
     const url =
-      req.originalUrl || req.url;
+      req.originalUrl ||
+      req.url;
 
     if (
-      !url.includes("favicon")
+      !url.includes(
+        "favicon"
+      )
     ) {
+
       console.log(
         `>>> ${req.method} ${url}`
       );
@@ -320,8 +376,11 @@ app.get(
     _req: Request,
     res: Response
   ) => {
+
     res.json({
-      status: "OK",
+
+      status:
+        "OK",
 
       environment:
         NODE_ENV,
@@ -341,6 +400,7 @@ app.get(
           : "missing",
 
       services: {
+
         cloudinary:
           Boolean(
             process.env
@@ -379,7 +439,9 @@ app.get(
 
         email:
           Boolean(
-            process.env.SMTP_HOST
+            process.env.SMTP_HOST &&
+            process.env.SMTP_USER &&
+            process.env.SMTP_PASS
           ),
       },
     });
@@ -396,7 +458,9 @@ app.get(
     _req: Request,
     res: Response
   ) => {
+
     res.json({
+
       message:
         "Cozy Book Nook API",
 
@@ -410,6 +474,7 @@ app.get(
         NODE_ENV,
 
       endpoints: {
+
         health:
           "/health",
 
@@ -430,9 +495,6 @@ app.get(
 
         bookPreview:
           "/api/books/:id/generate-preview",
-
-        invitations:
-          "/api/invite",
 
         inquiries:
           "/api/inquiries",
@@ -503,20 +565,12 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   DEAR DAD INQUIRIES
+   INQUIRIES
 -------------------------------------------------------------------------- */
-
-console.log(
-  "📨 Registering inquiry routes at /api/inquiries"
-);
 
 app.use(
   "/api/inquiries",
   inquiryRoutes
-);
-
-console.log(
-  "✅ Inquiry routes registered"
 );
 
 /* --------------------------------------------------------------------------
@@ -556,34 +610,10 @@ app.use(
 );
 
 /* ==========================================================================
-   INQUIRY DEBUG ROUTES
-========================================================================== */
-
-/*
- * This makes it very easy to confirm from a browser that
- * the deployed Render server has loaded inquiry.routes.ts.
- */
-
-app.get(
-  "/api/inquiries-test",
-  (
-    _req: Request,
-    res: Response
-  ) => {
-    res.json({
-      success: true,
-      message:
-        "Inquiry API is available.",
-      endpoint:
-        "/api/inquiries",
-      postEndpoint:
-        "/api/inquiries",
-    });
-  }
-);
-
-/* ==========================================================================
    API 404 HANDLER
+
+   IMPORTANT:
+   This MUST be AFTER all API routes.
 ========================================================================== */
 
 app.use(
@@ -591,6 +621,7 @@ app.use(
     req: Request,
     res: Response
   ) => {
+
     console.warn(
       "❌ API route not found:",
       req.method,
@@ -598,7 +629,9 @@ app.use(
     );
 
     res.status(404).json({
-      success: false,
+
+      success:
+        false,
 
       error:
         "API endpoint not found",
@@ -623,6 +656,7 @@ app.use(
     res: Response,
     _next: NextFunction
   ) => {
+
     console.error("");
 
     console.error(
@@ -665,12 +699,20 @@ app.use(
     }
 
     const status =
-      Number(err?.status) ||
-      Number(err?.statusCode) ||
+      Number(
+        err?.status
+      ) ||
+      Number(
+        err?.statusCode
+      ) ||
       500;
 
-    res.status(status).json({
-      success: false,
+    res.status(
+      status
+    ).json({
+
+      success:
+        false,
 
       error:
         err?.message ||
@@ -693,6 +735,7 @@ const server =
     PORT,
     "0.0.0.0",
     () => {
+
       console.log("");
 
       console.log(
@@ -732,11 +775,7 @@ const server =
       );
 
       console.log(
-        `📨 Inquiry Test: http://localhost:${PORT}/api/inquiries-test`
-      );
-
-      console.log(
-        `📧 Inquiry Health: http://localhost:${PORT}/api/inquiries/health`
+        `📨 Inquiry Health: http://localhost:${PORT}/api/inquiries/health`
       );
 
       console.log(
@@ -774,19 +813,19 @@ const server =
       console.log(
         "SMTP Host:",
         process.env.SMTP_HOST ||
-        "Missing"
+          "Missing"
       );
 
       console.log(
         "SMTP User:",
         process.env.SMTP_USER ||
-        "Missing"
+          "Missing"
       );
 
       console.log(
         "Admin Email:",
         process.env.ADMIN_EMAIL ||
-        "Missing"
+          "Missing"
       );
 
       console.log(
@@ -800,7 +839,10 @@ const server =
         "========================================"
       );
 
-      if (BYPASS_AUTH) {
+      if (
+        BYPASS_AUTH
+      ) {
+
         console.warn(
           "⚠️ WARNING: Authentication is BYPASSED"
         );
@@ -817,6 +859,7 @@ const server =
 server.on(
   "error",
   (error: any) => {
+
     console.error(
       "❌ HTTP SERVER ERROR:",
       error
@@ -826,6 +869,7 @@ server.on(
       error?.code ===
       "EADDRINUSE"
     ) {
+
       console.error(
         `❌ Port ${PORT} is already in use.`
       );
@@ -840,6 +884,7 @@ server.on(
 const shutdown = (
   signal: string
 ) => {
+
   console.log("");
 
   console.log(
@@ -848,6 +893,7 @@ const shutdown = (
 
   server.close(
     () => {
+
       console.log(
         "✅ HTTP server closed."
       );
@@ -858,11 +904,13 @@ const shutdown = (
 
   setTimeout(
     () => {
+
       console.error(
         "⚠️ Forced shutdown."
       );
 
       process.exit(1);
+
     },
     10000
   );
@@ -870,12 +918,18 @@ const shutdown = (
 
 process.on(
   "SIGTERM",
-  () => shutdown("SIGTERM")
+  () =>
+    shutdown(
+      "SIGTERM"
+    )
 );
 
 process.on(
   "SIGINT",
-  () => shutdown("SIGINT")
+  () =>
+    shutdown(
+      "SIGINT"
+    )
 );
 
 /* ==========================================================================
@@ -885,6 +939,7 @@ process.on(
 process.on(
   "unhandledRejection",
   (reason) => {
+
     console.error(
       "❌ UNHANDLED PROMISE REJECTION:",
       reason
@@ -895,6 +950,7 @@ process.on(
 process.on(
   "uncaughtException",
   (error) => {
+
     console.error(
       "❌ UNCAUGHT EXCEPTION:",
       error
