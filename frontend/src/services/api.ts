@@ -14,44 +14,59 @@ const USE_MOCK_DATA =
 // API BASE URL
 // ============================================================
 
+/**
+ * Returns the backend base URL.
+ *
+ * IMPORTANT:
+ * Keep VITE_API_BASE_URL WITHOUT /api.
+ *
+ * Example:
+ *
+ * VITE_API_BASE_URL=https://cozy-book-nook-1.onrender.com
+ *
+ * Endpoints are then written as:
+ *
+ * /api/books
+ * /api/orders
+ * /api/upload-pdf
+ */
 export const getApiBase = (): string => {
+  const configured =
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL;
+
+  // ----------------------------------------------------------
+  // DEVELOPMENT
+  // ----------------------------------------------------------
+
   if (import.meta.env.DEV) {
-    const devBase = import.meta.env.VITE_API_BASE_URL;
+    const devBase =
+      configured || "http://localhost:5000";
 
-    if (devBase) {
-      const cleanBase = devBase.replace(/\/+$/, "");
-
-      console.log(
-        "📡 DEV mode: Using VITE_API_BASE_URL =",
-        cleanBase
-      );
-
-      return cleanBase;
-    }
+    const cleanBase =
+      devBase.replace(/\/+$/, "");
 
     console.log(
-      "📡 DEV mode: Using localhost:5000 fallback"
+      "📡 DEV API Base URL:",
+      cleanBase
     );
 
-    return "http://localhost:5000";
+    return cleanBase;
   }
 
-  const prodBase = import.meta.env.VITE_API_BASE_URL;
+  // ----------------------------------------------------------
+  // PRODUCTION
+  // ----------------------------------------------------------
 
-  if (!prodBase) {
-    console.error(
-      "❌ VITE_API_BASE_URL is not set in production!"
-    );
+  const prodBase =
+    configured ||
+    "https://cozy-book-nook-1.onrender.com";
 
-    throw new Error(
-      "API base URL is not configured for production"
-    );
-  }
-
-  const cleanBase = prodBase.replace(/\/+$/, "");
+  const cleanBase =
+    prodBase.replace(/\/+$/, "");
 
   console.log(
-    "📡 PROD mode: Using VITE_API_BASE_URL =",
+    "📡 PROD API Base URL:",
     cleanBase
   );
 
@@ -62,22 +77,31 @@ export const getApiBase = (): string => {
 // URL BUILDER
 // ============================================================
 
-const buildUrl = (endpoint: string): string => {
+const buildUrl = (
+  endpoint: string
+): string => {
   const base = getApiBase();
 
-  const cleanEndpoint = endpoint.startsWith("/")
-    ? endpoint
-    : `/${endpoint}`;
+  const cleanEndpoint =
+    endpoint.startsWith("/")
+      ? endpoint
+      : `/${endpoint}`;
 
   return `${base}${cleanEndpoint}`;
 };
 
 // ============================================================
-// TOKEN
+// ADMIN TOKEN
 // ============================================================
 
 const getAdminToken = (): string | null => {
-  return localStorage.getItem("admin_token");
+  try {
+    return localStorage.getItem(
+      "admin_token"
+    );
+  } catch {
+    return null;
+  }
 };
 
 // ============================================================
@@ -96,12 +120,14 @@ export const apiFetch = async <T>(
     options.headers || {}
   );
 
-  /*
-   * Only set Content-Type automatically when we are
-   * NOT sending FormData.
-   *
-   * This is important for PDF uploads.
-   */
+  // ----------------------------------------------------------
+  // CONTENT TYPE
+  // ----------------------------------------------------------
+  //
+  // Do NOT manually set Content-Type for FormData.
+  // The browser automatically creates the multipart boundary.
+  // ----------------------------------------------------------
+
   if (
     !(options.body instanceof FormData) &&
     !headers.has("Content-Type")
@@ -111,6 +137,10 @@ export const apiFetch = async <T>(
       "application/json"
     );
   }
+
+  // ----------------------------------------------------------
+  // ADMIN AUTHORIZATION
+  // ----------------------------------------------------------
 
   if (token) {
     headers.set(
@@ -124,23 +154,42 @@ export const apiFetch = async <T>(
   );
 
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    const response = await fetch(
+      url,
+      {
+        ...options,
+        headers,
+      }
+    );
 
     const contentType =
-      response.headers.get("content-type") || "";
+      response.headers.get(
+        "content-type"
+      ) || "";
 
     let data: any = null;
 
-    if (contentType.includes("application/json")) {
+    // --------------------------------------------------------
+    // JSON RESPONSE
+    // --------------------------------------------------------
+
+    if (
+      contentType.includes(
+        "application/json"
+      )
+    ) {
       try {
         data = await response.json();
       } catch {
         data = null;
       }
-    } else {
+    }
+
+    // --------------------------------------------------------
+    // TEXT RESPONSE
+    // --------------------------------------------------------
+
+    else {
       try {
         data = await response.text();
       } catch {
@@ -148,9 +197,14 @@ export const apiFetch = async <T>(
       }
     }
 
+    // --------------------------------------------------------
+    // HTTP ERROR
+    // --------------------------------------------------------
+
     if (!response.ok) {
       const serverMessage =
-        typeof data === "object" && data
+        typeof data === "object" &&
+        data
           ? data.error ||
             data.message ||
             data.detail
@@ -173,9 +227,6 @@ export const apiFetch = async <T>(
     return data as T;
   } catch (error) {
     if (error instanceof Error) {
-      /*
-       * Avoid wrapping an error multiple times.
-       */
       if (
         error.message.startsWith(
           "API error ("
@@ -214,14 +265,8 @@ export interface Book {
 
   coverImage?: string | null;
 
-  /*
-   * URL/path of the uploaded PDF.
-   */
   pdfUrl?: string | null;
 
-  /*
-   * Optional preview image generated from the PDF.
-   */
   pdfPreviewImage?: string | null;
 
   publishedYear?: number | null;
@@ -230,16 +275,14 @@ export interface Book {
 
   rating: number;
 
-  /*
+  /**
    * Smallest currency unit.
+   *
    * Example:
-   * KES 500 = 50000 cents.
+   * KES 500 = 50000 cents
    */
   priceCents?: number | null;
 
-  /*
-   * AI-generated content.
-   */
   aiSummary?: string | null;
 
   shortSummary?: string | null;
@@ -367,98 +410,259 @@ export interface PdfUploadResponse {
 
   pdfUrl: string;
 
-  /*
-   * Some backend implementations may return
-   * this field.
-   */
   url?: string;
 
-  /*
-   * Optional generated preview image.
-   */
   pdfPreviewImage?: string | null;
 
-  /*
-   * Optional filename returned by backend.
-   */
   filename?: string;
 
-  /*
-   * Optional file metadata.
-   */
   size?: number;
 
   mimetype?: string;
 }
 
 // ============================================================
+// INQUIRY TYPES
+// ============================================================
+
+export interface InquiryPayload {
+  orderType: "INQUIRY";
+
+  customerName: string;
+
+  email: string;
+
+  phoneNumber?: string | null;
+
+  notes: string;
+
+  deliveryNotes?: string | null;
+
+  items: Array<{
+    bookId: string;
+
+    quantity: number;
+  }>;
+}
+
+export interface InquiryResponse {
+  success?: boolean;
+
+  message?: string;
+
+  order?: {
+    id?: string;
+
+    orderNumber?: string;
+  };
+
+  id?: string;
+
+  orderNumber?: string;
+
+  emailNotifications?: {
+    admin?: boolean;
+
+    customer?: boolean;
+
+    [key: string]: any;
+  };
+
+  [key: string]: any;
+}
+
+// ============================================================
+// SUBMIT BOOK INQUIRY
+// ============================================================
+
+/**
+ * Submit a book inquiry.
+ *
+ * Backend endpoint:
+ *
+ * POST /api/orders
+ *
+ * The backend should recognize:
+ *
+ * orderType: "INQUIRY"
+ */
+export const submitBookInquiry =
+  async (
+    payload: InquiryPayload
+  ): Promise<InquiryResponse> => {
+    if (!payload) {
+      throw new Error(
+        "Inquiry data is required."
+      );
+    }
+
+    if (
+      payload.orderType !==
+      "INQUIRY"
+    ) {
+      throw new Error(
+        "Invalid inquiry type."
+      );
+    }
+
+    if (
+      !payload.customerName?.trim()
+    ) {
+      throw new Error(
+        "Customer name is required."
+      );
+    }
+
+    if (!payload.email?.trim()) {
+      throw new Error(
+        "Customer email is required."
+      );
+    }
+
+    if (!payload.notes?.trim()) {
+      throw new Error(
+        "Inquiry message is required."
+      );
+    }
+
+    if (
+      !Array.isArray(
+        payload.items
+      ) ||
+      payload.items.length === 0
+    ) {
+      throw new Error(
+        "At least one book is required."
+      );
+    }
+
+    console.log(
+      "📨 Submitting book inquiry:",
+      payload
+    );
+
+    const response =
+      await apiFetch<InquiryResponse>(
+        "/api/orders",
+        {
+          method: "POST",
+
+          body: JSON.stringify({
+            orderType:
+              "INQUIRY",
+
+            customerName:
+              payload.customerName.trim(),
+
+            email:
+              payload.email
+                .trim()
+                .toLowerCase(),
+
+            phoneNumber:
+              payload.phoneNumber
+                ?.trim() || null,
+
+            notes:
+              payload.notes.trim(),
+
+            deliveryNotes:
+              payload.deliveryNotes
+                ?.trim() ||
+              payload.notes.trim(),
+
+            items:
+              payload.items,
+          }),
+        }
+      );
+
+    console.log(
+      "✅ Book inquiry submitted:",
+      response
+    );
+
+    console.log(
+      "📧 Inquiry email notification status:",
+      response?.emailNotifications
+    );
+
+    return response;
+  };
+
+// ============================================================
 // GET ALL BOOKS
 // ============================================================
 
-export const getBooks = async (): Promise<Book[]> => {
-  if (USE_MOCK_DATA) {
-    console.log(
-      "📚 Using mock data - showing sample books"
+export const getBooks =
+  async (): Promise<Book[]> => {
+    if (USE_MOCK_DATA) {
+      console.log(
+        "📚 Using mock data - showing sample books"
+      );
+
+      return mockBooks.map(
+        (book) => ({
+          ...book,
+
+          createdAt:
+            new Date().toISOString(),
+
+          updatedAt:
+            new Date().toISOString(),
+        })
+      ) as Book[];
+    }
+
+    return apiFetch<Book[]>(
+      "/api/books"
     );
-
-    return mockBooks.map((book) => ({
-      ...book,
-
-      createdAt:
-        new Date().toISOString(),
-
-      updatedAt:
-        new Date().toISOString(),
-    })) as Book[];
-  }
-
-  return apiFetch<Book[]>(
-    "/api/books"
-  );
-};
+  };
 
 // ============================================================
 // GET SINGLE BOOK
 // ============================================================
 
-export const getBook = async (
-  idOrSlug: string
-): Promise<Book> => {
-  if (USE_MOCK_DATA) {
-    console.log(
-      "📚 Using mock data for book:",
-      idOrSlug
-    );
-
-    const book = mockBooks.find(
-      (b) =>
-        b.id === idOrSlug ||
-        b.slug === idOrSlug
-    );
-
-    if (!book) {
-      throw new Error(
-        "Book not found"
+export const getBook =
+  async (
+    idOrSlug: string
+  ): Promise<Book> => {
+    if (USE_MOCK_DATA) {
+      console.log(
+        "📚 Using mock data for book:",
+        idOrSlug
       );
+
+      const book =
+        mockBooks.find(
+          (b) =>
+            b.id === idOrSlug ||
+            b.slug === idOrSlug
+        );
+
+      if (!book) {
+        throw new Error(
+          "Book not found"
+        );
+      }
+
+      return {
+        ...book,
+
+        createdAt:
+          new Date().toISOString(),
+
+        updatedAt:
+          new Date().toISOString(),
+      } as Book;
     }
 
-    return {
-      ...book,
-
-      createdAt:
-        new Date().toISOString(),
-
-      updatedAt:
-        new Date().toISOString(),
-    } as Book;
-  }
-
-  return apiFetch<Book>(
-    `/api/books/${encodeURIComponent(
-      idOrSlug
-    )}`
-  );
-};
+    return apiFetch<Book>(
+      `/api/books/${encodeURIComponent(
+        idOrSlug
+      )}`
+    );
+  };
 
 // ============================================================
 // CREATE BOOK
@@ -541,7 +745,8 @@ export const updateBook = (
         new Date().toISOString(),
 
       rating:
-        bookData.rating !== undefined
+        bookData.rating !==
+        undefined
           ? bookData.rating
           : existingBook.rating,
     } as Book;
@@ -605,92 +810,83 @@ export const deleteBook = (
  * Upload a PDF to the backend.
  *
  * IMPORTANT:
- * Do NOT manually set Content-Type here.
- * The browser automatically sets the correct
- * multipart/form-data boundary.
+ * Do NOT manually set Content-Type.
+ *
+ * The browser automatically sets:
+ *
+ * multipart/form-data; boundary=...
  */
-export const uploadBookPdf = async (
-  file: File
-): Promise<PdfUploadResponse> => {
-  if (!file) {
-    throw new Error(
-      "No PDF file selected"
-    );
-  }
+export const uploadBookPdf =
+  async (
+    file: File
+  ): Promise<PdfUploadResponse> => {
+    if (!file) {
+      throw new Error(
+        "No PDF file selected."
+      );
+    }
 
-  if (
-    file.type !==
-      "application/pdf" &&
-    !file.name
-      .toLowerCase()
-      .endsWith(".pdf")
-  ) {
-    throw new Error(
-      "Please select a valid PDF file"
-    );
-  }
+    if (
+      file.type !==
+        "application/pdf" &&
+      !file.name
+        .toLowerCase()
+        .endsWith(".pdf")
+    ) {
+      throw new Error(
+        "Please select a valid PDF file."
+      );
+    }
 
-  const formData =
-    new FormData();
+    const formData =
+      new FormData();
 
-  formData.append(
-    "file",
-    file
-  );
-
-  console.log(
-    "📤 Uploading PDF:",
-    file.name
-  );
-
-  const response =
-    await apiFetch<PdfUploadResponse>(
-      "/api/upload-pdf",
-      {
-        method: "POST",
-
-        body: formData,
-      }
+    formData.append(
+      "file",
+      file
     );
 
-  /*
-   * Some APIs return pdfUrl.
-   * Others return url.
-   *
-   * Normalize both.
-   */
-  const pdfUrl =
-    response.pdfUrl ||
-    response.url;
-
-  if (!pdfUrl) {
-    console.error(
-      "❌ Upload succeeded but no pdfUrl was returned:",
-      response
+    console.log(
+      "📤 Uploading PDF:",
+      file.name
     );
 
-    throw new Error(
-      "PDF upload succeeded, but the server did not return a PDF URL."
-    );
-  }
+    const response =
+      await apiFetch<PdfUploadResponse>(
+        "/api/upload-pdf",
+        {
+          method: "POST",
 
-  return {
-    ...response,
+          body: formData,
+        }
+      );
 
-    pdfUrl,
+    const pdfUrl =
+      response.pdfUrl ||
+      response.url;
+
+    if (!pdfUrl) {
+      console.error(
+        "❌ Upload succeeded but no PDF URL was returned:",
+        response
+      );
+
+      throw new Error(
+        "PDF upload succeeded, but the server did not return a PDF URL."
+      );
+    }
+
+    return {
+      ...response,
+
+      pdfUrl,
+    };
   };
-};
 
 // ============================================================
 // UPDATE BOOK PDF
 // ============================================================
 
-/**
- * Upload a PDF and immediately save its URL
- * against the selected book.
- *
- * This is useful from the admin edit page.
- */
 export const uploadPdfAndUpdateBook =
   async (
     bookId: string,
@@ -740,7 +936,7 @@ export const uploadPdfAndUpdateBook =
   };
 
 // ============================================================
-// CHECKOUT
+// CHECKOUT STATUS
 // ============================================================
 
 export type CheckoutStatus = {
@@ -825,7 +1021,7 @@ export const downloadBookPdf =
 
     if (!response.pdfUrl) {
       throw new Error(
-        "PDF URL not found"
+        "PDF URL not found."
       );
     }
 
@@ -885,7 +1081,7 @@ export const downloadBook =
 
       if (!pdfUrl) {
         throw new Error(
-          "PDF URL not available"
+          "PDF URL not available."
         );
       }
 
@@ -1016,7 +1212,7 @@ export const approveManualPayment =
 
     if (!token) {
       throw new Error(
-        "Admin authentication required"
+        "Admin authentication required."
       );
     }
 
@@ -1063,7 +1259,6 @@ export const markBookAsPurchased =
         "purchased_books",
         JSON.stringify([
           ...purchasedBooks,
-
           {
             id: bookId,
 
@@ -1100,14 +1295,6 @@ export const isBookPurchasedLocally =
 // GET DIRECT PDF URL
 // ============================================================
 
-/**
- * Returns the PDF URL stored on the book.
- *
- * This is intentionally separate from the
- * protected download endpoint.
- *
- * It is useful for the text/PDF preview logic.
- */
 export const getBookPdfUrl =
   async (
     bookId: string
@@ -1132,6 +1319,8 @@ export default {
   getApiBase,
 
   apiFetch,
+
+  submitBookInquiry,
 
   getBooks,
 

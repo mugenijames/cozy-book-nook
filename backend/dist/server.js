@@ -21,6 +21,7 @@ const inquiry_routes_1 = __importDefault(require("./routes/inquiry.routes"));
 const order_routes_1 = __importDefault(require("./routes/order.routes"));
 const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
 const bookPreview_routes_1 = __importDefault(require("./routes/bookPreview.routes"));
+const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 /* ==========================================================================
    ENVIRONMENT
    ========================================================================== */
@@ -317,6 +318,10 @@ app.use((req, res) => {
         path: req.originalUrl,
     });
 });
+/* --------------------------------------------------------------------------
+   ADMIN AUTHENTICATION
+   -------------------------------------------------------------------------- */
+app.use("/api/auth", auth_routes_1.default);
 /* ==========================================================================
    GLOBAL ERROR HANDLER
    ========================================================================== */

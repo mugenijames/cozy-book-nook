@@ -5,11 +5,12 @@
     "node": "20.18.0"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn src/server.ts",
-    "postinstall": "npx prisma generate"
+    "postinstall": "prisma generate"
   },
+  
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
     "@prisma/client": "5.22.0",

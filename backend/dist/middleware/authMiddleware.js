@@ -1,57 +1,98 @@
 "use strict";
+// backend/src/middleware/authMiddleware.ts
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isAdmin = exports.authenticate = void 0;
+exports.isAdmin = exports.requireSuperAdmin = exports.requireAdmin = exports.authenticate = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-// Development mode detection
-const isDevelopment = process.env.NODE_ENV === 'development';
-const isTest = process.env.NODE_ENV === 'test';
-const BYPASS_AUTH = isDevelopment || isTest || process.env.BYPASS_AUTH === 'true';
+/* ============================================================
+   AUTHENTICATE
+   ============================================================ */
 const authenticate = (req, res, next) => {
-    // BYPASS for development and testing
-    if (BYPASS_AUTH) {
-        if (isDevelopment) {
-            console.log('⚠️ [DEV MODE] Authentication bypassed');
-        }
-        req.user = { id: '1', role: 'admin' };
-        return next();
-    }
-    // Production authentication
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader &&
+        authHeader.startsWith("Bearer ")
+        ? authHeader.substring(7)
+        : null;
     if (!token) {
-        return res.status(401).json({ error: 'Access denied. No token provided.' });
+        return res.status(401).json({
+            error: "Access denied. Authentication required.",
+        });
+    }
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+        console.error("❌ JWT_SECRET is not configured.");
+        return res.status(500).json({
+            error: "Authentication system is not configured.",
+        });
     }
     try {
-        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
+        const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
+        if (!decoded.id ||
+            !decoded.role) {
+            return res.status(401).json({
+                error: "Invalid authentication token.",
+            });
+        }
+        if (decoded.role !== "ADMIN" &&
+            decoded.role !== "SUPER_ADMIN") {
+            return res.status(403).json({
+                error: "This account does not have administrator privileges.",
+            });
+        }
+        req.user = {
+            id: decoded.id,
+            email: decoded.email,
+            name: decoded.name,
+            role: decoded.role,
+        };
         next();
     }
-    catch (err) {
-        return res.status(400).json({ error: 'Invalid token.' });
+    catch (error) {
+        console.error("❌ JWT verification failed:", error);
+        return res.status(401).json({
+            error: "Invalid or expired authentication token.",
+        });
     }
 };
 exports.authenticate = authenticate;
-const isAdmin = (req, res, next) => {
-    // BYPASS for development and testing
-    if (BYPASS_AUTH) {
-        if (isDevelopment) {
-            console.log('⚠️ [DEV MODE] Admin check bypassed');
-        }
-        if (!req.user) {
-            req.user = { id: '1', role: 'admin' };
-        }
-        next();
-        return;
+/* ============================================================
+   ADMIN OR SUPER ADMIN
+   ============================================================ */
+const requireAdmin = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({
+            error: "Authentication required.",
+        });
     }
-    // Production admin check
-    if (req.user && req.user.role === 'admin') {
-        next();
+    if (req.user.role !== "ADMIN" &&
+        req.user.role !== "SUPER_ADMIN") {
+        return res.status(403).json({
+            error: "Administrator access required.",
+        });
     }
-    else {
-        return res.status(403).json({ error: 'Access denied. Admins only.' });
-    }
+    next();
 };
-exports.isAdmin = isAdmin;
+exports.requireAdmin = requireAdmin;
+/* ============================================================
+   SUPER ADMIN ONLY
+   ============================================================ */
+const requireSuperAdmin = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({
+            error: "Authentication required.",
+        });
+    }
+    if (req.user.role !== "SUPER_ADMIN") {
+        return res.status(403).json({
+            error: "Super administrator access required.",
+        });
+    }
+    next();
+};
+exports.requireSuperAdmin = requireSuperAdmin;
+/* ============================================================
+   BACKWARD COMPATIBILITY
+   ============================================================ */
+exports.isAdmin = exports.requireAdmin;
