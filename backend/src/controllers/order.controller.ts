@@ -3,11 +3,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 
-import {
-  sendInquiryAdminNotification,
-  sendInquiryCustomerConfirmation,
-} from "../services/email.service";
-
 /*
 |--------------------------------------------------------------------------
 | GET ALL ORDERS - ADMIN
@@ -144,7 +139,10 @@ export const getOrdersByEmail = async (
 
     return res.json(orders);
   } catch (error) {
-    console.error("Error fetching orders by email:", error);
+    console.error(
+      "Error fetching orders by email:",
+      error
+    );
 
     return res.status(500).json({
       error: "Failed to fetch orders",
@@ -225,7 +223,8 @@ export const createHardcopyOrder = async (
     |--------------------------------------------------------------------------
     */
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail =
+      email.trim().toLowerCase();
 
     /*
     |--------------------------------------------------------------------------
@@ -254,7 +253,8 @@ export const createHardcopyOrder = async (
         items.length === 0
       ) {
         return res.status(400).json({
-          error: "A book is required for this inquiry",
+          error:
+            "A book is required for this inquiry",
         });
       }
 
@@ -288,149 +288,94 @@ export const createHardcopyOrder = async (
       |--------------------------------------------------------------------------
       */
 
-      const inquiry = await prisma.order.create({
-        data: {
-          /*
-           * IMPORTANT:
-           * Use Prisma relation instead of bookId.
-           */
-          book: {
-            connect: {
-              id: inquiryBook.id,
+      const inquiry =
+        await prisma.order.create({
+          data: {
+            /*
+             * Use Prisma relation instead of bookId.
+             */
+            book: {
+              connect: {
+                id: inquiryBook.id,
+              },
             },
+
+            bookTitle:
+              inquiryBook.title,
+
+            orderType: "INQUIRY",
+
+            customerName:
+              customerName.trim(),
+
+            email:
+              normalizedEmail,
+
+            phoneNumber:
+              typeof phoneNumber === "string" &&
+              phoneNumber.trim()
+                ? phoneNumber.trim()
+                : null,
+
+            deliveryMethod: null,
+
+            deliveryAddress: null,
+
+            deliveryTown: null,
+
+            deliveryNotes:
+              inquiryMessage,
+
+            paymentMethod: null,
+
+            baseAmountCents: 0,
+
+            amountCents: 0,
+
+            currency: "KES",
+
+            status: "PENDING",
+
+            paymentStatus: "UNPAID",
+
+            notes:
+              inquiryMessage,
           },
 
-          bookTitle: inquiryBook.title,
+          include: {
+            book: true,
 
-          orderType: "INQUIRY",
-
-          customerName: customerName.trim(),
-
-          email: normalizedEmail,
-
-          phoneNumber:
-            typeof phoneNumber === "string" &&
-            phoneNumber.trim()
-              ? phoneNumber.trim()
-              : null,
-
-          deliveryMethod: null,
-          deliveryAddress: null,
-          deliveryTown: null,
-
-          deliveryNotes: inquiryMessage,
-
-          paymentMethod: null,
-
-          /*
-           * New currency/payment fields.
-           */
-          baseAmountCents: 0,
-          amountCents: 0,
-          currency: "KES",
-
-          status: "PENDING",
-
-          paymentStatus: "UNPAID",
-
-          notes: inquiryMessage,
-        },
-
-        include: {
-          book: true,
-
-          items: {
-            include: {
-              book: true,
+            items: {
+              include: {
+                book: true,
+              },
             },
           },
-        },
-      });
-
-      /*
-      |--------------------------------------------------------------------------
-      | EMAIL NOTIFICATIONS
-      |--------------------------------------------------------------------------
-      */
-
-      let adminEmailSent = false;
-      let customerEmailSent = false;
-
-      /*
-      |--------------------------------------------------------------------------
-      | ADMIN EMAIL
-      |--------------------------------------------------------------------------
-      */
-
-      try {
-        await sendInquiryAdminNotification({
-          customerName: customerName.trim(),
-
-          email: normalizedEmail,
-
-          phoneNumber:
-            typeof phoneNumber === "string"
-              ? phoneNumber.trim()
-              : null,
-
-          bookTitle: inquiryBook.title,
-
-          bookAuthor: inquiryBook.author,
-
-          message: inquiryMessage,
-
-          inquiryId: inquiry.id,
         });
-
-        adminEmailSent = true;
-      } catch (emailError) {
-        console.error(
-          "❌ Failed to send admin inquiry email:",
-          emailError
-        );
-      }
-
-      /*
-      |--------------------------------------------------------------------------
-      | CUSTOMER EMAIL
-      |--------------------------------------------------------------------------
-      */
-
-      try {
-        await sendInquiryCustomerConfirmation({
-          customerName: customerName.trim(),
-
-          email: normalizedEmail,
-
-          bookTitle: inquiryBook.title,
-
-          message: inquiryMessage,
-
-          inquiryId: inquiry.id,
-        });
-
-        customerEmailSent = true;
-      } catch (emailError) {
-        console.error(
-          "❌ Failed to send customer inquiry confirmation:",
-          emailError
-        );
-      }
 
       /*
       |--------------------------------------------------------------------------
       | RETURN SUCCESS
       |--------------------------------------------------------------------------
+      |
+      | Email service has intentionally been removed.
+      | The inquiry is saved successfully in the database.
+      |
       */
 
       return res.status(201).json({
-        message: "Inquiry submitted successfully",
+        success: true,
+
+        message:
+          "Inquiry submitted successfully",
 
         order: inquiry,
 
         emailNotifications: {
-          admin: adminEmailSent,
-          customer: customerEmailSent,
+          admin: false,
+          customer: false,
+          message:
+            "Email notifications are currently disabled.",
         },
       });
     }
@@ -465,7 +410,8 @@ export const createHardcopyOrder = async (
       )
     ) {
       return res.status(400).json({
-        error: "Delivery address is required",
+        error:
+          "Delivery address is required",
       });
     }
 
@@ -477,7 +423,8 @@ export const createHardcopyOrder = async (
       )
     ) {
       return res.status(400).json({
-        error: "Delivery town is required",
+        error:
+          "Delivery town is required",
       });
     }
 
@@ -492,7 +439,8 @@ export const createHardcopyOrder = async (
       items.length === 0
     ) {
       return res.status(400).json({
-        error: "At least one book must be selected",
+        error:
+          "At least one book must be selected",
       });
     }
 
@@ -513,14 +461,16 @@ export const createHardcopyOrder = async (
         });
       }
 
-      const quantity = Number(item.quantity);
+      const quantity =
+        Number(item.quantity);
 
       if (
         !Number.isInteger(quantity) ||
         quantity < 1
       ) {
         return res.status(400).json({
-          error: "Book quantity must be at least 1",
+          error:
+            "Book quantity must be at least 1",
         });
       }
     }
@@ -535,13 +485,16 @@ export const createHardcopyOrder = async (
       new Map<string, number>();
 
     for (const item of items) {
-      const bookId = item.bookId.trim();
+      const bookId =
+        item.bookId.trim();
 
-      const quantity = Number(item.quantity);
+      const quantity =
+        Number(item.quantity);
 
       quantityMap.set(
         bookId,
-        (quantityMap.get(bookId) || 0) + quantity
+        (quantityMap.get(bookId) || 0) +
+          quantity
       );
     }
 
@@ -551,15 +504,17 @@ export const createHardcopyOrder = async (
     |--------------------------------------------------------------------------
     */
 
-    const bookIds = Array.from(quantityMap.keys());
+    const bookIds =
+      Array.from(quantityMap.keys());
 
-    const books = await prisma.book.findMany({
-      where: {
-        id: {
-          in: bookIds,
+    const books =
+      await prisma.book.findMany({
+        where: {
+          id: {
+            in: bookIds,
+          },
         },
-      },
-    });
+      });
 
     /*
     |--------------------------------------------------------------------------
@@ -567,14 +522,21 @@ export const createHardcopyOrder = async (
     |--------------------------------------------------------------------------
     */
 
-    if (books.length !== bookIds.length) {
-      const foundIds = new Set(
-        books.map((book) => book.id)
-      );
+    if (
+      books.length !== bookIds.length
+    ) {
+      const foundIds =
+        new Set(
+          books.map(
+            (book) => book.id
+          )
+        );
 
-      const missingBooks = bookIds.filter(
-        (id) => !foundIds.has(id)
-      );
+      const missingBooks =
+        bookIds.filter(
+          (id) =>
+            !foundIds.has(id)
+        );
 
       console.error(
         "Missing books:",
@@ -595,30 +557,39 @@ export const createHardcopyOrder = async (
 
     let totalCents = 0;
 
-    const orderItems = books.map((book) => {
-      const quantity =
-        quantityMap.get(book.id) || 1;
+    const orderItems =
+      books.map((book) => {
+        const quantity =
+          quantityMap.get(
+            book.id
+          ) || 1;
 
-      const unitPriceCents =
-        Number(book.priceCents || 0);
+        const unitPriceCents =
+          Number(
+            book.priceCents || 0
+          );
 
-      const itemTotal =
-        unitPriceCents * quantity;
+        const itemTotal =
+          unitPriceCents *
+          quantity;
 
-      totalCents += itemTotal;
+        totalCents += itemTotal;
 
-      return {
-        bookId: book.id,
+        return {
+          bookId:
+            book.id,
 
-        bookTitle: book.title,
+          bookTitle:
+            book.title,
 
-        quantity,
+          quantity,
 
-        unitPriceCents,
+          unitPriceCents,
 
-        totalCents: itemTotal,
-      };
-    });
+          totalCents:
+            itemTotal,
+        };
+      });
 
     /*
     |--------------------------------------------------------------------------
@@ -641,10 +612,7 @@ export const createHardcopyOrder = async (
       await prisma.order.create({
         data: {
           /*
-           * IMPORTANT:
-           * We use the relation here instead of bookId.
-           *
-           * This fixes the Prisma XOR/CreateInput TypeScript error.
+           * Use relation instead of bookId.
            */
           ...(firstBook
             ? {
@@ -661,14 +629,9 @@ export const createHardcopyOrder = async (
               ? books[0].title
               : `${books.length} books`,
 
-          /*
-           * Identify as hardcopy.
-           */
-          orderType: "HARDCOPY",
+          orderType:
+            "HARDCOPY",
 
-          /*
-           * Customer information.
-           */
           customerName:
             customerName.trim(),
 
@@ -680,9 +643,6 @@ export const createHardcopyOrder = async (
               ? phoneNumber.trim()
               : null,
 
-          /*
-           * Delivery information.
-           */
           deliveryMethod,
 
           deliveryAddress:
@@ -703,33 +663,24 @@ export const createHardcopyOrder = async (
               ? deliveryNotes.trim()
               : null,
 
-          /*
-           * Payment has not happened yet.
-           */
-          paymentMethod: "PENDING",
+          paymentMethod:
+            "PENDING",
 
-          /*
-           * New payment fields.
-           *
-           * Hardcopy orders are currently priced
-           * and recorded in KES.
-           */
-          baseAmountCents: totalCents,
+          baseAmountCents:
+            totalCents,
 
-          amountCents: totalCents,
+          amountCents:
+            totalCents,
 
-          currency: "KES",
+          currency:
+            "KES",
 
-          /*
-           * Initial order state.
-           */
-          status: "PENDING",
+          status:
+            "PENDING",
 
-          paymentStatus: "UNPAID",
+          paymentStatus:
+            "UNPAID",
 
-          /*
-           * Compatibility notes.
-           */
           notes:
             typeof deliveryNotes === "string" &&
             deliveryNotes.trim()
@@ -740,7 +691,8 @@ export const createHardcopyOrder = async (
            * Create individual order items.
            */
           items: {
-            create: orderItems,
+            create:
+              orderItems,
           },
         },
 
@@ -762,6 +714,8 @@ export const createHardcopyOrder = async (
     */
 
     return res.status(201).json({
+      success: true,
+
       message:
         "Hardcopy order placed successfully",
 
@@ -803,11 +757,13 @@ export const updateOrderStatus = async (
   try {
     const { id } = req.params;
 
-    const { status } = req.body;
+    const { status } =
+      req.body;
 
     if (!id) {
       return res.status(400).json({
-        error: "Order ID is required",
+        error:
+          "Order ID is required",
       });
     }
 
@@ -816,7 +772,8 @@ export const updateOrderStatus = async (
       !status.trim()
     ) {
       return res.status(400).json({
-        error: "Order status is required",
+        error:
+          "Order status is required",
       });
     }
 
@@ -831,7 +788,9 @@ export const updateOrderStatus = async (
     ];
 
     const normalizedStatus =
-      status.trim().toUpperCase();
+      status
+        .trim()
+        .toUpperCase();
 
     if (
       !allowedStatuses.includes(
@@ -853,7 +812,8 @@ export const updateOrderStatus = async (
         },
 
         data: {
-          status: normalizedStatus,
+          status:
+            normalizedStatus,
         },
 
         include: {
@@ -874,14 +834,18 @@ export const updateOrderStatus = async (
       error
     );
 
-    if (error?.code === "P2025") {
+    if (
+      error?.code === "P2025"
+    ) {
       return res.status(404).json({
-        error: "Order not found",
+        error:
+          "Order not found",
       });
     }
 
     return res.status(500).json({
-      error: "Failed to update order status",
+      error:
+        "Failed to update order status",
     });
   }
 };
@@ -898,7 +862,8 @@ export const updatePaymentStatus =
     res: Response
   ) => {
     try {
-      const { id } = req.params;
+      const { id } =
+        req.params;
 
       const {
         paymentStatus,
@@ -908,16 +873,19 @@ export const updatePaymentStatus =
 
       if (!id) {
         return res.status(400).json({
-          error: "Order ID is required",
+          error:
+            "Order ID is required",
         });
       }
 
       if (
-        typeof paymentStatus !== "string" ||
+        typeof paymentStatus !==
+          "string" ||
         !paymentStatus.trim()
       ) {
         return res.status(400).json({
-          error: "Payment status is required",
+          error:
+            "Payment status is required",
         });
       }
 
@@ -957,7 +925,8 @@ export const updatePaymentStatus =
       };
 
       if (
-        typeof paymentMethod === "string" &&
+        typeof paymentMethod ===
+          "string" &&
         paymentMethod.trim()
       ) {
         updateData.paymentMethod =
@@ -967,7 +936,8 @@ export const updatePaymentStatus =
       }
 
       if (
-        typeof transactionCode === "string" &&
+        typeof transactionCode ===
+          "string" &&
         transactionCode.trim()
       ) {
         updateData.transactionCode =
@@ -1000,13 +970,18 @@ export const updatePaymentStatus =
         error
       );
 
-      if (error?.code === "P2025") {
+      if (
+        error?.code === "P2025"
+      ) {
         return res.status(404).json({
-          error: "Order not found",
+          error:
+            "Order not found",
         });
       }
 
-      if (error?.code === "P2002") {
+      if (
+        error?.code === "P2002"
+      ) {
         return res.status(409).json({
           error:
             "This transaction code has already been used",

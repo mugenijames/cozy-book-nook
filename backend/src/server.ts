@@ -26,12 +26,6 @@ import orderRoutes from "./routes/order.routes";
 import paymentRoutes from "./routes/payment.routes";
 import bookPreviewRoutes from "./routes/bookPreview.routes";
 import authRoutes from "./routes/auth.routes";
-/* ==========================================================================
-   EMAIL SERVICE
-========================================================================== */
-import {
-  isEmailConfigured,
-} from "./services/email.service";
 
 /* ==========================================================================
    ENVIRONMENT
@@ -603,7 +597,7 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   INVITATIONS
+   SPEAKING INVITATIONS
 -------------------------------------------------------------------------- */
 
 app.use(
