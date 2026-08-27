@@ -13,37 +13,23 @@ import {
   Quote,
   GraduationCap,
   HeartHandshake,
+  Newspaper,
 } from "lucide-react";
 
 import BookingModal from "@/components/BookingModal";
 import { PROGRAM_ACTIVITIES } from "@/data/programActivities";
 
-const SECTION_IDS = [
-  "about",
-  "program",
-  "testimonials",
-];
+const SECTION_IDS = ["about", "program", "testimonials"];
 
 export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] =
-    useState(false);
-
-  const [bookingOpen, setBookingOpen] =
-    useState(false);
-
-  const [programsOpen, setProgramsOpen] =
-    useState(false);
-
-  const [isSticky, setIsSticky] =
-    useState(false);
-
-  const [activeSection, setActiveSection] =
-    useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [programsOpen, setProgramsOpen] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
 
   const location = useLocation();
-
-  const isHomePage =
-    location.pathname === "/";
+  const isHomePage = location.pathname === "/";
 
   // ============================================================
   // CLOSE MENUS
@@ -72,21 +58,11 @@ export default function Header() {
       setIsSticky(window.scrollY > 80);
     };
 
-    window.addEventListener(
-      "scroll",
-      handleScroll,
-      {
-        passive: true,
-      }
-    );
-
+    window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
 
     return () => {
-      window.removeEventListener(
-        "scroll",
-        handleScroll
-      );
+      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
@@ -100,50 +76,28 @@ export default function Header() {
       return;
     }
 
-    const sections = SECTION_IDS
-      .map((id) =>
-        document.getElementById(id)
-      )
-      .filter(Boolean) as HTMLElement[];
+    const sections = SECTION_IDS.map((id) =>
+      document.getElementById(id)
+    ).filter(Boolean) as HTMLElement[];
 
     if (!sections.length) return;
 
-    const observer =
-      new IntersectionObserver(
-        (entries) => {
-          const visibleSections =
-            entries
-              .filter(
-                (entry) =>
-                  entry.isIntersecting
-              )
-              .sort(
-                (a, b) =>
-                  b.intersectionRatio -
-                  a.intersectionRatio
-              );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleSections = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
 
-          if (
-            visibleSections.length > 0
-          ) {
-            setActiveSection(
-              visibleSections[0]
-                .target.id
-            );
-          }
-        },
-        {
-          root: null,
-          rootMargin:
-            "-110px 0px -45% 0px",
-          threshold: [
-            0.1,
-            0.25,
-            0.5,
-            0.75,
-          ],
+        if (visibleSections.length > 0) {
+          setActiveSection(visibleSections[0].target.id);
         }
-      );
+      },
+      {
+        root: null,
+        rootMargin: "-110px 0px -45% 0px",
+        threshold: [0.1, 0.25, 0.5, 0.75],
+      }
+    );
 
     sections.forEach((section) => {
       observer.observe(section);
@@ -152,10 +106,7 @@ export default function Header() {
     return () => {
       observer.disconnect();
     };
-  }, [
-    isHomePage,
-    location.pathname,
-  ]);
+  }, [isHomePage, location.pathname]);
 
   // ============================================================
   // SECTION CLICK
@@ -170,33 +121,20 @@ export default function Header() {
     if (isHomePage) {
       event.preventDefault();
 
-      const element =
-        document.getElementById(
-          sectionId
-        );
+      const element = document.getElementById(sectionId);
 
       if (element) {
         const headerOffset = 95;
-
         const elementPosition =
-          element.getBoundingClientRect()
-            .top + window.scrollY;
-
-        const offsetPosition =
-          elementPosition -
-          headerOffset;
+          element.getBoundingClientRect().top + window.scrollY;
+        const offsetPosition = elementPosition - headerOffset;
 
         window.scrollTo({
           top: offsetPosition,
           behavior: "smooth",
         });
 
-        window.history.replaceState(
-          null,
-          "",
-          `#${sectionId}`
-        );
-
+        window.history.replaceState(null, "", `#${sectionId}`);
         setActiveSection(sectionId);
       }
     }
@@ -206,9 +144,7 @@ export default function Header() {
   // ACTIVE ROUTE
   // ============================================================
 
-  const isActiveRoute = (
-    path: string
-  ) => {
+  const isActiveRoute = (path: string) => {
     return location.pathname === path;
   };
 
@@ -216,13 +152,8 @@ export default function Header() {
   // ACTIVE SECTION
   // ============================================================
 
-  const isSectionActive = (
-    sectionId: string
-  ) => {
-    return (
-      isHomePage &&
-      activeSection === sectionId
-    );
+  const isSectionActive = (sectionId: string) => {
+    return isHomePage && activeSection === sectionId;
   };
 
   // ============================================================
@@ -244,9 +175,8 @@ export default function Header() {
           w-full
           transition-all
           duration-300
-          ${
-            isSticky
-              ? `
+          ${isSticky
+            ? `
                 fixed
                 left-0
                 top-0
@@ -256,7 +186,7 @@ export default function Header() {
                 shadow-lg
                 backdrop-blur-xl
               `
-              : `
+            : `
                 relative
                 bg-white
               `
@@ -275,11 +205,7 @@ export default function Header() {
             lg:px-8
             transition-all
             duration-300
-            ${
-              isSticky
-                ? "min-h-[68px]"
-                : "min-h-[76px]"
-            }
+            ${isSticky ? "min-h-[68px]" : "min-h-[76px]"}
           `}
         >
           {/* ==================================================
@@ -305,11 +231,7 @@ export default function Header() {
                 shadow-sm
                 transition-all
                 duration-300
-                ${
-                  isSticky
-                    ? "h-10 w-10"
-                    : "h-11 w-11"
-                }
+                ${isSticky ? "h-10 w-10" : "h-11 w-11"}
                 border-[#E8DDD4]
                 group-hover:border-[#C17B4F]/60
                 group-hover:shadow-md
@@ -320,8 +242,7 @@ export default function Header() {
                 alt="David Emuria logo"
                 className="h-full w-full object-contain"
                 onError={(event) => {
-                  event.currentTarget.style.display =
-                    "none";
+                  event.currentTarget.style.display = "none";
                 }}
               />
             </div>
@@ -375,32 +296,19 @@ export default function Header() {
             "
             aria-label="Main navigation"
           >
-            {/* =================================================
-                ABOUT
-            ================================================= */}
+            {/* ABOUT */}
 
             <a
               href="/#about"
-              onClick={(event) =>
-                handleSectionClick(
-                  event,
-                  "about"
-                )
-              }
+              onClick={(event) => handleSectionClick(event, "about")}
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-                ${
-                  isSectionActive("about")
-                    ? "font-semibold text-[#C17B4F]"
-                    : ""
-                }
+                ${isSectionActive("about") ? "font-semibold text-[#C17B4F]" : ""}
               `}
             >
               <UserRound className="h-4 w-4" />
-
               About
-
               {isSectionActive("about") && (
                 <span
                   className="
@@ -416,9 +324,7 @@ export default function Header() {
               )}
             </a>
 
-            {/* =================================================
-                BOOKS
-            ================================================= */}
+            {/* BOOKS */}
 
             <Link
               to="/books"
@@ -426,17 +332,11 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-                ${
-                  isActiveRoute("/books")
-                    ? "font-semibold text-[#C17B4F]"
-                    : ""
-                }
+                ${isActiveRoute("/books") ? "font-semibold text-[#C17B4F]" : ""}
               `}
             >
               <BookOpen className="h-4 w-4" />
-
               Books
-
               {isActiveRoute("/books") && (
                 <span
                   className="
@@ -452,9 +352,7 @@ export default function Header() {
               )}
             </Link>
 
-            {/* =================================================
-                COURSES
-            ================================================= */}
+            {/* COURSES */}
 
             <Link
               to="/courses"
@@ -462,17 +360,11 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-                ${
-                  isActiveRoute("/courses")
-                    ? "font-semibold text-[#C17B4F]"
-                    : ""
-                }
+                ${isActiveRoute("/courses") ? "font-semibold text-[#C17B4F]" : ""}
               `}
             >
               <BookMarked className="h-4 w-4" />
-
               Courses
-
               {isActiveRoute("/courses") && (
                 <span
                   className="
@@ -487,59 +379,49 @@ export default function Header() {
                 />
               )}
             </Link>
-
-            {/* =================================================
-                PROGRAMS
-            ================================================= */}
+            {/* BLOGS - NEW */}
+            <Link
+              to="/blogs"
+              onClick={closeMobileMenu}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition-colors ${isActiveRoute("/blogs")
+                  ? "bg-[#F8F6F2] text-[#C17B4F]"
+                  : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+                }`}
+            >
+              <Newspaper className="h-4 w-4" />
+              Blogs
+            </Link>
+            {/* PROGRAMS DROPDOWN */}
 
             <div className="relative">
               <button
                 type="button"
-                onClick={() =>
-                  setProgramsOpen(
-                    (previous) =>
-                      !previous
-                  )
-                }
+                onClick={() => setProgramsOpen((previous) => !previous)}
                 className={`
                   ${desktopLinkBase}
                   outline-none
                   hover:text-[#C17B4F]
                   focus-visible:text-[#C17B4F]
-                  ${
-                    isSectionActive(
-                      "program"
-                    )
-                      ? "font-semibold text-[#C17B4F]"
-                      : ""
+                  ${isSectionActive("program")
+                    ? "font-semibold text-[#C17B4F]"
+                    : ""
                   }
                 `}
-                aria-expanded={
-                  programsOpen
-                }
+                aria-expanded={programsOpen}
                 aria-haspopup="menu"
               >
                 <GraduationCap className="h-4 w-4" />
-
                 Programs
-
                 <ChevronDown
                   className={`
                     h-4
                     w-4
                     transition-transform
                     duration-300
-                    ${
-                      programsOpen
-                        ? "rotate-180"
-                        : ""
-                    }
+                    ${programsOpen ? "rotate-180" : ""}
                   `}
                 />
-
-                {isSectionActive(
-                  "program"
-                ) && (
+                {isSectionActive("program") && (
                   <span
                     className="
                       absolute
@@ -556,8 +438,6 @@ export default function Header() {
 
               {programsOpen && (
                 <>
-                  {/* Outside click layer */}
-
                   <button
                     type="button"
                     aria-label="Close programs menu"
@@ -567,14 +447,8 @@ export default function Header() {
                       z-40
                       cursor-default
                     "
-                    onClick={() =>
-                      setProgramsOpen(
-                        false
-                      )
-                    }
+                    onClick={() => setProgramsOpen(false)}
                   />
-
-                  {/* Dropdown */}
 
                   <div
                     className="
@@ -605,30 +479,17 @@ export default function Header() {
                       >
                         Programs
                       </p>
-
-                      <p
-                        className="
-                          mt-1
-                          text-xs
-                          text-gray-500
-                        "
-                      >
-                        Explore David's
-                        initiatives
+                      <p className="mt-1 text-xs text-gray-500">
+                        Explore David's initiatives
                       </p>
                     </div>
 
                     <div className="h-px bg-[#E8DDD4]" />
 
-                    {/* All Programs */}
-
                     <a
                       href="/#program"
                       onClick={(event) =>
-                        handleSectionClick(
-                          event,
-                          "program"
-                        )
+                        handleSectionClick(event, "program")
                       }
                       className="
                         mt-2
@@ -656,138 +517,81 @@ export default function Header() {
                       >
                         <GraduationCap className="h-4 w-4" />
                       </div>
-
                       <div>
-                        <p
-                          className="
-                            text-sm
-                            font-semibold
-                            text-[#2E1208]
-                          "
-                        >
+                        <p className="text-sm font-semibold text-[#2E1208]">
                           All Programs
                         </p>
-
-                        <p
-                          className="
-                            text-xs
-                            text-gray-500
-                          "
-                        >
+                        <p className="text-xs text-gray-500">
                           View all initiatives
                         </p>
                       </div>
                     </a>
 
-                    {/* Individual Programs */}
-
                     <div className="mt-1">
-                      {PROGRAM_ACTIVITIES.map(
-                        (program) => (
-                          <Link
-                            key={
-                              program.slug
-                            }
-                            to={`/programs/${program.slug}`}
-                            onClick={() =>
-                              setProgramsOpen(
-                                false
-                              )
-                            }
+                      {PROGRAM_ACTIVITIES.map((program) => (
+                        <Link
+                          key={program.slug}
+                          to={`/programs/${program.slug}`}
+                          onClick={() => setProgramsOpen(false)}
+                          className="
+                            flex
+                            items-center
+                            gap-3
+                            rounded-xl
+                            px-3
+                            py-3
+                            transition-colors
+                            hover:bg-[#F8F6F2]
+                          "
+                        >
+                          <div
                             className="
                               flex
+                              h-9
+                              w-9
+                              shrink-0
                               items-center
-                              gap-3
-                              rounded-xl
-                              px-3
-                              py-3
-                              transition-colors
-                              hover:bg-[#F8F6F2]
+                              justify-center
+                              rounded-lg
+                              bg-[#C17B4F]/10
+                              text-[#8B4513]
                             "
                           >
-                            <div
-                              className="
-                                flex
-                                h-9
-                                w-9
-                                shrink-0
-                                items-center
-                                justify-center
-                                rounded-lg
-                                bg-[#C17B4F]/10
-                                text-[#8B4513]
-                              "
-                            >
-                              <GraduationCap className="h-4 w-4" />
-                            </div>
-
-                            <div className="min-w-0">
-                              <p
-                                className="
-                                  truncate
-                                  text-sm
-                                  font-medium
-                                  text-[#2E1208]
-                                "
-                              >
-                                {
-                                  program.title
-                                }
-                              </p>
-
-                              <p
-                                className="
-                                  mt-0.5
-                                  line-clamp-1
-                                  text-xs
-                                  text-gray-500
-                                "
-                              >
-                                {
-                                  program.description
-                                }
-                              </p>
-                            </div>
-                          </Link>
-                        )
-                      )}
+                            <GraduationCap className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-[#2E1208]">
+                              {program.title}
+                            </p>
+                            <p className="mt-0.5 line-clamp-1 text-xs text-gray-500">
+                              {program.description}
+                            </p>
+                          </div>
+                        </Link>
+                      ))}
                     </div>
                   </div>
                 </>
               )}
             </div>
 
-            {/* =================================================
-                TESTIMONIALS
-            ================================================= */}
+            {/* TESTIMONIALS */}
 
             <a
               href="/#testimonials"
-              onClick={(event) =>
-                handleSectionClick(
-                  event,
-                  "testimonials"
-                )
-              }
+              onClick={(event) => handleSectionClick(event, "testimonials")}
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-                ${
-                  isSectionActive(
-                    "testimonials"
-                  )
-                    ? "font-semibold text-[#C17B4F]"
-                    : ""
+                ${isSectionActive("testimonials")
+                  ? "font-semibold text-[#C17B4F]"
+                  : ""
                 }
               `}
             >
               <Quote className="h-4 w-4" />
-
               Testimonials
-
-              {isSectionActive(
-                "testimonials"
-              ) && (
+              {isSectionActive("testimonials") && (
                 <span
                   className="
                     absolute
@@ -802,15 +606,11 @@ export default function Header() {
               )}
             </a>
 
-            {/* =================================================
-                BOOK DAVID CTA
-            ================================================= */}
+            {/* BOOK DAVID CTA */}
 
             <button
               type="button"
-              onClick={
-                openBookingModal
-              }
+              onClick={openBookingModal}
               className="
                 inline-flex
                 items-center
@@ -836,13 +636,10 @@ export default function Header() {
               "
             >
               <CalendarCheck2 className="h-4 w-4" />
-
               Book David
             </button>
 
-            {/* =================================================
-                DONATE CTA
-            ================================================= */}
+            {/* DONATE CTA */}
 
             <Link
               to="/dear-dad/support"
@@ -872,7 +669,6 @@ export default function Header() {
               "
             >
               <HeartHandshake className="h-4 w-4" />
-
               Donate
             </Link>
           </nav>
@@ -883,12 +679,7 @@ export default function Header() {
 
           <button
             type="button"
-            onClick={() =>
-              setMobileMenuOpen(
-                (previous) =>
-                  !previous
-              )
-            }
+            onClick={() => setMobileMenuOpen((previous) => !previous)}
             className="
               rounded-xl
               border
@@ -906,13 +697,9 @@ export default function Header() {
               md:hidden
             "
             aria-label={
-              mobileMenuOpen
-                ? "Close navigation menu"
-                : "Open navigation menu"
+              mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"
             }
-            aria-expanded={
-              mobileMenuOpen
-            }
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? (
               <X className="h-6 w-6" />
@@ -952,12 +739,7 @@ export default function Header() {
 
                 <a
                   href="/#about"
-                  onClick={(event) =>
-                    handleSectionClick(
-                      event,
-                      "about"
-                    )
-                  }
+                  onClick={(event) => handleSectionClick(event, "about")}
                   className={`
                     flex
                     items-center
@@ -968,17 +750,13 @@ export default function Header() {
                     text-sm
                     font-medium
                     transition-colors
-                    ${
-                      isSectionActive(
-                        "about"
-                      )
-                        ? "bg-[#F8F6F2] text-[#C17B4F]"
-                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+                    ${isSectionActive("about")
+                      ? "bg-[#F8F6F2] text-[#C17B4F]"
+                      : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
                   <UserRound className="h-4 w-4" />
-
                   About
                 </a>
 
@@ -997,17 +775,13 @@ export default function Header() {
                     text-sm
                     font-medium
                     transition-colors
-                    ${
-                      isActiveRoute(
-                        "/books"
-                      )
-                        ? "bg-[#F8F6F2] text-[#C17B4F]"
-                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+                    ${isActiveRoute("/books")
+                      ? "bg-[#F8F6F2] text-[#C17B4F]"
+                      : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
                   <BookOpen className="h-4 w-4" />
-
                   Books
                 </Link>
 
@@ -1026,31 +800,22 @@ export default function Header() {
                     text-sm
                     font-medium
                     transition-colors
-                    ${
-                      isActiveRoute(
-                        "/courses"
-                      )
-                        ? "bg-[#F8F6F2] text-[#C17B4F]"
-                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+                    ${isActiveRoute("/courses")
+                      ? "bg-[#F8F6F2] text-[#C17B4F]"
+                      : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
                   <BookMarked className="h-4 w-4" />
-
                   Courses
                 </Link>
 
-                {/* PROGRAMS */}
+                {/* PROGRAMS ACCORDION */}
 
                 <div className="rounded-xl">
                   <button
                     type="button"
-                    onClick={() =>
-                      setProgramsOpen(
-                        (previous) =>
-                          !previous
-                      )
-                    }
+                    onClick={() => setProgramsOpen((previous) => !previous)}
                     className={`
                       flex
                       w-full
@@ -1063,32 +828,23 @@ export default function Header() {
                       text-sm
                       font-medium
                       transition-colors
-                      ${
-                        isSectionActive(
-                          "program"
-                        )
-                          ? "bg-[#F8F6F2] text-[#C17B4F]"
-                          : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+                      ${isSectionActive("program")
+                        ? "bg-[#F8F6F2] text-[#C17B4F]"
+                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                       }
                     `}
                   >
                     <span className="flex items-center gap-3">
                       <GraduationCap className="h-4 w-4" />
-
                       Programs
                     </span>
-
                     <ChevronDown
                       className={`
                         h-4
                         w-4
                         transition-transform
                         duration-300
-                        ${
-                          programsOpen
-                            ? "rotate-180"
-                            : ""
-                        }
+                        ${programsOpen ? "rotate-180" : ""}
                       `}
                     />
                   </button>
@@ -1107,54 +863,51 @@ export default function Header() {
                       <a
                         href="/#program"
                         onClick={(event) =>
-                          handleSectionClick(
-                            event,
-                            "program"
-                          )
+                          handleSectionClick(event, "program")
                         }
                         className="
-                          block
+                          flex
+                          items-center
+                          gap-2
                           rounded-lg
                           px-3
                           py-2.5
                           text-sm
                           font-medium
-                          text-[#8B4513]
+                          text-[#2E1208]
                           transition-colors
                           hover:bg-[#F8F6F2]
+                          hover:text-[#C17B4F]
                         "
                       >
+                        <GraduationCap className="h-4 w-4 shrink-0 text-[#4A1F0E]" />
                         All Programs
                       </a>
 
-                      {PROGRAM_ACTIVITIES.map(
-                        (program) => (
-                          <Link
-                            key={
-                              program.slug
-                            }
-                            to={`/programs/${program.slug}`}
-                            onClick={
-                              closeMobileMenu
-                            }
-                            className="
-                              block
-                              rounded-lg
-                              px-3
-                              py-2.5
-                              text-sm
-                              text-[#5C4436]
-                              transition-colors
-                              hover:bg-[#F8F6F2]
-                              hover:text-[#C17B4F]
-                            "
-                          >
-                            {
-                              program.title
-                            }
-                          </Link>
-                        )
-                      )}
+                      {PROGRAM_ACTIVITIES.map((program) => (
+                        <Link
+                          key={program.slug}
+                          to={`/programs/${program.slug}`}
+                          onClick={closeMobileMenu}
+                          className="
+                            flex
+                            items-center
+                            gap-2
+                            rounded-lg
+                            px-3
+                            py-2.5
+                            text-sm
+                            font-medium
+                            text-[#4A1F0E]
+                            transition-colors
+                            hover:bg-[#F8F6F2]
+                            hover:text-[#C17B4F]
+                          "
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#C17B4F]" />
+                          <span className="truncate">{program.title}</span>
+                        </Link>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1164,10 +917,7 @@ export default function Header() {
                 <a
                   href="/#testimonials"
                   onClick={(event) =>
-                    handleSectionClick(
-                      event,
-                      "testimonials"
-                    )
+                    handleSectionClick(event, "testimonials")
                   }
                   className={`
                     flex
@@ -1179,33 +929,23 @@ export default function Header() {
                     text-sm
                     font-medium
                     transition-colors
-                    ${
-                      isSectionActive(
-                        "testimonials"
-                      )
-                        ? "bg-[#F8F6F2] text-[#C17B4F]"
-                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+                    ${isSectionActive("testimonials")
+                      ? "bg-[#F8F6F2] text-[#C17B4F]"
+                      : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
                   <Quote className="h-4 w-4" />
-
                   Testimonials
                 </a>
+              </div>
 
-                {/* =================================================
-                    MOBILE ACTIONS
-                ================================================= */}
+              {/* ACTION BUTTONS */}
 
-                <div className="my-4 h-px bg-[#E8DDD4]" />
-
-                {/* Book David */}
-
+              <div className="mt-6 space-y-3 pt-4 border-t border-[#E8DDD4]">
                 <button
                   type="button"
-                  onClick={
-                    openBookingModal
-                  }
+                  onClick={openBookingModal}
                   className="
                     flex
                     w-full
@@ -1215,32 +955,23 @@ export default function Header() {
                     rounded-full
                     bg-[#4A1F0E]
                     px-5
-                    py-3.5
+                    py-3
                     text-sm
                     font-semibold
                     text-white
                     shadow-md
                     transition-all
-                    duration-300
-                    hover:bg-[#2E1208]
-                    hover:shadow-xl
-                    active:scale-[0.98]
+                    active:scale-95
                   "
                 >
                   <CalendarCheck2 className="h-4 w-4" />
-
-                  Book David to Speak
+                  Book David
                 </button>
-
-                {/* Donate */}
 
                 <Link
                   to="/dear-dad/support"
-                  onClick={
-                    closeMobileMenu
-                  }
+                  onClick={closeMobileMenu}
                   className="
-                    mt-3
                     flex
                     w-full
                     items-center
@@ -1249,21 +980,17 @@ export default function Header() {
                     rounded-full
                     bg-[#D4A017]
                     px-5
-                    py-3.5
+                    py-3
                     text-sm
-                    font-bold
+                    font-semibold
                     text-white
                     shadow-md
                     transition-all
-                    duration-300
-                    hover:bg-[#B58900]
-                    hover:shadow-xl
-                    active:scale-[0.98]
+                    active:scale-95
                   "
                 >
                   <HeartHandshake className="h-4 w-4" />
-
-                  Donate / Sponsor / Partner
+                  Donate
                 </Link>
               </div>
             </nav>
@@ -1271,26 +998,13 @@ export default function Header() {
         )}
       </header>
 
-      {/* ========================================================
-          STICKY HEADER SPACER
-      ======================================================== */}
-
-      {isSticky && (
-        <div
-          className="h-[68px]"
-          aria-hidden="true"
-        />
-      )}
-
-      {/* ========================================================
-          BOOKING MODAL
-      ======================================================== */}
+      {/* ======================================================
+          BOOKING MODAL COMPONENT
+      ====================================================== */}
 
       <BookingModal
-        open={bookingOpen}
-        onClose={() =>
-          setBookingOpen(false)
-        }
+        isOpen={bookingOpen}
+        onClose={() => setBookingOpen(false)}
       />
     </>
   );
