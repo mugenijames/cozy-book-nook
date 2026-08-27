@@ -4,6 +4,13 @@ import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
 /* =========================================================
+   PROVIDER SELECTION
+========================================================= */
+
+// "gmail" or "resend". Defaults to "resend" if unset.
+const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || "resend").toLowerCase();
+
+/* =========================================================
    RESEND CONFIGURATION
 ========================================================= */
 
@@ -16,17 +23,34 @@ const RESEND_FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL ||
   "David Emuria Website <onboarding@resend.dev>";
 
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+
 /* =========================================================
-   RESEND CLIENT
+   GMAIL CONFIGURATION
 ========================================================= */
 
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+const GMAIL_USER = process.env.GMAIL_USER || "";
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || "";
+
+const gmailTransporter =
+  GMAIL_USER && GMAIL_APP_PASSWORD
+    ? nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: GMAIL_USER,
+          pass: GMAIL_APP_PASSWORD,
+        },
+      })
+    : null;
 
 /* =========================================================
    EMAIL CONFIGURATION CHECK
 ========================================================= */
 
 export const isEmailConfigured = (): boolean => {
+  if (EMAIL_PROVIDER === "gmail") {
+    return Boolean(GMAIL_USER && GMAIL_APP_PASSWORD);
+  }
   return Boolean(RESEND_API_KEY && ADMIN_EMAIL && RESEND_FROM_EMAIL);
 };
 
@@ -38,12 +62,16 @@ console.log("");
 console.log("========================================");
 console.log("📧 EMAIL SERVICE");
 console.log("========================================");
-console.log("Provider: Resend");
-console.log("API Key:", RESEND_API_KEY ? "✓ Loaded" : "✗ Missing");
-console.log("From:", RESEND_FROM_EMAIL);
+console.log("Provider:", EMAIL_PROVIDER === "gmail" ? "Gmail (SMTP)" : "Resend");
+if (EMAIL_PROVIDER === "gmail") {
+  console.log("Gmail User:", GMAIL_USER || "✗ Missing");
+  console.log("App Password:", GMAIL_APP_PASSWORD ? "✓ Loaded" : "✗ Missing");
+} else {
+  console.log("API Key:", RESEND_API_KEY ? "✓ Loaded" : "✗ Missing");
+  console.log("From:", RESEND_FROM_EMAIL);
+}
 console.log("Admin:", ADMIN_EMAIL);
 console.log("Status:", isEmailConfigured() ? "✓ READY" : "✗ NOT CONFIGURED");
-console.log("SMTP: ✗ NOT USED");
 console.log("========================================");
 console.log("");
 
@@ -59,9 +87,6 @@ const escapeHtml = (value: unknown): string => {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 };
-
-const sleep = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
 
 /* =========================================================
    SEND EMAIL HELPER (with retry)
