@@ -2,6 +2,12 @@
 
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
+import {
+  sendInquiryAdminNotification,
+  sendInquiryCustomerConfirmation,
+  sendOrderAdminNotification,
+  sendOrderCustomerConfirmation,
+} from "../services/email.service";
 
 /*
 |--------------------------------------------------------------------------
@@ -355,12 +361,72 @@ export const createHardcopyOrder = async (
 
       /*
       |--------------------------------------------------------------------------
+      | SEND EMAIL NOTIFICATIONS
+      |--------------------------------------------------------------------------
+      */
+
+      let inquiryAdminEmailSent = false;
+      let inquiryCustomerEmailSent = false;
+
+      try {
+        console.log(
+          "📧 Sending inquiry notification to administrator..."
+        );
+
+        await sendInquiryAdminNotification({
+          customerName: customerName.trim(),
+          email: normalizedEmail,
+          phoneNumber:
+            typeof phoneNumber === "string" && phoneNumber.trim()
+              ? phoneNumber.trim()
+              : null,
+          bookTitle: inquiryBook.title,
+          bookId: inquiryBook.id,
+          message: inquiryMessage,
+          orderNumber: inquiry.id,
+        });
+
+        inquiryAdminEmailSent = true;
+
+        console.log(
+          "✅ Inquiry admin notification sent."
+        );
+      } catch (adminError) {
+        console.error(
+          "❌ Failed to send inquiry admin notification:",
+          adminError
+        );
+      }
+
+      try {
+        console.log(
+          `📧 Sending inquiry confirmation to ${normalizedEmail}...`
+        );
+
+        await sendInquiryCustomerConfirmation({
+          customerName: customerName.trim(),
+          email: normalizedEmail,
+          bookTitle: inquiryBook.title,
+          message: inquiryMessage,
+          orderNumber: inquiry.id,
+        });
+
+        inquiryCustomerEmailSent = true;
+
+        console.log(
+          "✅ Inquiry customer confirmation sent."
+        );
+      } catch (customerError) {
+        console.error(
+          "❌ Failed to send inquiry customer confirmation:",
+          customerError
+        );
+      }
+
+      /*
+      |--------------------------------------------------------------------------
       | RETURN SUCCESS
       |--------------------------------------------------------------------------
-      |
-      | Email service has intentionally been removed.
-      | The inquiry is saved successfully in the database.
-      |
       */
 
       return res.status(201).json({
@@ -372,10 +438,8 @@ export const createHardcopyOrder = async (
         order: inquiry,
 
         emailNotifications: {
-          admin: false,
-          customer: false,
-          message:
-            "Email notifications are currently disabled.",
+          admin: inquiryAdminEmailSent,
+          customer: inquiryCustomerEmailSent,
         },
       });
     }
@@ -709,6 +773,69 @@ export const createHardcopyOrder = async (
 
     /*
     |--------------------------------------------------------------------------
+    | SEND EMAIL NOTIFICATIONS
+    |--------------------------------------------------------------------------
+    */
+
+    let orderAdminEmailSent = false;
+    let orderCustomerEmailSent = false;
+
+    try {
+      console.log(
+        "📧 Sending order notification to administrator..."
+      );
+
+      await sendOrderAdminNotification({
+        customerName: customerName.trim(),
+        email: normalizedEmail,
+        phoneNumber:
+          typeof phoneNumber === "string" ? phoneNumber.trim() : null,
+        bookTitle: order.bookTitle,
+        amountCents: order.amountCents,
+        paymentMethod: order.paymentMethod,
+        orderType: order.orderType,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        orderId: order.id,
+        notes: order.notes,
+      });
+
+      orderAdminEmailSent = true;
+
+      console.log("✅ Order admin notification sent.");
+    } catch (adminError) {
+      console.error(
+        "❌ Failed to send order admin notification:",
+        adminError
+      );
+    }
+
+    try {
+      console.log(
+        `📧 Sending order confirmation to ${normalizedEmail}...`
+      );
+
+      await sendOrderCustomerConfirmation({
+        customerName: customerName.trim(),
+        email: normalizedEmail,
+        bookTitle: order.bookTitle,
+        amountCents: order.amountCents,
+        orderId: order.id,
+        status: order.status,
+      });
+
+      orderCustomerEmailSent = true;
+
+      console.log("✅ Order customer confirmation sent.");
+    } catch (customerError) {
+      console.error(
+        "❌ Failed to send order customer confirmation:",
+        customerError
+      );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | RETURN CREATED ORDER
     |--------------------------------------------------------------------------
     */
@@ -720,6 +847,11 @@ export const createHardcopyOrder = async (
         "Hardcopy order placed successfully",
 
       order,
+
+      emailNotifications: {
+        admin: orderAdminEmailSent,
+        customer: orderCustomerEmailSent,
+      },
     });
   } catch (error: any) {
     console.error(
