@@ -128,15 +128,14 @@ export default function BookingModal({
       const normalizedBaseUrl =
         String(apiBaseUrl).replace(/\/+$/, "");
 
-      // IMPORTANT:
-      // Backend route:
-      // app.use("/api/invite-david", invitationRoutes)
+      // Backend route (see invitation.routes.ts):
+      // app.use("/api/invite", invitationRoutes)
       //
       // Therefore the final endpoint is:
-      // /api/invite-david
+      // /api/invite
 
       const endpoint =
-        `${normalizedBaseUrl}/api/invite-david`;
+        `${normalizedBaseUrl}/api/invite`;
 
       console.log(
         "===================================="
