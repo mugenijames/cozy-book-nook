@@ -3,6 +3,7 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 /* =========================================================
    PROVIDER SELECTION
 ========================================================= */
@@ -35,12 +36,15 @@ const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || "";
 const gmailTransporter =
   GMAIL_USER && GMAIL_APP_PASSWORD
     ? nodemailer.createTransport({
-        service: "gmail",
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
         auth: {
           user: GMAIL_USER,
           pass: GMAIL_APP_PASSWORD,
         },
-      })
+        family: 4,
+      } as SMTPTransport.Options)
     : null;
 
 /* =========================================================
