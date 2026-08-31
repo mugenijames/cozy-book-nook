@@ -1,3 +1,4 @@
+
 // frontend/src/App.tsx
 
 import { Navigate, Route, Routes } from "react-router-dom";
@@ -26,6 +27,13 @@ import BookDetail from "@/pages/BookDetail";
 import Courses from "@/pages/Courses";
 import ProgramActivityPage from "@/pages/ProgramActivity";
 import ProgramHighlightPage from "@/pages/ProgramHighlight";
+
+// ============================================================
+// BLOG
+// ============================================================
+
+import Blogs from "@/pages/Blogs";
+import BlogDetail from "@/pages/BlogDetail";
 
 // ============================================================
 // DEAR DAD INITIATIVE
@@ -113,13 +121,30 @@ function App() {
             path="/book/:slug"
             element={<BookDetail />}
           />
-          
+
           {/* ====================================================
               COURSES
           ==================================================== */}
+
           <Route
             path="/courses"
             element={<Courses />}
+          />
+
+          {/* ====================================================
+              BLOGS
+          ==================================================== */}
+
+          {/* Main blog listing page */}
+          <Route
+            path="/blogs"
+            element={<Blogs />}
+          />
+
+          {/* Individual blog article */}
+          <Route
+            path="/blogs/:slug"
+            element={<BlogDetail />}
           />
 
           {/* ====================================================
@@ -127,12 +152,14 @@ function App() {
           ==================================================== */}
 
           {/* Main program page */}
+
           <Route
             path="/programs/:slug"
             element={<ProgramActivityPage />}
           />
 
           {/* Individual program area / highlight */}
+
           <Route
             path="/programs/:slug/:highlightSlug"
             element={<ProgramHighlightPage />}
@@ -143,18 +170,21 @@ function App() {
           ==================================================== */}
 
           {/* Main Dear Dad Initiative page */}
+
           <Route
             path="/dear-dad"
             element={<DearDadInitiative />}
           />
 
           {/* Donation / Sponsorship / Support page */}
+
           <Route
             path="/dear-dad/support"
             element={<DearDadSupportPage />}
           />
 
           {/* Partnership / Get Involved page */}
+
           <Route
             path="/dear-dad/get-involved"
             element={<DearDadGetInvolved />}
@@ -198,25 +228,35 @@ function App() {
           }
         >
 
-          {/* Dashboard */}
+          {/* ====================================================
+              DASHBOARD
+          ==================================================== */}
+
           <Route
             index
             element={<DashboardHome />}
           />
 
-          {/* Books */}
+          {/* ====================================================
+              BOOKS
+          ==================================================== */}
+
+          {/* Book list */}
+
           <Route
             path="books"
             element={<BookListPage />}
           />
 
           {/* Add book */}
+
           <Route
             path="books/new"
             element={<BookFormPage />}
           />
 
           {/* Edit book */}
+
           <Route
             path="books/:id/edit"
             element={<BookFormPage />}
@@ -256,3 +296,4 @@ function App() {
 }
 
 export default App;
+

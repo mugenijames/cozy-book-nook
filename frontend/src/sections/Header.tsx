@@ -1,3 +1,4 @@
+
 // frontend/src/sections/Header.tsx
 
 import { useEffect, useState } from "react";
@@ -19,17 +20,32 @@ import {
 import BookingModal from "@/components/BookingModal";
 import { PROGRAM_ACTIVITIES } from "@/data/programActivities";
 
-const SECTION_IDS = ["about", "program", "testimonials"];
+const SECTION_IDS = [
+  "about",
+  "program",
+  "testimonials",
+];
 
 export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [bookingOpen, setBookingOpen] = useState(false);
-  const [programsOpen, setProgramsOpen] = useState(false);
-  const [isSticky, setIsSticky] = useState(false);
-  const [activeSection, setActiveSection] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] =
+    useState(false);
+
+  const [bookingOpen, setBookingOpen] =
+    useState(false);
+
+  const [programsOpen, setProgramsOpen] =
+    useState(false);
+
+  const [isSticky, setIsSticky] =
+    useState(false);
+
+  const [activeSection, setActiveSection] =
+    useState("");
 
   const location = useLocation();
-  const isHomePage = location.pathname === "/";
+
+  const isHomePage =
+    location.pathname === "/";
 
   // ============================================================
   // CLOSE MENUS
@@ -65,7 +81,10 @@ export default function Header() {
     handleScroll();
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener(
+        "scroll",
+        handleScroll
+      );
     };
   }, []);
 
@@ -88,33 +107,50 @@ export default function Header() {
       return;
     }
 
-    const sections = SECTION_IDS.map((id) =>
-      document.getElementById(id)
-    ).filter(Boolean) as HTMLElement[];
+    const sections = SECTION_IDS
+      .map((id) =>
+        document.getElementById(id)
+      )
+      .filter(Boolean) as HTMLElement[];
 
     if (!sections.length) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visibleSections = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (a, b) =>
-              b.intersectionRatio - a.intersectionRatio
-          );
+    const observer =
+      new IntersectionObserver(
+        (entries) => {
+          const visibleSections =
+            entries
+              .filter(
+                (entry) =>
+                  entry.isIntersecting
+              )
+              .sort(
+                (a, b) =>
+                  b.intersectionRatio -
+                  a.intersectionRatio
+              );
 
-        if (visibleSections.length > 0) {
-          setActiveSection(
-            visibleSections[0].target.id
-          );
+          if (
+            visibleSections.length > 0
+          ) {
+            setActiveSection(
+              visibleSections[0]
+                .target.id
+            );
+          }
+        },
+        {
+          root: null,
+          rootMargin:
+            "-100px 0px -45% 0px",
+          threshold: [
+            0.1,
+            0.25,
+            0.5,
+            0.75,
+          ],
         }
-      },
-      {
-        root: null,
-        rootMargin: "-100px 0px -45% 0px",
-        threshold: [0.1, 0.25, 0.5, 0.75],
-      }
-    );
+      );
 
     sections.forEach((section) => {
       observer.observe(section);
@@ -123,7 +159,10 @@ export default function Header() {
     return () => {
       observer.disconnect();
     };
-  }, [isHomePage, location.pathname]);
+  }, [
+    isHomePage,
+    location.pathname,
+  ]);
 
   // ============================================================
   // SECTION CLICK
@@ -139,17 +178,21 @@ export default function Header() {
       event.preventDefault();
 
       const element =
-        document.getElementById(sectionId);
+        document.getElementById(
+          sectionId
+        );
 
       if (element) {
-        const headerOffset = isSticky ? 88 : 96;
+        const headerOffset =
+          isSticky ? 88 : 96;
 
         const elementPosition =
-          element.getBoundingClientRect().top +
-          window.scrollY;
+          element.getBoundingClientRect()
+            .top + window.scrollY;
 
         const offsetPosition =
-          elementPosition - headerOffset;
+          elementPosition -
+          headerOffset;
 
         window.scrollTo({
           top: offsetPosition,
@@ -162,7 +205,9 @@ export default function Header() {
           `#${sectionId}`
         );
 
-        setActiveSection(sectionId);
+        setActiveSection(
+          sectionId
+        );
       }
     }
   };
@@ -171,15 +216,31 @@ export default function Header() {
   // ACTIVE ROUTE
   // ============================================================
 
-  const isActiveRoute = (path: string) => {
-    return location.pathname === path;
+  const isActiveRoute = (
+    path: string
+  ) => {
+    return (
+      location.pathname === path
+    );
   };
+
+  // ============================================================
+  // BLOG ACTIVE ROUTE
+  // ============================================================
+
+  const isBlogActive =
+    location.pathname === "/blogs" ||
+    location.pathname.startsWith(
+      "/blogs/"
+    );
 
   // ============================================================
   // ACTIVE SECTION
   // ============================================================
 
-  const isSectionActive = (sectionId: string) => {
+  const isSectionActive = (
+    sectionId: string
+  ) => {
     return (
       isHomePage &&
       activeSection === sectionId
@@ -208,15 +269,17 @@ export default function Header() {
           w-full
           transition-all
           duration-300
-          ${isSticky
-            ? `
+
+          ${
+            isSticky
+              ? `
                 border-b
                 border-[#E8DDD4]/80
                 bg-white/95
                 shadow-[0_8px_30px_rgba(46,18,8,0.08)]
                 backdrop-blur-xl
               `
-            : `
+              : `
                 bg-white
               `
           }
@@ -235,9 +298,11 @@ export default function Header() {
             xl:px-10
             transition-all
             duration-300
-            ${isSticky
-              ? "min-h-[72px]"
-              : "min-h-[88px]"
+
+            ${
+              isSticky
+                ? "min-h-[72px]"
+                : "min-h-[88px]"
             }
           `}
         >
@@ -277,9 +342,11 @@ export default function Header() {
                 duration-300
                 group-hover:border-[#C17B4F]
                 group-hover:shadow-[0_6px_22px_rgba(46,18,8,0.18)]
-                ${isSticky
-                  ? "h-12 w-12 sm:h-14 sm:w-14"
-                  : "h-16 w-16 sm:h-[72px] sm:w-[72px]"
+
+                ${
+                  isSticky
+                    ? "h-12 w-12 sm:h-14 sm:w-14"
+                    : "h-16 w-16 sm:h-[72px] sm:w-[72px]"
                 }
               `}
             >
@@ -308,7 +375,7 @@ export default function Header() {
                   pointer-events-none
                   absolute
                   inset-0
-                  // rounded-full
+                  rounded-full
                   ring-1
                   ring-inset
                   ring-[#C17B4F]/10
@@ -328,9 +395,11 @@ export default function Header() {
                   transition-all
                   duration-300
                   group-hover:text-[#C17B4F]
-                  ${isSticky
-                    ? "text-base sm:text-lg"
-                    : "text-lg sm:text-xl"
+
+                  ${
+                    isSticky
+                      ? "text-base sm:text-lg"
+                      : "text-lg sm:text-xl"
                   }
                 `}
               >
@@ -384,16 +453,21 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-                ${isSectionActive("about")
-                  ? "text-[#C17B4F]"
-                  : ""
+
+                ${
+                  isSectionActive(
+                    "about"
+                  )
+                    ? "text-[#C17B4F]"
+                    : ""
                 }
               `}
             >
-              
               About
 
-              {isSectionActive("about") && (
+              {isSectionActive(
+                "about"
+              ) && (
                 <span
                   className="
                     absolute
@@ -418,17 +492,21 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-                ${isActiveRoute("/books")
-                  ? "text-[#C17B4F]"
-                  : ""
+
+                ${
+                  isActiveRoute(
+                    "/books"
+                  )
+                    ? "text-[#C17B4F]"
+                    : ""
                 }
               `}
             >
-             
-
               Books
 
-              {isActiveRoute("/books") && (
+              {isActiveRoute(
+                "/books"
+              ) && (
                 <span
                   className="
                     absolute
@@ -453,17 +531,21 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-                ${isActiveRoute("/courses")
-                  ? "text-[#C17B4F]"
-                  : ""
+
+                ${
+                  isActiveRoute(
+                    "/courses"
+                  )
+                    ? "text-[#C17B4F]"
+                    : ""
                 }
               `}
             >
-             
-
               Courses
 
-              {isActiveRoute("/courses") && (
+              {isActiveRoute(
+                "/courses"
+              ) && (
                 <span
                   className="
                     absolute
@@ -488,15 +570,17 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-                ${isActiveRoute("/blogs")
-                  ? "text-[#C17B4F]"
-                  : ""
+
+                ${
+                  isBlogActive
+                    ? "text-[#C17B4F]"
+                    : ""
                 }
               `}
             >
               Blogs
 
-              {isActiveRoute("/blogs") && (
+              {isBlogActive && (
                 <span
                   className="
                     absolute
@@ -520,7 +604,8 @@ export default function Header() {
                 type="button"
                 onClick={() =>
                   setProgramsOpen(
-                    (previous) => !previous
+                    (previous) =>
+                      !previous
                   )
                 }
                 className={`
@@ -528,15 +613,20 @@ export default function Header() {
                   outline-none
                   hover:text-[#C17B4F]
                   focus-visible:text-[#C17B4F]
-                  ${isSectionActive("program")
-                    ? "text-[#C17B4F]"
-                    : ""
+
+                  ${
+                    isSectionActive(
+                      "program"
+                    )
+                      ? "text-[#C17B4F]"
+                      : ""
                   }
                 `}
-                aria-expanded={programsOpen}
+                aria-expanded={
+                  programsOpen
+                }
                 aria-haspopup="menu"
               >
-              
                 Programs
 
                 <ChevronDown
@@ -545,14 +635,18 @@ export default function Header() {
                     w-4
                     transition-transform
                     duration-300
-                    ${programsOpen
-                      ? "rotate-180"
-                      : ""
+
+                    ${
+                      programsOpen
+                        ? "rotate-180"
+                        : ""
                     }
                   `}
                 />
 
-                {isSectionActive("program") && (
+                {isSectionActive(
+                  "program"
+                ) && (
                   <span
                     className="
                       absolute
@@ -581,7 +675,9 @@ export default function Header() {
                       cursor-default
                     "
                     onClick={() =>
-                      setProgramsOpen(false)
+                      setProgramsOpen(
+                        false
+                      )
                     }
                   />
 
@@ -623,8 +719,6 @@ export default function Header() {
                       >
                         Our Programs
                       </p>
-
-
                     </div>
 
                     <div className="h-px bg-[#E8DDD4]" />
@@ -652,26 +746,33 @@ export default function Header() {
                         hover:bg-[#F8F6F2]
                       "
                     >
-
-
                       <div>
-                        <p className="text-sm font-bold text-[#2E1208]">
+                        <p
+                          className="
+                            text-sm
+                            font-bold
+                            text-[#2E1208]
+                          "
+                        >
                           All Programs
                         </p>
-
                       </div>
                     </a>
 
                     {/* PROGRAM LIST */}
 
-                    <div className="px-2 pb-2 text-align-center">
+                    <div className="px-2 pb-2">
                       {PROGRAM_ACTIVITIES.map(
                         (program) => (
                           <Link
-                            key={program.slug}
+                            key={
+                              program.slug
+                            }
                             to={`/programs/${program.slug}`}
                             onClick={() =>
-                              setProgramsOpen(false)
+                              setProgramsOpen(
+                                false
+                              )
                             }
                             className="
                               flex
@@ -684,8 +785,6 @@ export default function Header() {
                               hover:bg-[#F8F6F2]
                             "
                           >
-                           
-
                             <div className="min-w-0">
                               <p
                                 className="
@@ -695,19 +794,10 @@ export default function Header() {
                                   text-[#2E1208]
                                 "
                               >
-                                {program.title}
+                                {
+                                  program.title
+                                }
                               </p>
-
-                              {/* <p
-                                className="
-                                  mt-0.5
-                                  line-clamp-1
-                                  text-xs
-                                  text-gray-500
-                                "
-                              >
-                                {program.description}
-                              </p> */}
                             </div>
                           </Link>
                         )
@@ -733,21 +823,23 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-                ${isSectionActive("testimonials")
-                  ? "text-[#C17B4F]"
-                  : ""
+
+                ${
+                  isSectionActive(
+                    "testimonials"
+                  )
+                    ? "text-[#C17B4F]"
+                    : ""
                 }
               `}
             >
-             
-
               Testimonials
 
               {isSectionActive(
                 "testimonials"
               ) && (
-                  <span
-                    className="
+                <span
+                  className="
                     absolute
                     bottom-0
                     left-0
@@ -756,8 +848,8 @@ export default function Header() {
                     rounded-full
                     bg-[#C17B4F]
                   "
-                  />
-                )}
+                />
+              )}
             </a>
 
             {/* =================================================
@@ -792,7 +884,7 @@ export default function Header() {
                 lg:px-5
               "
             >
-             
+              <CalendarCheck2 className="h-4 w-4" />
               Book David
             </button>
 
@@ -828,7 +920,7 @@ export default function Header() {
                 lg:px-5
               "
             >
-              
+              <HeartHandshake className="h-4 w-4" />
               Donate
             </Link>
           </nav>
@@ -841,7 +933,8 @@ export default function Header() {
             type="button"
             onClick={() =>
               setMobileMenuOpen(
-                (previous) => !previous
+                (previous) =>
+                  !previous
               )
             }
             className="
@@ -871,7 +964,9 @@ export default function Header() {
                 ? "Close navigation menu"
                 : "Open navigation menu"
             }
-            aria-expanded={mobileMenuOpen}
+            aria-expanded={
+              mobileMenuOpen
+            }
           >
             {mobileMenuOpen ? (
               <X className="h-6 w-6" />
@@ -907,6 +1002,7 @@ export default function Header() {
               aria-label="Mobile navigation"
             >
               <div className="space-y-1">
+
                 {/* ABOUT */}
 
                 <a
@@ -927,9 +1023,13 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-                    ${isSectionActive("about")
-                      ? "bg-[#F8F6F2] text-[#C17B4F]"
-                      : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+
+                    ${
+                      isSectionActive(
+                        "about"
+                      )
+                        ? "bg-[#F8F6F2] text-[#C17B4F]"
+                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
@@ -952,9 +1052,13 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-                    ${isActiveRoute("/books")
-                      ? "bg-[#F8F6F2] text-[#C17B4F]"
-                      : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+
+                    ${
+                      isActiveRoute(
+                        "/books"
+                      )
+                        ? "bg-[#F8F6F2] text-[#C17B4F]"
+                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
@@ -977,9 +1081,13 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-                    ${isActiveRoute("/courses")
-                      ? "bg-[#F8F6F2] text-[#C17B4F]"
-                      : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+
+                    ${
+                      isActiveRoute(
+                        "/courses"
+                      )
+                        ? "bg-[#F8F6F2] text-[#C17B4F]"
+                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
@@ -1002,9 +1110,11 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-                    ${isActiveRoute("/blogs")
-                      ? "bg-[#F8F6F2] text-[#C17B4F]"
-                      : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+
+                    ${
+                      isBlogActive
+                        ? "bg-[#F8F6F2] text-[#C17B4F]"
+                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
@@ -1035,9 +1145,13 @@ export default function Header() {
                       text-sm
                       font-semibold
                       transition-all
-                      ${isSectionActive("program")
-                        ? "bg-[#F8F6F2] text-[#C17B4F]"
-                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+
+                      ${
+                        isSectionActive(
+                          "program"
+                        )
+                          ? "bg-[#F8F6F2] text-[#C17B4F]"
+                          : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                       }
                     `}
                   >
@@ -1052,9 +1166,11 @@ export default function Header() {
                         w-4
                         transition-transform
                         duration-300
-                        ${programsOpen
-                          ? "rotate-180"
-                          : ""
+
+                        ${
+                          programsOpen
+                            ? "rotate-180"
+                            : ""
                         }
                       `}
                     />
@@ -1105,9 +1221,13 @@ export default function Header() {
                       {PROGRAM_ACTIVITIES.map(
                         (program) => (
                           <Link
-                            key={program.slug}
+                            key={
+                              program.slug
+                            }
                             to={`/programs/${program.slug}`}
-                            onClick={closeMobileMenu}
+                            onClick={
+                              closeMobileMenu
+                            }
                             className="
                               flex
                               items-center
@@ -1134,7 +1254,9 @@ export default function Header() {
                             />
 
                             <span className="truncate">
-                              {program.title}
+                              {
+                                program.title
+                              }
                             </span>
                           </Link>
                         )
@@ -1163,11 +1285,13 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-                    ${isSectionActive(
-                    "testimonials"
-                  )
-                      ? "bg-[#F8F6F2] text-[#C17B4F]"
-                      : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
+
+                    ${
+                      isSectionActive(
+                        "testimonials"
+                      )
+                        ? "bg-[#F8F6F2] text-[#C17B4F]"
+                        : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
                   `}
                 >
@@ -1189,6 +1313,8 @@ export default function Header() {
                   pt-5
                 "
               >
+                {/* BOOK DAVID */}
+
                 <button
                   type="button"
                   onClick={openBookingModal}
@@ -1214,6 +1340,8 @@ export default function Header() {
                   <CalendarCheck2 className="h-4 w-4" />
                   Book David
                 </button>
+
+                {/* DONATE */}
 
                 <Link
                   to="/dear-dad/support"
@@ -1252,9 +1380,10 @@ export default function Header() {
 
       <div
         className={`
-          ${isSticky
-            ? "h-[72px]"
-            : "h-[88px]"
+          ${
+            isSticky
+              ? "h-[72px]"
+              : "h-[88px]"
           }
         `}
         aria-hidden="true"
@@ -1273,3 +1402,4 @@ export default function Header() {
     </>
   );
 }
+
