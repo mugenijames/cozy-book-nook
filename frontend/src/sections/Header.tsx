@@ -20,32 +20,17 @@ import {
 import BookingModal from "@/components/BookingModal";
 import { PROGRAM_ACTIVITIES } from "@/data/programActivities";
 
-const SECTION_IDS = [
-  "about",
-  "program",
-  "testimonials",
-];
+const SECTION_IDS = ["about", "program", "testimonials"];
 
 export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] =
-    useState(false);
-
-  const [bookingOpen, setBookingOpen] =
-    useState(false);
-
-  const [programsOpen, setProgramsOpen] =
-    useState(false);
-
-  const [isSticky, setIsSticky] =
-    useState(false);
-
-  const [activeSection, setActiveSection] =
-    useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [programsOpen, setProgramsOpen] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
 
   const location = useLocation();
-
-  const isHomePage =
-    location.pathname === "/";
+  const isHomePage = location.pathname === "/";
 
   // ============================================================
   // CLOSE MENUS
@@ -81,10 +66,7 @@ export default function Header() {
     handleScroll();
 
     return () => {
-      window.removeEventListener(
-        "scroll",
-        handleScroll
-      );
+      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
@@ -107,50 +89,33 @@ export default function Header() {
       return;
     }
 
-    const sections = SECTION_IDS
-      .map((id) =>
-        document.getElementById(id)
-      )
-      .filter(Boolean) as HTMLElement[];
+    const sections = SECTION_IDS.map((id) =>
+      document.getElementById(id)
+    ).filter(Boolean) as HTMLElement[];
 
     if (!sections.length) return;
 
-    const observer =
-      new IntersectionObserver(
-        (entries) => {
-          const visibleSections =
-            entries
-              .filter(
-                (entry) =>
-                  entry.isIntersecting
-              )
-              .sort(
-                (a, b) =>
-                  b.intersectionRatio -
-                  a.intersectionRatio
-              );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleSections = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort(
+            (a, b) =>
+              b.intersectionRatio - a.intersectionRatio
+          );
 
-          if (
-            visibleSections.length > 0
-          ) {
-            setActiveSection(
-              visibleSections[0]
-                .target.id
-            );
-          }
-        },
-        {
-          root: null,
-          rootMargin:
-            "-100px 0px -45% 0px",
-          threshold: [
-            0.1,
-            0.25,
-            0.5,
-            0.75,
-          ],
+        if (visibleSections.length > 0) {
+          setActiveSection(
+            visibleSections[0].target.id
+          );
         }
-      );
+      },
+      {
+        root: null,
+        rootMargin: "-100px 0px -45% 0px",
+        threshold: [0.1, 0.25, 0.5, 0.75],
+      }
+    );
 
     sections.forEach((section) => {
       observer.observe(section);
@@ -159,10 +124,7 @@ export default function Header() {
     return () => {
       observer.disconnect();
     };
-  }, [
-    isHomePage,
-    location.pathname,
-  ]);
+  }, [isHomePage, location.pathname]);
 
   // ============================================================
   // SECTION CLICK
@@ -177,22 +139,17 @@ export default function Header() {
     if (isHomePage) {
       event.preventDefault();
 
-      const element =
-        document.getElementById(
-          sectionId
-        );
+      const element = document.getElementById(sectionId);
 
       if (element) {
-        const headerOffset =
-          isSticky ? 88 : 96;
+        const headerOffset = isSticky ? 88 : 96;
 
         const elementPosition =
-          element.getBoundingClientRect()
-            .top + window.scrollY;
+          element.getBoundingClientRect().top +
+          window.scrollY;
 
         const offsetPosition =
-          elementPosition -
-          headerOffset;
+          elementPosition - headerOffset;
 
         window.scrollTo({
           top: offsetPosition,
@@ -205,9 +162,7 @@ export default function Header() {
           `#${sectionId}`
         );
 
-        setActiveSection(
-          sectionId
-        );
+        setActiveSection(sectionId);
       }
     }
   };
@@ -216,31 +171,15 @@ export default function Header() {
   // ACTIVE ROUTE
   // ============================================================
 
-  const isActiveRoute = (
-    path: string
-  ) => {
-    return (
-      location.pathname === path
-    );
+  const isActiveRoute = (path: string) => {
+    return location.pathname === path;
   };
-
-  // ============================================================
-  // BLOG ACTIVE ROUTE
-  // ============================================================
-
-  const isBlogActive =
-    location.pathname === "/blogs" ||
-    location.pathname.startsWith(
-      "/blogs/"
-    );
 
   // ============================================================
   // ACTIVE SECTION
   // ============================================================
 
-  const isSectionActive = (
-    sectionId: string
-  ) => {
+  const isSectionActive = (sectionId: string) => {
     return (
       isHomePage &&
       activeSection === sectionId
@@ -269,7 +208,6 @@ export default function Header() {
           w-full
           transition-all
           duration-300
-
           ${
             isSticky
               ? `
@@ -298,7 +236,6 @@ export default function Header() {
             xl:px-10
             transition-all
             duration-300
-
             ${
               isSticky
                 ? "min-h-[72px]"
@@ -342,7 +279,6 @@ export default function Header() {
                 duration-300
                 group-hover:border-[#C17B4F]
                 group-hover:shadow-[0_6px_22px_rgba(46,18,8,0.18)]
-
                 ${
                   isSticky
                     ? "h-12 w-12 sm:h-14 sm:w-14"
@@ -395,7 +331,6 @@ export default function Header() {
                   transition-all
                   duration-300
                   group-hover:text-[#C17B4F]
-
                   ${
                     isSticky
                       ? "text-base sm:text-lg"
@@ -438,26 +373,18 @@ export default function Header() {
             "
             aria-label="Main navigation"
           >
-            {/* =================================================
-                ABOUT
-            ================================================= */}
+            {/* ABOUT */}
 
             <a
               href="/#about"
               onClick={(event) =>
-                handleSectionClick(
-                  event,
-                  "about"
-                )
+                handleSectionClick(event, "about")
               }
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-
                 ${
-                  isSectionActive(
-                    "about"
-                  )
+                  isSectionActive("about")
                     ? "text-[#C17B4F]"
                     : ""
                 }
@@ -465,9 +392,7 @@ export default function Header() {
             >
               About
 
-              {isSectionActive(
-                "about"
-              ) && (
+              {isSectionActive("about") && (
                 <span
                   className="
                     absolute
@@ -482,9 +407,7 @@ export default function Header() {
               )}
             </a>
 
-            {/* =================================================
-                BOOKS
-            ================================================= */}
+            {/* BOOKS */}
 
             <Link
               to="/books"
@@ -492,11 +415,8 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-
                 ${
-                  isActiveRoute(
-                    "/books"
-                  )
+                  isActiveRoute("/books")
                     ? "text-[#C17B4F]"
                     : ""
                 }
@@ -504,9 +424,7 @@ export default function Header() {
             >
               Books
 
-              {isActiveRoute(
-                "/books"
-              ) && (
+              {isActiveRoute("/books") && (
                 <span
                   className="
                     absolute
@@ -521,9 +439,7 @@ export default function Header() {
               )}
             </Link>
 
-            {/* =================================================
-                COURSES
-            ================================================= */}
+            {/* COURSES */}
 
             <Link
               to="/courses"
@@ -531,11 +447,8 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-
                 ${
-                  isActiveRoute(
-                    "/courses"
-                  )
+                  isActiveRoute("/courses")
                     ? "text-[#C17B4F]"
                     : ""
                 }
@@ -543,9 +456,7 @@ export default function Header() {
             >
               Courses
 
-              {isActiveRoute(
-                "/courses"
-              ) && (
+              {isActiveRoute("/courses") && (
                 <span
                   className="
                     absolute
@@ -560,9 +471,7 @@ export default function Header() {
               )}
             </Link>
 
-            {/* =================================================
-                BLOGS
-            ================================================= */}
+            {/* BLOGS */}
 
             <Link
               to="/blogs"
@@ -570,9 +479,8 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-
                 ${
-                  isBlogActive
+                  isActiveRoute("/blogs")
                     ? "text-[#C17B4F]"
                     : ""
                 }
@@ -580,7 +488,7 @@ export default function Header() {
             >
               Blogs
 
-              {isBlogActive && (
+              {isActiveRoute("/blogs") && (
                 <span
                   className="
                     absolute
@@ -595,17 +503,14 @@ export default function Header() {
               )}
             </Link>
 
-            {/* =================================================
-                PROGRAMS DROPDOWN
-            ================================================= */}
+            {/* PROGRAMS DROPDOWN */}
 
             <div className="relative">
               <button
                 type="button"
                 onClick={() =>
                   setProgramsOpen(
-                    (previous) =>
-                      !previous
+                    (previous) => !previous
                   )
                 }
                 className={`
@@ -613,18 +518,13 @@ export default function Header() {
                   outline-none
                   hover:text-[#C17B4F]
                   focus-visible:text-[#C17B4F]
-
                   ${
-                    isSectionActive(
-                      "program"
-                    )
+                    isSectionActive("program")
                       ? "text-[#C17B4F]"
                       : ""
                   }
                 `}
-                aria-expanded={
-                  programsOpen
-                }
+                aria-expanded={programsOpen}
                 aria-haspopup="menu"
               >
                 Programs
@@ -635,7 +535,6 @@ export default function Header() {
                     w-4
                     transition-transform
                     duration-300
-
                     ${
                       programsOpen
                         ? "rotate-180"
@@ -644,9 +543,7 @@ export default function Header() {
                   `}
                 />
 
-                {isSectionActive(
-                  "program"
-                ) && (
+                {isSectionActive("program") && (
                   <span
                     className="
                       absolute
@@ -675,9 +572,7 @@ export default function Header() {
                       cursor-default
                     "
                     onClick={() =>
-                      setProgramsOpen(
-                        false
-                      )
+                      setProgramsOpen(false)
                     }
                   />
 
@@ -747,13 +642,7 @@ export default function Header() {
                       "
                     >
                       <div>
-                        <p
-                          className="
-                            text-sm
-                            font-bold
-                            text-[#2E1208]
-                          "
-                        >
+                        <p className="text-sm font-bold text-[#2E1208]">
                           All Programs
                         </p>
                       </div>
@@ -765,14 +654,10 @@ export default function Header() {
                       {PROGRAM_ACTIVITIES.map(
                         (program) => (
                           <Link
-                            key={
-                              program.slug
-                            }
+                            key={program.slug}
                             to={`/programs/${program.slug}`}
                             onClick={() =>
-                              setProgramsOpen(
-                                false
-                              )
+                              setProgramsOpen(false)
                             }
                             className="
                               flex
@@ -794,9 +679,7 @@ export default function Header() {
                                   text-[#2E1208]
                                 "
                               >
-                                {
-                                  program.title
-                                }
+                                {program.title}
                               </p>
                             </div>
                           </Link>
@@ -808,9 +691,7 @@ export default function Header() {
               )}
             </div>
 
-            {/* =================================================
-                TESTIMONIALS
-            ================================================= */}
+            {/* TESTIMONIALS */}
 
             <a
               href="/#testimonials"
@@ -823,7 +704,6 @@ export default function Header() {
               className={`
                 ${desktopLinkBase}
                 hover:text-[#C17B4F]
-
                 ${
                   isSectionActive(
                     "testimonials"
@@ -884,7 +764,6 @@ export default function Header() {
                 lg:px-5
               "
             >
-              <CalendarCheck2 className="h-4 w-4" />
               Book David
             </button>
 
@@ -920,7 +799,6 @@ export default function Header() {
                 lg:px-5
               "
             >
-              <HeartHandshake className="h-4 w-4" />
               Donate
             </Link>
           </nav>
@@ -933,8 +811,7 @@ export default function Header() {
             type="button"
             onClick={() =>
               setMobileMenuOpen(
-                (previous) =>
-                  !previous
+                (previous) => !previous
               )
             }
             className="
@@ -964,9 +841,7 @@ export default function Header() {
                 ? "Close navigation menu"
                 : "Open navigation menu"
             }
-            aria-expanded={
-              mobileMenuOpen
-            }
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? (
               <X className="h-6 w-6" />
@@ -1002,7 +877,6 @@ export default function Header() {
               aria-label="Mobile navigation"
             >
               <div className="space-y-1">
-
                 {/* ABOUT */}
 
                 <a
@@ -1023,11 +897,8 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-
                     ${
-                      isSectionActive(
-                        "about"
-                      )
+                      isSectionActive("about")
                         ? "bg-[#F8F6F2] text-[#C17B4F]"
                         : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
@@ -1052,11 +923,8 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-
                     ${
-                      isActiveRoute(
-                        "/books"
-                      )
+                      isActiveRoute("/books")
                         ? "bg-[#F8F6F2] text-[#C17B4F]"
                         : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
@@ -1081,11 +949,8 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-
                     ${
-                      isActiveRoute(
-                        "/courses"
-                      )
+                      isActiveRoute("/courses")
                         ? "bg-[#F8F6F2] text-[#C17B4F]"
                         : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
@@ -1110,9 +975,8 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-
                     ${
-                      isBlogActive
+                      isActiveRoute("/blogs")
                         ? "bg-[#F8F6F2] text-[#C17B4F]"
                         : "text-[#4A1F0E] hover:bg-[#F8F6F2] hover:text-[#C17B4F]"
                     }
@@ -1145,7 +1009,6 @@ export default function Header() {
                       text-sm
                       font-semibold
                       transition-all
-
                       ${
                         isSectionActive(
                           "program"
@@ -1166,7 +1029,6 @@ export default function Header() {
                         w-4
                         transition-transform
                         duration-300
-
                         ${
                           programsOpen
                             ? "rotate-180"
@@ -1221,13 +1083,9 @@ export default function Header() {
                       {PROGRAM_ACTIVITIES.map(
                         (program) => (
                           <Link
-                            key={
-                              program.slug
-                            }
+                            key={program.slug}
                             to={`/programs/${program.slug}`}
-                            onClick={
-                              closeMobileMenu
-                            }
+                            onClick={closeMobileMenu}
                             className="
                               flex
                               items-center
@@ -1254,9 +1112,7 @@ export default function Header() {
                             />
 
                             <span className="truncate">
-                              {
-                                program.title
-                              }
+                              {program.title}
                             </span>
                           </Link>
                         )
@@ -1285,7 +1141,6 @@ export default function Header() {
                     text-sm
                     font-semibold
                     transition-all
-
                     ${
                       isSectionActive(
                         "testimonials"
@@ -1391,13 +1246,14 @@ export default function Header() {
 
       {/* ======================================================
           BOOKING MODAL
+
+          IMPORTANT:
+          BookingModal expects `open`, NOT `isOpen`.
       ====================================================== */}
 
       <BookingModal
-        isOpen={bookingOpen}
-        onClose={() =>
-          setBookingOpen(false)
-        }
+        open={bookingOpen}
+        onClose={() => setBookingOpen(false)}
       />
     </>
   );
