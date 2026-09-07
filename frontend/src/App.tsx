@@ -63,6 +63,7 @@ import LoginPage from "@/pages/admin/Login";
 import DashboardHome from "@/features/admin/dashboard/DashboardHome";
 import BookListPage from "@/features/admin/books/BookListPage";
 import BookFormPage from "@/features/admin/books/BookFormPage";
+import AdminUsersPage from "@/features/admin/users/AdminUsersPage";
 
 // ============================================================
 // ROUTE PROTECTION
@@ -260,6 +261,15 @@ function App() {
           <Route
             path="books/:id/edit"
             element={<BookFormPage />}
+          />
+
+          <Route
+            path="users"
+            element={
+              <ProtectedRoute requireSuperAdmin>
+                <AdminUsersPage />
+              </ProtectedRoute>
+            }
           />
 
         </Route>

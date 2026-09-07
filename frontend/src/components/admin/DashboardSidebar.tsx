@@ -1,6 +1,6 @@
 // src/components/admin/DashboardSidebar.tsx
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, BookOpen, LogOut, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, BookOpen, LogOut, ShoppingBag, ChevronLeft, ChevronRight, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
@@ -10,15 +10,18 @@ interface SidebarProps {
   isMobile: boolean;
 }
 
-const menuItems = [
-  { path: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/admin/books", icon: BookOpen, label: "Books" },
-  { path: "/admin/orders", icon: ShoppingBag, label: "Orders" },
-];
-
 export default function DashboardSidebar({ sidebarOpen, setSidebarOpen, isMobile }: SidebarProps) {
-  const { logout } = useAuth();
+  const { logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
+
+  const menuItems = [
+    { path: "/admin", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/admin/books", icon: BookOpen, label: "Books" },
+    { path: "/admin/orders", icon: ShoppingBag, label: "Orders" },
+    ...(isSuperAdmin
+      ? [{ path: "/admin/users", icon: Shield, label: "Admins" }]
+      : []),
+  ];
 
   const handleLogout = () => {
     logout();

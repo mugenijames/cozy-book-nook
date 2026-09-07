@@ -26,6 +26,7 @@ import orderRoutes from "./routes/order.routes";
 import paymentRoutes from "./routes/payment.routes";
 import bookPreviewRoutes from "./routes/bookPreview.routes";
 import authRoutes from "./routes/auth.routes";
+import adminUserRoutes from "./routes/admin.user.routes";
 
 /* ==========================================================================
    ENVIRONMENT
@@ -512,6 +513,9 @@ app.get(
         adminBooks:
           "/api/admin/books",
 
+        adminUsers:
+          "/api/admin/users",
+
         checkout:
           "/api/checkout",
 
@@ -648,6 +652,11 @@ app.use(
 app.use(
   "/api/auth",
   authRoutes
+);
+
+app.use(
+  "/api/admin/users",
+  adminUserRoutes
 );
 
 /* ==========================================================================

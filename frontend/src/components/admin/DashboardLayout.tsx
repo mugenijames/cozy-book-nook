@@ -6,7 +6,7 @@ import DashboardSidebar from "./DashboardSidebar";
 import Footer from "@/sections/Footer";
 
 export default function AdminLayout() {
-  const { isAdmin, token, isLoading } = useAuth();
+  const { isAdmin, token, isLoading, user } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -77,12 +77,19 @@ export default function AdminLayout() {
               David Emuria 
             </span>
           </div>
-          <a
-            href="/"
-            className="text-sm text-[#C17B4F] hover:text-[#A55E36] font-medium transition-colors"
-          >
-            ← View public site
-          </a>
+          <div className="flex items-center gap-4">
+            {user && (
+              <span className="hidden sm:block text-sm text-[#8B7355]">
+                {user.name} · {user.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}
+              </span>
+            )}
+            <a
+              href="/"
+              className="text-sm text-[#C17B4F] hover:text-[#A55E36] font-medium transition-colors"
+            >
+              ← View public site
+            </a>
+          </div>
         </header>
 
         {/* Page content */}

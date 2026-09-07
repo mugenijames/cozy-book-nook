@@ -100,20 +100,16 @@ model PendingPayment {
   bookTitle          String
   email              String
   phoneNumber        String?
-
   amount             Float
-  baseAmountCents    Int?
-  currency           String   @default("KES")
-
   status             String   @default("pending")
   mpesaReceiptNumber String?
   paypalCaptureId    String?
   errorMessage       String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  book Book @relation(fields: [bookId], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  baseAmountCents    Int?
+  currency           String   @default("KES")
+  book               Book     @relation(fields: [bookId], references: [id])
 
   @@index([email])
   @@index([status])
@@ -121,6 +117,7 @@ model PendingPayment {
   @@index([paypalOrderId])
   @@map("pending_payments")
 }
+
 model Testimonial {
   id        String   @id @default(uuid())
   name      String
@@ -140,42 +137,30 @@ model Testimonial {
   @@map("testimonials")
 }
 
-// ============================================================
-// PROGRAMS
-// ============================================================
-
 model Program {
-  id          String  @id @default(uuid())
-  slug        String  @unique
-  title       String
-  subtitle    String?
-  description String?
-  overview    String?
-
-  imageUrl String?
-
-  category String?
-  level    String?
-  duration String?
-
-  objectives     Json?
-  targetAudience Json?
-
+  id              String                @id @default(uuid())
+  slug            String                @unique
+  title           String
+  subtitle        String?
+  description     String?
+  overview        String?
+  imageUrl        String?
+  category        String?
+  level           String?
+  duration        String?
+  objectives      Json?
+  targetAudience  Json?
   instructorName  String?
   instructorTitle String?
-
-  priceCents Int?
-  currency   String @default("KES")
-
-  isFree      Boolean @default(false)
-  isPublished Boolean @default(false)
-  featured    Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  modules       ProgramModule[]
-  registrations ProgramRegistration[]
+  priceCents      Int?
+  currency        String                @default("KES")
+  isFree          Boolean               @default(false)
+  isPublished     Boolean               @default(false)
+  featured        Boolean               @default(false)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  modules         ProgramModule[]
+  registrations   ProgramRegistration[]
 
   @@index([category])
   @@index([level])
@@ -185,57 +170,36 @@ model Program {
   @@map("programs")
 }
 
-// ============================================================
-// PROGRAM MODULES
-// ============================================================
-
 model ProgramModule {
-  id String @id @default(uuid())
-
-  programId String
-
+  id          String   @id @default(uuid())
+  programId   String
   title       String
   description String?
-
-  position Int @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@index([programId])
   @@index([position])
   @@map("program_modules")
 }
 
-// ============================================================
-// PROGRAM REGISTRATION
-// ============================================================
-
 model ProgramRegistration {
-  id String @id @default(uuid())
-
-  programId String
-
-  fullName String
-  email    String
-  phone    String?
-
+  id           String   @id @default(uuid())
+  programId    String
+  fullName     String
+  email        String
+  phone        String?
   organization String?
   occupation   String?
-
-  motivation String?
-  goals      String?
-
-  status String @default("PENDING")
-
-  notes String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  motivation   String?
+  goals        String?
+  status       String   @default("PENDING")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  program      Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@index([programId])
   @@index([email])
@@ -244,50 +208,35 @@ model ProgramRegistration {
   @@map("program_registrations")
 }
 
-// ============================================================
-// COURSES
-// ============================================================
-
 model Course {
-  id String @id @default(uuid())
-
-  slug String @unique
-
-  title       String
-  subtitle    String?
-  description String?
-  overview    String?
-
-  thumbnailUrl String?
-
-  category String?
-  level    String?
-
-  duration       String?
-  estimatedHours Int?
-
+  id              String             @id @default(uuid())
+  slug            String             @unique
+  title           String
+  subtitle        String?
+  description     String?
+  overview        String?
+  thumbnailUrl    String?
+  category        String?
+  level           String?
+  duration        String?
+  estimatedHours  Int?
   instructorName  String?
   instructorTitle String?
   instructorBio   String?
   instructorImage String?
-
-  priceCents Int?
-  currency   String @default("KES")
-
-  isFree      Boolean @default(false)
-  isPublished Boolean @default(false)
-  featured    Boolean @default(false)
-
-  objectives     Json?
-  targetAudience Json?
-  requirements   Json?
-  whatYouLearn   Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  modules     CourseModule[]
-  enrollments CourseEnrollment[]
+  priceCents      Int?
+  currency        String             @default("KES")
+  isFree          Boolean            @default(false)
+  isPublished     Boolean            @default(false)
+  featured        Boolean            @default(false)
+  objectives      Json?
+  targetAudience  Json?
+  requirements    Json?
+  whatYouLearn    Json?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  enrollments     CourseEnrollment[]
+  modules         CourseModule[]
 
   @@index([category])
   @@index([level])
@@ -297,60 +246,38 @@ model Course {
   @@map("courses")
 }
 
-// ============================================================
-// COURSE MODULES
-// ============================================================
-
 model CourseModule {
-  id String @id @default(uuid())
-
-  courseId String
-
+  id          String   @id @default(uuid())
+  courseId    String
   title       String
   description String?
-
-  position Int @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lessons Lesson[]
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons     Lesson[]
 
   @@index([courseId])
   @@index([position])
   @@map("course_modules")
 }
 
-// ============================================================
-// COURSE LESSONS
-// ============================================================
-
 model Lesson {
-  id String @id @default(uuid())
-
-  moduleId String
-
-  title       String
-  description String?
-
-  content String?
-
-  videoUrl String?
-  pdfUrl   String?
-
+  id              String           @id @default(uuid())
+  moduleId        String
+  title           String
+  description     String?
+  content         String?
+  videoUrl        String?
+  pdfUrl          String?
   durationMinutes Int?
-
-  position Int @default(0)
-
-  isFreePreview Boolean @default(false)
-  isPublished   Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  module   CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  progress CourseProgress[]
+  position        Int              @default(0)
+  isFreePreview   Boolean          @default(false)
+  isPublished     Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  progress        CourseProgress[]
+  module          CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@index([moduleId])
   @@index([position])
@@ -358,31 +285,20 @@ model Lesson {
   @@map("lessons")
 }
 
-// ============================================================
-// COURSE ENROLLMENT
-// ============================================================
-
 model CourseEnrollment {
-  id String @id @default(uuid())
-
-  courseId String
-
-  fullName String
-  email    String
-  phone    String?
-
-  paymentStatus    String @default("UNPAID")
-  enrollmentStatus String @default("ACTIVE")
-
-  enrolledAt  DateTime  @default(now())
-  completedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-
-  progress CourseProgress[]
+  id               String           @id @default(uuid())
+  courseId         String
+  fullName         String
+  email            String
+  phone            String?
+  paymentStatus    String           @default("UNPAID")
+  enrollmentStatus String           @default("ACTIVE")
+  enrolledAt       DateTime         @default(now())
+  completedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  course           Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress         CourseProgress[]
 
   @@unique([courseId, email])
   @@index([courseId])
@@ -393,25 +309,16 @@ model CourseEnrollment {
   @@map("course_enrollments")
 }
 
-// ============================================================
-// COURSE PROGRESS
-// ============================================================
-
 model CourseProgress {
-  id String @id @default(uuid())
-
+  id           String           @id @default(uuid())
   enrollmentId String
   lessonId     String
-
-  completed Boolean @default(false)
-
-  completedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  enrollment CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  lesson     Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completed    Boolean          @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  enrollment   CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lesson       Lesson           @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([enrollmentId, lessonId])
   @@index([enrollmentId])
@@ -420,34 +327,22 @@ model CourseProgress {
   @@map("course_progress")
 }
 
-// ============================================================
-// MENTORS / COACHES
-// ============================================================
-
 model Mentor {
-  id String @id @default(uuid())
-
-  name String
-
-  title    String?
-  bio      String?
-  photoUrl String?
-  email    String?
-  phone    String?
-
-  expertise Json?
-
+  id              String              @id @default(uuid())
+  name            String
+  title           String?
+  bio             String?
+  photoUrl        String?
+  email           String?
+  phone           String?
+  expertise       Json?
   yearsExperience Int?
-
-  sessionTypes Json?
-
-  isAvailable Boolean @default(true)
-  isFeatured  Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  requests MentorshipRequest[]
+  sessionTypes    Json?
+  isAvailable     Boolean             @default(true)
+  isFeatured      Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  requests        MentorshipRequest[]
 
   @@index([isAvailable])
   @@index([isFeatured])
@@ -455,44 +350,28 @@ model Mentor {
   @@map("mentors")
 }
 
-// ============================================================
-// MENTORSHIP / COACHING REQUEST
-// ============================================================
-
 model MentorshipRequest {
-  id String @id @default(uuid())
-
-  mentorId String?
-
-  fullName String
-  email    String
-  phone    String?
-
-  serviceType String @default("MENTORSHIP")
-
+  id             String    @id @default(uuid())
+  mentorId       String?
+  fullName       String
+  email          String
+  phone          String?
+  serviceType    String    @default("MENTORSHIP")
   areaOfInterest String?
-
-  goals        String?
-  challenge    String?
-  expectations String?
-
-  preferredDate DateTime?
-  preferredTime String?
-
-  sessionType String?
-  meetingMode String?
-
-  status String @default("PENDING")
-
-  adminNotes String?
-
-  scheduledAt DateTime?
-  completedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  mentor Mentor? @relation(fields: [mentorId], references: [id], onDelete: SetNull)
+  goals          String?
+  challenge      String?
+  expectations   String?
+  preferredDate  DateTime?
+  preferredTime  String?
+  sessionType    String?
+  meetingMode    String?
+  status         String    @default("PENDING")
+  adminNotes     String?
+  scheduledAt    DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  mentor         Mentor?   @relation(fields: [mentorId], references: [id])
 
   @@index([mentorId])
   @@index([email])
@@ -502,34 +381,53 @@ model MentorshipRequest {
   @@map("mentorship_requests")
 }
 
-// ============================================================
-// ADMIN AUTHENTICATION
-// ============================================================
+model AdminUser {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         AdminRole @default(ADMIN)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([role])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("admin_users")
+}
 
 enum AdminRole {
   ADMIN
   SUPER_ADMIN
 }
 
-model AdminUser {
-  id String @id @default(uuid())
+model BlogPost {
+  id          String   @id @default(uuid())
 
-  name  String
-  email String @unique
+  slug        String   @unique
+  title       String
+  excerpt     String?
+  content     String
 
-  passwordHash String
+  coverImage  String?
+  category    String?
+  author      String?
 
-  role AdminRole @default(ADMIN)
+  published   Boolean  @default(false)
+  featured    Boolean  @default(false)
 
-  isActive Boolean @default(true)
+  publishedAt DateTime?
 
-  lastLoginAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([role])
-  @@index([isActive])
+  @@index([published])
+  @@index([featured])
+  @@index([category])
+  @@index([publishedAt])
   @@index([createdAt])
-  @@map("admin_users")
+
+  @@map("blog_posts")
 }

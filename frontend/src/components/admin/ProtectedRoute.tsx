@@ -1,4 +1,3 @@
-// src/components/admin/ProtectedRoute.tsx
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -6,23 +5,27 @@ import { useEffect } from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requireSuperAdmin?: boolean;
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAdmin, token, isLoading, logout } = useAuth();
+export default function ProtectedRoute({
+  children,
+  requireSuperAdmin = false,
+}: ProtectedRouteProps) {
+  const { isAdmin, isSuperAdmin, token, isLoading, logout } =
+    useAuth();
 
-  // Check token expiry on mount
   useEffect(() => {
     const checkTokenExpiry = () => {
-      const tokenExpiry = localStorage.getItem('token_expiry');
-      if (tokenExpiry && Date.now() > parseInt(tokenExpiry)) {
+      const tokenExpiry = localStorage.getItem("token_expiry");
+      if (tokenExpiry && Date.now() > parseInt(tokenExpiry, 10)) {
         logout();
       }
     };
-    
+
     checkTokenExpiry();
-    const interval = setInterval(checkTokenExpiry, 60000); // Check every minute
-    
+    const interval = setInterval(checkTokenExpiry, 60000);
+
     return () => clearInterval(interval);
   }, [logout]);
 
@@ -36,6 +39,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!isAdmin || !token) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  if (requireSuperAdmin && !isSuperAdmin) {
+    return <Navigate to="/admin" replace />;
   }
 
   return <>{children}</>;
