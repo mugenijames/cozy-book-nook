@@ -1,25 +1,13 @@
-// backend/src/server.ts
-
-import "dotenv/config";
-
-import express, {
-  Request,
-  Response,
-  NextFunction,
-} from "express";
-
+import express from "express";
 import cors from "cors";
+import dotenv from "dotenv";
 import path from "path";
-import fs from "fs";
 
-/* ==========================================================================
-   ROUTES
-========================================================================== */
-
+// Routes
 import bookRoutes from "./routes/book.routes";
 import adminBookRoutes from "./routes/admin.book.routes";
-import checkoutRoutes from "./routes/checkout.routes";
 import uploadRoutes from "./routes/upload.routes";
+import checkoutRoutes from "./routes/checkout.routes";
 import invitationRoutes from "./routes/invitation.routes";
 import inquiryRoutes from "./routes/inquiry.routes";
 import orderRoutes from "./routes/order.routes";
@@ -27,542 +15,109 @@ import paymentRoutes from "./routes/payment.routes";
 import bookPreviewRoutes from "./routes/bookPreview.routes";
 import authRoutes from "./routes/auth.routes";
 import adminUserRoutes from "./routes/admin.user.routes";
+import blogRoutes from "./routes/blog.routes";
 
-/* ==========================================================================
-   ENVIRONMENT
-========================================================================== */
-
-const NODE_ENV =
-  process.env.NODE_ENV || "development";
-
-const PORT = parseInt(
-  process.env.PORT || "5000",
-  10
-);
-
-const isDevelopment =
-  NODE_ENV === "development";
-
-/*
- * Authentication bypass must NEVER happen automatically.
- *
- * Enable explicitly with:
- *
- * BYPASS_AUTH=true
- */
-
-const BYPASS_AUTH =
-  process.env.BYPASS_AUTH === "true";
-
-/* ==========================================================================
-   RESEND EMAIL CONFIGURATION
-========================================================================== */
-
-const resendConfigured =
-  Boolean(process.env.RESEND_API_KEY);
-
-const adminEmail =
-  process.env.ADMIN_EMAIL ||
-  "mugenijames99@gmail.com";
-
-const resendFromEmail =
-  process.env.RESEND_FROM_EMAIL ||
-  "David Emuria Website <onboarding@resend.dev>";
-
-/* ==========================================================================
-   ENVIRONMENT STATUS
-========================================================================== */
-
-console.log("");
-console.log("========================================");
-console.log("📚 COZY BOOK NOOK BACKEND");
-console.log("========================================");
-
-console.log("Environment:", NODE_ENV);
-console.log("Port:", PORT);
-
-console.log(
-  "Database URL:",
-  process.env.DATABASE_URL
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "Direct Database URL:",
-  process.env.DIRECT_URL
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "Cloudinary:",
-  process.env.CLOUDINARY_CLOUD_NAME
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "Anthropic:",
-  process.env.ANTHROPIC_API_KEY
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "OpenAI:",
-  process.env.OPENAI_API_KEY
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "Stripe:",
-  process.env.STRIPE_SECRET_KEY
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "M-Pesa Consumer Key:",
-  process.env.MPESA_CONSUMER_KEY
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "PayPal:",
-  process.env.PAYPAL_CLIENT_ID
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-/* ==========================================================================
-   RESEND STATUS
-========================================================================== */
-
-console.log("");
-console.log("========================================");
-console.log("📧 RESEND EMAIL CONFIGURATION");
-console.log("========================================");
-
-console.log(
-  "Resend API Key:",
-  process.env.RESEND_API_KEY
-    ? "✓ Loaded"
-    : "✗ Missing"
-);
-
-console.log(
-  "Resend From Email:",
-  resendFromEmail
-);
-
-console.log(
-  "Admin Email:",
-  adminEmail
-);
-
-console.log(
-  "Email Provider:",
-  "Resend"
-);
-
-console.log(
-  "Email Service:",
-  resendConfigured
-    ? "✓ CONFIGURED"
-    : "✗ NOT CONFIGURED"
-);
-
-console.log(
-  "SMTP:",
-  "✗ Not used"
-);
-
-console.log("========================================");
-
-/* ==========================================================================
-   AUTH STATUS
-========================================================================== */
-
-console.log(
-  "Authentication Bypass:",
-  BYPASS_AUTH
-    ? "⚠️ ENABLED"
-    : "✓ Disabled"
-);
-
-console.log("========================================");
-console.log("");
-
-/* ==========================================================================
-   EXPRESS APP
-========================================================================== */
+// Load environment variables
+dotenv.config();
 
 const app = express();
 
-/* ==========================================================================
-   TRUST PROXY
-========================================================================== */
-
-/*
- * Render sits behind a proxy.
- * This allows Express to correctly understand
- * forwarded requests and HTTPS.
- */
-
-app.set("trust proxy", 1);
+const PORT = Number(process.env.PORT) || 5000;
 
 /* ==========================================================================
-   UPLOADS DIRECTORY
+   MIDDLEWARE
 ========================================================================== */
-
-const uploadsDir = path.resolve(
-  __dirname,
-  "../uploads"
-);
-
-try {
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, {
-      recursive: true,
-    });
-
-    console.log(
-      "📁 Created uploads directory:",
-      uploadsDir
-    );
-  } else {
-    console.log(
-      "📁 Uploads directory:",
-      uploadsDir
-    );
-  }
-} catch (error) {
-  console.error(
-    "❌ Failed to create uploads directory:",
-    error
-  );
-}
-
-/* ==========================================================================
-   CORS
-========================================================================== */
-
-const allowedOrigins = [
-  "http://localhost:8080",
-  "http://127.0.0.1:8080",
-
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-
-  "http://192.168.100.8:8080",
-
-  "https://emuriadavid.netlify.app",
-
-  process.env.FRONTEND_URL,
-].filter(
-  (
-    origin
-  ): origin is string =>
-    Boolean(origin)
-);
-
-console.log(
-  "🌐 Allowed CORS origins:",
-  allowedOrigins
-);
 
 app.use(
   cors({
-    origin: (
-      origin,
-      callback
-    ) => {
-      /*
-       * Requests without an Origin:
-       *
-       * - curl
-       * - Postman
-       * - server-to-server requests
-       */
-
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      if (
-        allowedOrigins.includes(origin)
-      ) {
-        return callback(null, true);
-      }
-
-      console.warn(
-        "⚠️ CORS blocked origin:",
-        origin
-      );
-
-      return callback(
-        new Error(
-          `CORS blocked origin: ${origin}`
-        )
-      );
-    },
-
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
-
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-      "Origin",
-      "X-Requested-With",
-    ],
-
+    origin: true,
     credentials: true,
-
-    optionsSuccessStatus: 204,
   })
 );
 
-/* ==========================================================================
-   BODY PARSERS
-========================================================================== */
-
-app.use(
-  express.json({
-    limit: "50mb",
-  })
-);
-
-app.use(
-  express.urlencoded({
-    limit: "50mb",
-    extended: true,
-  })
-);
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 /* ==========================================================================
-   REQUEST LOGGER
-========================================================================== */
-
-app.use(
-  (
-    req: Request,
-    _res: Response,
-    next: NextFunction
-  ) => {
-    const url =
-      req.originalUrl || req.url;
-
-    if (
-      !url.includes("favicon")
-    ) {
-      console.log(
-        `>>> ${req.method} ${url}`
-      );
-    }
-
-    next();
-  }
-);
-
-/* ==========================================================================
-   STATIC UPLOADS
+   STATIC FILES
 ========================================================================== */
 
 app.use(
   "/uploads",
-  express.static(uploadsDir)
+  express.static(path.join(process.cwd(), "uploads"))
 );
 
 /* ==========================================================================
    HEALTH CHECK
 ========================================================================== */
 
-app.get(
-  "/health",
-  (
-    _req: Request,
-    res: Response
-  ) => {
-    res.status(200).json({
-      status: "OK",
-
-      service:
-        "Cozy Book Nook Backend",
-
-      environment:
-        NODE_ENV,
-
-      timestamp:
-        new Date().toISOString(),
-
-      port: PORT,
-
-      auth_bypass:
-        BYPASS_AUTH,
-
-      database:
-        process.env.DATABASE_URL
-          ? "configured"
-          : "missing",
-
-      services: {
-        cloudinary: Boolean(
-          process.env
-            .CLOUDINARY_CLOUD_NAME
-        ),
-
-        anthropic: Boolean(
-          process.env
-            .ANTHROPIC_API_KEY
-        ),
-
-        openai: Boolean(
-          process.env
-            .OPENAI_API_KEY
-        ),
-
-        stripe: Boolean(
-          process.env
-            .STRIPE_SECRET_KEY
-        ),
-
-        mpesa: Boolean(
-          process.env
-            .MPESA_CONSUMER_KEY
-        ),
-
-        paypal: Boolean(
-          process.env
-            .PAYPAL_CLIENT_ID
-        ),
-
-        resend:
-          resendConfigured,
-
-        email:
-          resendConfigured,
-      },
-
-      email: {
-        provider:
-          "Resend",
-
-        configured:
-          resendConfigured,
-
-        apiKey:
-          Boolean(
-            process.env
-              .RESEND_API_KEY
-          ),
-
-        fromEmail:
-          resendFromEmail,
-
-        adminEmail:
-          adminEmail,
-
-        smtpUsed:
-          false,
-      },
-    });
-  }
-);
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Cozy Book Nook API is running.",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 /* ==========================================================================
-   ROOT API
+   API INFORMATION
 ========================================================================== */
 
-app.get(
-  "/",
-  (
-    _req: Request,
-    res: Response
-  ) => {
-    res.status(200).json({
-      message:
-        "Cozy Book Nook API",
+app.get("/api", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Cozy Book Nook API",
 
-      version:
-        "2.1.0",
+    endpoints: {
+      health: "/health",
 
-      status:
-        "running",
+      // Books
+      books: "/api/books",
+      adminBooks: "/api/admin/books",
 
-      environment:
-        NODE_ENV,
+      // Blogs
+      blogs: "/api/blogs",
+      adminBlogs: "/api/blogs/admin",
 
-      endpoints: {
-        health:
-          "/health",
+      // Authentication
+      auth: "/api/auth",
 
-        books:
-          "/api/books",
+      // Admin users
+      adminUsers: "/api/admin/users",
 
-        adminBooks:
-          "/api/admin/books",
+      // Checkout
+      checkout: "/api/checkout",
 
-        adminUsers:
-          "/api/admin/users",
+      // Orders
+      orders: "/api/orders",
 
-        checkout:
-          "/api/checkout",
+      // Payments
+      payments: "/api/payments",
 
-        uploadCover:
-          "/api/upload-cover",
+      // Inquiries
+      inquiries: "/api/inquiries",
 
-        uploadPdf:
-          "/api/upload-pdf",
+      // Invitations
+      invitations: "/api/invite",
 
-        bookPreview:
-          "/api/books/:id/generate-preview",
-
-        inquiries:
-          "/api/inquiries",
-
-        inquiryHealth:
-          "/api/inquiries/health",
-
-        invitations:
-          "/api/invite",
-
-        invitationHealth:
-          "/api/invite/health",
-
-        orders:
-          "/api/orders",
-
-        payments:
-          "/api/payments",
-
-        auth:
-          "/api/auth",
-      },
-
-      services: {
-        email:
-          resendConfigured
-            ? "Resend configured"
-            : "Resend not configured",
-      },
-    });
-  }
-);
+      // Uploads
+      uploads: "/api/uploads",
+    },
+  });
+});
 
 /* ==========================================================================
    API ROUTES
 ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   BLOG ROUTES
+-------------------------------------------------------------------------- */
+
+app.use(
+  "/api/blogs",
+  blogRoutes
+);
 
 /* --------------------------------------------------------------------------
    PUBLIC BOOK ROUTES
@@ -592,7 +147,7 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   CHECKOUT
+   CHECKOUT ROUTES
 -------------------------------------------------------------------------- */
 
 app.use(
@@ -601,7 +156,7 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   SPEAKING INVITATIONS
+   INVITATION ROUTES
 -------------------------------------------------------------------------- */
 
 app.use(
@@ -610,7 +165,7 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   INQUIRIES
+   INQUIRY ROUTES
 -------------------------------------------------------------------------- */
 
 app.use(
@@ -619,7 +174,7 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   ORDERS
+   ORDER ROUTES
 -------------------------------------------------------------------------- */
 
 app.use(
@@ -628,7 +183,7 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   PAYMENTS
+   PAYMENT ROUTES
 -------------------------------------------------------------------------- */
 
 app.use(
@@ -637,7 +192,7 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   BOOK PREVIEW / AI
+   BOOK PREVIEW ROUTES
 -------------------------------------------------------------------------- */
 
 app.use(
@@ -646,7 +201,7 @@ app.use(
 );
 
 /* --------------------------------------------------------------------------
-   ADMIN AUTHENTICATION
+   AUTHENTICATION ROUTES
 -------------------------------------------------------------------------- */
 
 app.use(
@@ -654,40 +209,26 @@ app.use(
   authRoutes
 );
 
+/* --------------------------------------------------------------------------
+   ADMIN USER ROUTES
+-------------------------------------------------------------------------- */
+
 app.use(
   "/api/admin/users",
   adminUserRoutes
 );
 
 /* ==========================================================================
-   API 404 HANDLER
+   404 HANDLER
 ========================================================================== */
 
-app.use(
-  (
-    req: Request,
-    res: Response
-  ) => {
-    console.warn(
-      "❌ API route not found:",
-      req.method,
-      req.originalUrl
-    );
-
-    res.status(404).json({
-      success: false,
-
-      error:
-        "API endpoint not found",
-
-      method:
-        req.method,
-
-      path:
-        req.originalUrl,
-    });
-  }
-);
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: "Route not found.",
+    path: req.originalUrl,
+  });
+});
 
 /* ==========================================================================
    GLOBAL ERROR HANDLER
@@ -695,315 +236,67 @@ app.use(
 
 app.use(
   (
-    err: any,
-    req: Request,
-    res: Response,
-    _next: NextFunction
+    error: any,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction
   ) => {
-    console.error("");
+    console.error("Unhandled server error:", error);
 
-    console.error(
-      "========================================"
-    );
-
-    console.error(
-      "❌ GLOBAL SERVER ERROR"
-    );
-
-    console.error(
-      "========================================"
-    );
-
-    console.error(
-      "Method:",
-      req.method
-    );
-
-    console.error(
-      "URL:",
-      req.originalUrl
-    );
-
-    console.error(
-      "Error:",
-      err
-    );
-
-    console.error(
-      "========================================"
-    );
-
-    if (res.headersSent) {
-      return;
-    }
-
-    const status =
-      Number(err?.status) ||
-      Number(err?.statusCode) ||
-      500;
-
-    res.status(status).json({
+    res.status(error?.status || 500).json({
       success: false,
-
       error:
-        err?.message ||
-        "Internal Server Error",
-
-      ...(isDevelopment && {
-        stack:
-          err?.stack,
-      }),
+        error?.message ||
+        "An unexpected server error occurred.",
     });
   }
 );
 
 /* ==========================================================================
-   SERVER START
+   START SERVER
 ========================================================================== */
 
-const server = app.listen(
-  PORT,
-  "0.0.0.0",
-  () => {
-    console.log("");
-
-    console.log(
-      "========================================"
-    );
-
-    console.log(
-      "🚀 COZY BOOK NOOK SERVER STARTED"
-    );
-
-    console.log(
-      "========================================"
-    );
-
-    console.log(
-      `🌐 Port: ${PORT}`
-    );
-
-    console.log(
-      `🌐 Local API: http://localhost:${PORT}`
-    );
-
-    console.log(
-      `❤️ Health: http://localhost:${PORT}/health`
-    );
-
-    console.log(
-      `📚 Books: http://localhost:${PORT}/api/books`
-    );
-
-    console.log(
-      `🔐 Admin Books: http://localhost:${PORT}/api/admin/books`
-    );
-
-    console.log(
-      `📨 Inquiries: http://localhost:${PORT}/api/inquiries`
-    );
-
-    console.log(
-      `📨 Inquiry Health: http://localhost:${PORT}/api/inquiries/health`
-    );
-
-    console.log(
-      `🎤 Invitations: http://localhost:${PORT}/api/invite`
-    );
-
-    console.log(
-      `❤️ Invitation Health: http://localhost:${PORT}/api/invite/health`
-    );
-
-    console.log(
-      `🖼️ Cover Upload: http://localhost:${PORT}/api/upload-cover`
-    );
-
-    console.log(
-      `📕 PDF Upload: http://localhost:${PORT}/api/upload-pdf`
-    );
-
-    console.log(
-      `📁 Uploads: http://localhost:${PORT}/uploads`
-    );
-
-    console.log(
-      `🌍 Environment: ${NODE_ENV}`
-    );
-
-    console.log(
-      `🔐 Auth Bypass: ${
-        BYPASS_AUTH
-          ? "⚠️ ENABLED"
-          : "✓ DISABLED"
-      }`
-    );
-
-    console.log("");
-
-    console.log(
-      "========================================"
-    );
-
-    console.log(
-      "📧 RESEND EMAIL CONFIGURATION"
-    );
-
-    console.log(
-      "========================================"
-    );
-
-    console.log(
-      "Email Provider:",
-      "Resend"
-    );
-
-    console.log(
-      "Resend API Key:",
-      process.env.RESEND_API_KEY
-        ? "✓ Loaded"
-        : "✗ Missing"
-    );
-
-    console.log(
-      "From Email:",
-      resendFromEmail
-    );
-
-    console.log(
-      "Admin Email:",
-      adminEmail
-    );
-
-    console.log(
-      "Email Service:",
-      resendConfigured
-        ? "✓ READY"
-        : "✗ NOT CONFIGURED"
-    );
-
-    console.log(
-      "SMTP:",
-      "✗ Not used"
-    );
-
-    console.log(
-      "========================================"
-    );
-
-    if (BYPASS_AUTH) {
-      console.warn(
-        "⚠️ WARNING: Authentication is BYPASSED"
-      );
-    }
-
-    if (!resendConfigured) {
-      console.warn(
-        "⚠️ WARNING: Resend email service is NOT configured."
-      );
-
-      console.warn(
-        "⚠️ Add RESEND_API_KEY to your .env file."
-      );
-    }
-
-    console.log("");
-  }
-);
-
-/* ==========================================================================
-   SERVER ERROR HANDLING
-========================================================================== */
-
-server.on(
-  "error",
-  (error: any) => {
-    console.error(
-      "❌ HTTP SERVER ERROR:",
-      error
-    );
-
-    if (
-      error?.code ===
-      "EADDRINUSE"
-    ) {
-      console.error(
-        `❌ Port ${PORT} is already in use.`
-      );
-    }
-  }
-);
-
-/* ==========================================================================
-   GRACEFUL SHUTDOWN
-========================================================================== */
-
-const shutdown = (
-  signal: string
-) => {
+app.listen(PORT, () => {
+  console.log("");
+  console.log("==================================================");
+  console.log("        COZY BOOK NOOK API SERVER");
+  console.log("==================================================");
   console.log("");
 
   console.log(
-    `🛑 Received ${signal}. Shutting down server...`
+    `🚀 Server: http://localhost:${PORT}`
   );
 
-  server.close(
-    () => {
-      console.log(
-        "✅ HTTP server closed."
-      );
-
-      process.exit(0);
-    }
+  console.log(
+    `❤️ Health: http://localhost:${PORT}/health`
   );
 
-  setTimeout(() => {
-    console.error(
-      "⚠️ Forced shutdown."
-    );
+  console.log(
+    `📚 Books: http://localhost:${PORT}/api/books`
+  );
 
-    process.exit(1);
-  }, 10000);
-};
+  console.log(
+    `🔐 Admin Books: http://localhost:${PORT}/api/admin/books`
+  );
 
-process.on(
-  "SIGTERM",
-  () =>
-    shutdown("SIGTERM")
-);
+  console.log(
+    `📝 Blogs: http://localhost:${PORT}/api/blogs`
+  );
 
-process.on(
-  "SIGINT",
-  () =>
-    shutdown("SIGINT")
-);
+  console.log(
+    `🔐 Admin Blogs: http://localhost:${PORT}/api/blogs/admin`
+  );
 
-/* ==========================================================================
-   UNHANDLED ERRORS
-========================================================================== */
+  console.log(
+    `👤 Authentication: http://localhost:${PORT}/api/auth`
+  );
 
-process.on(
-  "unhandledRejection",
-  (reason) => {
-    console.error(
-      "❌ UNHANDLED PROMISE REJECTION:",
-      reason
-    );
-  }
-);
+  console.log(
+    `👥 Admin Users: http://localhost:${PORT}/api/admin/users`
+  );
 
-process.on(
-  "uncaughtException",
-  (error) => {
-    console.error(
-      "❌ UNCAUGHT EXCEPTION:",
-      error
-    );
-  }
-);
+  console.log("");
+  console.log("==================================================");
+  console.log("");
+});
 
-/* ==========================================================================
-   EXPORT
-========================================================================== */
-
-export default app;
