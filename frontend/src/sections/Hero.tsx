@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, CalendarDays, Link } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import davidImg from "@/assets/david.png";
 
 const Hero = () => {
@@ -286,9 +286,9 @@ const Hero = () => {
                   sm:text-base
                 "
               >
-                <Link to="/books" className="focus:outline-none">
+                <a href="/books" className="focus:outline-none">
                   Explore Books
-                </Link>
+                </a>
 
                 <ArrowRight
                   size={18}
