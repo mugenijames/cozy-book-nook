@@ -1,335 +1,480 @@
+// frontend/src/pages/Blog.tsx
 
-// frontend/src/pages/Blogs.tsx
-
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
-  ArrowRight,
-  CalendarDays,
-  Clock3,
-  Newspaper,
-  Sparkles,
+  ArrowLeft,
+  BookOpen,
+  Calendar,
+  Clock,
+  Search,
+  Tag,
+  Loader2,
+  X,
 } from "lucide-react";
 
-// ============================================================
-// TEMPORARY BLOG DATA
-// ============================================================
-// This will later be replaced with data from the admin panel/API.
+import { getBlogPosts } from "@/services/api"; // adjust if needed
 
-const blogs = [
-  {
-    id: "1",
-    slug: "discovering-your-purpose",
-    title: "Discovering Your Purpose and Calling",
-    excerpt:
-      "Understanding your purpose is an important part of living a meaningful and impactful life. Discover practical principles that can help you identify your gifts, direction, and calling.",
-    category: "Purpose & Growth",
-    date: "August 28, 2026",
-    readTime: "6 min read",
-    featured: true,
-  },
-  {
-    id: "2",
-    slug: "principles-of-christian-leadership",
-    title: "5 Principles of Effective Christian Leadership",
-    excerpt:
-      "Christian leadership is more than holding a position. Explore five biblical principles that can help leaders serve people with humility, wisdom, courage, and integrity.",
-    category: "Leadership",
-    date: "August 20, 2026",
-    readTime: "8 min read",
-    featured: false,
-  },
-  {
-    id: "3",
-    slug: "growing-through-life-seasons",
-    title: "Growing Through Different Seasons of Life",
-    excerpt:
-      "Every season brings its own opportunities, challenges, and lessons. Learn how to embrace your current season and continue growing through it.",
-    category: "Personal Growth",
-    date: "August 12, 2026",
-    readTime: "5 min read",
-    featured: false,
-  },
-  {
-    id: "4",
-    slug: "faith-and-everyday-life",
-    title: "Living Out Your Faith in Everyday Life",
-    excerpt:
-      "Faith should influence more than what happens inside a church. Discover practical ways to live out your values, beliefs, and convictions every day.",
-    category: "Faith",
-    date: "August 5, 2026",
-    readTime: "7 min read",
-    featured: false,
-  },
-  {
-    id: "5",
-    slug: "becoming-a-better-communicator",
-    title: "Becoming a Better Communicator",
-    excerpt:
-      "Good communication can transform relationships, leadership, ministry, and professional life. Here are practical principles for communicating with clarity and purpose.",
-    category: "Communication",
-    date: "July 28, 2026",
-    readTime: "6 min read",
-    featured: false,
-  },
-  {
-    id: "6",
-    slug: "the-power-of-serving-others",
-    title: "The Power of Serving Others",
-    excerpt:
-      "True impact is often found in serving others. Explore why servant leadership matters and how small acts of service can create lasting change.",
-    category: "Leadership",
-    date: "July 20, 2026",
-    readTime: "5 min read",
-    featured: false,
-  },
-];
+type BlogPost = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt?: string | null;
+  content?: string | null;
+  coverImage?: string | null;
+  category?: string | null;
+  tags?: string[] | null;
+  author?: string | null;
+  readingTime?: string | null;
+  published: boolean;
+  featured?: boolean;
+  publishedAt?: string | null;
+  views?: number;
+  createdAt?: string;
+};
 
-export default function Blogs() {
-  const featuredBlog = blogs.find(
-    (blog) => blog.featured
-  );
+const Blog = () => {
+  const {
+    data: posts = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["blog", "published"],
+    queryFn: async () => {
+      const data = await getBlogPosts();
+      // Only show published posts on the public side
+      return (data as BlogPost[]).filter((post) => post.published === true);
+    },
+  });
 
-  const regularBlogs = blogs.filter(
-    (blog) => !blog.featured
-  );
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    posts.forEach((p) => {
+      if (p.category) set.add(p.category);
+    });
+    return Array.from(set).sort();
+  }, [posts]);
+
+  const filteredPosts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return posts.filter((post) => {
+      const matchesSearch =
+        !q ||
+        post.title.toLowerCase().includes(q) ||
+        post.excerpt?.toLowerCase().includes(q) ||
+        post.category?.toLowerCase().includes(q) ||
+        post.author?.toLowerCase().includes(q);
+
+      const matchesCategory =
+        selectedCategory === "all" ||
+        post.category?.toLowerCase() === selectedCategory.toLowerCase();
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [posts, search, selectedCategory]);
+
+  const featuredPosts = filteredPosts.filter((p) => p.featured);
+  const regularPosts = filteredPosts.filter((p) => !p.featured);
+
+  const formatDate = (date?: string | null) => {
+    if (!date) return null;
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   return (
-    <main className="min-h-screen bg-[#F8F6F2]">
-
-      {/* ======================================================
-          HERO
-      ====================================================== */}
-
-      <section className="relative overflow-hidden bg-[#4A1F0E]">
-
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(193,123,79,0.30),transparent_45%)]" />
-
-        <div className="relative mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8 lg:py-28">
-
-          <div className="mx-auto max-w-3xl">
-
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#C17B4F]/40 bg-white/10 px-4 py-2 text-sm font-semibold text-[#F4D7C5]">
-              <Newspaper className="h-4 w-4" />
-              Insights • Stories • Inspiration
+    <main className="min-h-screen overflow-x-hidden bg-[#F5F1EA]">
+      {/* Hero */}
+      <section className="border-b border-[#E8DDD4] bg-[#F9F6EF]">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="mx-auto max-w-3xl text-center"
+          >
+            <div className="flex items-center justify-center gap-3">
+              <span className="h-px w-10 bg-[#D4A017]/80" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#C17B4F]">
+                David Emuria
+              </span>
+              <span className="h-px w-10 bg-[#D4A017]/80" />
             </div>
 
-            <h1 className="font-heading text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-              Ideas That
-              <span className="block text-[#D4A017]">
-                Inspire Growth
+            <h1 className="mt-6 text-4xl font-bold leading-[1.15] tracking-tight text-[#3A180C] sm:text-5xl lg:text-[3.4rem]">
+              Insights that inspire
+              <span className="mt-1 block text-[#C17B4F]">
+                purpose & transformation
               </span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-white/75 sm:text-lg">
-              Explore articles, reflections, leadership insights,
-              practical lessons, and conversations about faith,
-              purpose, personal growth, and meaningful living.
+            <div className="mx-auto mt-7 h-[3px] w-16 rounded-full bg-[#D4A017]" />
+
+            <p className="mx-auto mt-7 max-w-2xl text-[15px] leading-7 text-gray-600 sm:text-base">
+              Articles on purpose, healing, identity, leadership, faith and
+              personal growth — written to encourage and equip you.
             </p>
-
-          </div>
-
+          </motion.div>
         </div>
       </section>
 
-      {/* ======================================================
-          FEATURED ARTICLE
-      ====================================================== */}
-
-      {featuredBlog && (
-        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-
-          <div className="mb-8 flex items-center gap-2">
-
-            <Sparkles className="h-5 w-5 text-[#C17B4F]" />
-
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#C17B4F]">
-              Featured Article
-            </p>
-
-          </div>
-
-          <article className="overflow-hidden rounded-3xl border border-[#E8DDD4] bg-white shadow-sm">
-
-            <div className="grid lg:grid-cols-2">
-
-              {/* Visual */}
-
-              <div className="relative flex min-h-[300px] items-center justify-center overflow-hidden bg-[#4A1F0E] lg:min-h-[420px]">
-
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(193,123,79,0.35),transparent_65%)]" />
-
-                <Newspaper className="relative h-28 w-28 text-white/90" />
-
-                <div className="absolute left-6 top-6 rounded-full bg-[#D4A017] px-4 py-1.5 text-xs font-bold text-white">
-                  Featured
-                </div>
-
-              </div>
-
-              {/* Content */}
-
-              <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-12">
-
-                <span className="w-fit rounded-full bg-[#F8F6F2] px-3 py-1 text-xs font-bold text-[#8B4513]">
-                  {featuredBlog.category}
-                </span>
-
-                <h2 className="mt-5 font-heading text-3xl font-bold leading-tight text-[#2E1208] sm:text-4xl">
-                  {featuredBlog.title}
-                </h2>
-
-                <p className="mt-5 leading-8 text-[#6B5548]">
-                  {featuredBlog.excerpt}
-                </p>
-
-                <div className="mt-6 flex flex-wrap items-center gap-5 text-sm text-[#7A6659]">
-
-                  <span className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4" />
-                    {featuredBlog.date}
-                  </span>
-
-                  <span className="flex items-center gap-2">
-                    <Clock3 className="h-4 w-4" />
-                    {featuredBlog.readTime}
-                  </span>
-
-                </div>
-
-                <Link
-                  to={`/blogs/${featuredBlog.slug}`}
-                  className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-[#4A1F0E] px-6 py-3 font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#2E1208] hover:shadow-xl"
-                >
-                  Read Article
-
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-
-              </div>
-
-            </div>
-
-          </article>
-
-        </section>
-      )}
-
-      {/* ======================================================
-          ALL ARTICLES
-      ====================================================== */}
-
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-
-        <div className="mb-8">
-
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#C17B4F]">
-            Latest Articles
-          </p>
-
-          <h2 className="mt-3 font-heading text-3xl font-bold text-[#2E1208] sm:text-4xl">
-            From David's Journal
-          </h2>
-
-          <p className="mt-3 max-w-2xl leading-7 text-[#6B5548]">
-            Practical thoughts and reflections designed to encourage,
-            equip, and inspire you in your journey.
-          </p>
-
-        </div>
-
-        <div className="grid gap-7 md:grid-cols-2 lg:grid-cols-3">
-
-          {regularBlogs.map((blog) => (
-
-            <article
-              key={blog.id}
-              className="group flex h-full flex-col overflow-hidden rounded-3xl border border-[#E8DDD4] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+      {/* Content */}
+      <section className="py-12 sm:py-16 lg:py-20">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Search + Filters */}
+          {!isLoading && !isError && posts.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-12 rounded-2xl border border-[#E8DDD4] bg-white p-5 shadow-sm sm:p-6"
             >
-
-              {/* Blog visual */}
-
-              <div className="relative flex h-48 items-center justify-center overflow-hidden bg-[#4A1F0E]">
-
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(193,123,79,0.30),transparent_65%)]" />
-
-                <Newspaper className="relative h-16 w-16 text-white/90 transition-transform duration-500 group-hover:scale-110" />
-
-              </div>
-
-              {/* Content */}
-
-              <div className="flex flex-1 flex-col p-6">
-
-                <span className="w-fit rounded-full bg-[#F8F6F2] px-3 py-1 text-xs font-bold text-[#8B4513]">
-                  {blog.category}
-                </span>
-
-                <h3 className="mt-4 font-heading text-xl font-bold leading-snug text-[#2E1208]">
-                  {blog.title}
-                </h3>
-
-                <p className="mt-3 flex-1 text-sm leading-7 text-[#6B5548]">
-                  {blog.excerpt}
-                </p>
-
-                <div className="mt-5 flex flex-wrap items-center gap-4 text-xs text-[#7A6659]">
-
-                  <span className="flex items-center gap-1.5">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    {blog.date}
-                  </span>
-
-                  <span className="flex items-center gap-1.5">
-                    <Clock3 className="h-3.5 w-3.5" />
-                    {blog.readTime}
-                  </span>
-
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search articles by title, topic or author..."
+                    className="h-12 w-full rounded-xl border border-[#E8DDD4] bg-[#FAF8F5] pl-12 pr-11 text-sm text-[#2E1208] outline-none transition placeholder:text-gray-400 focus:border-[#C17B4F] focus:bg-white focus:ring-2 focus:ring-[#C17B4F]/15"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
 
-                <Link
-                  to={`/blogs/${blog.slug}`}
-                  className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#8B4513] transition-colors hover:text-[#C17B4F]"
-                >
-                  Read Article
-
-                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                </Link>
-
+                {categories.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setSelectedCategory("all")}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                        selectedCategory === "all"
+                          ? "bg-[#4A1F0E] text-white"
+                          : "bg-[#F5F1EA] text-[#4A1F0E] hover:bg-[#E8DDD4]"
+                      }`}
+                    >
+                      All
+                    </button>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          selectedCategory === cat
+                            ? "bg-[#4A1F0E] text-white"
+                            : "bg-[#F5F1EA] text-[#4A1F0E] hover:bg-[#E8DDD4]"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-            </article>
+              <div className="mt-4 flex items-center justify-between border-t border-[#F0E9E0] pt-4">
+                <p className="text-sm text-gray-500">
+                  Showing{" "}
+                  <span className="font-semibold text-[#4A1F0E]">
+                    {filteredPosts.length}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-semibold text-[#4A1F0E]">
+                    {posts.length}
+                  </span>{" "}
+                  articles
+                </p>
+              </div>
+            </motion.div>
+          )}
 
-          ))}
+          {/* Loading */}
+          {isLoading && (
+            <div className="flex min-h-[320px] items-center justify-center">
+              <div className="flex items-center gap-3 text-[#4A1F0E]">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="font-medium">Loading articles...</span>
+              </div>
+            </div>
+          )}
 
+          {/* Error */}
+          {isError && !isLoading && (
+            <div className="mx-auto max-w-md rounded-3xl border border-[#E8DDD4] bg-white p-10 text-center shadow-sm">
+              <BookOpen className="mx-auto h-10 w-10 text-[#D4A017]" />
+              <h2 className="mt-5 text-xl font-bold text-[#4A1F0E]">
+                Couldn’t load articles
+              </h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Please try again in a moment.
+              </p>
+              <button
+                onClick={() => refetch()}
+                className="mt-6 rounded-full bg-[#4A1F0E] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#2E1208]"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Empty */}
+          {!isLoading && !isError && posts.length === 0 && (
+            <div className="mx-auto max-w-xl rounded-3xl border border-[#E8DDD4] bg-white p-12 text-center shadow-sm">
+              <BookOpen className="mx-auto h-10 w-10 text-[#D4A017]" />
+              <h2 className="mt-6 text-2xl font-bold text-[#4A1F0E]">
+                No articles yet
+              </h2>
+              <p className="mt-3 text-gray-600">
+                Published articles will appear here soon.
+              </p>
+            </div>
+          )}
+
+          {/* No results */}
+          {!isLoading &&
+            !isError &&
+            posts.length > 0 &&
+            filteredPosts.length === 0 && (
+              <div className="mx-auto max-w-xl rounded-3xl border border-[#E8DDD4] bg-white p-12 text-center shadow-sm">
+                <Search className="mx-auto h-10 w-10 text-[#D4A017]" />
+                <h2 className="mt-6 text-2xl font-bold text-[#4A1F0E]">
+                  No matching articles
+                </h2>
+                <p className="mt-3 text-gray-600">
+                  Try a different search or category.
+                </p>
+                <button
+                  onClick={() => {
+                    setSearch("");
+                    setSelectedCategory("all");
+                  }}
+                  className="mt-6 rounded-full bg-[#4A1F0E] px-6 py-3 text-sm font-semibold text-white hover:bg-[#D4A017]"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+
+          {/* Featured Posts */}
+          {!isLoading && featuredPosts.length > 0 && (
+            <div className="mb-14">
+              <h2 className="mb-6 text-sm font-bold uppercase tracking-[0.18em] text-[#C17B4F]">
+                Featured
+              </h2>
+              <div className="grid gap-6 md:grid-cols-2">
+                {featuredPosts.map((post, index) => (
+                  <FeaturedCard key={post.id} post={post} index={index} formatDate={formatDate} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Regular Posts Grid */}
+          {!isLoading && regularPosts.length > 0 && (
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {regularPosts.map((post, index) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  index={index}
+                  formatDate={formatDate}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Back link */}
+          <div className="mt-16 flex justify-center border-t border-[#E8DDD4] pt-10">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#4A1F0E] transition hover:text-[#C17B4F]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+          </div>
         </div>
-
       </section>
-
-      {/* ======================================================
-          CTA
-      ====================================================== */}
-
-      <section className="border-t border-[#E8DDD4] bg-white">
-
-        <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 lg:px-8">
-
-          <Newspaper className="mx-auto h-10 w-10 text-[#C17B4F]" />
-
-          <h2 className="mt-5 font-heading text-3xl font-bold text-[#2E1208]">
-            Keep Learning. Keep Growing.
-          </h2>
-
-          <p className="mx-auto mt-4 max-w-2xl leading-7 text-[#6B5548]">
-            Return regularly for new insights, stories, practical
-            lessons, and reflections designed to help you grow and
-            make a meaningful impact.
-          </p>
-
-        </div>
-
-      </section>
-
     </main>
+  );
+};
+
+/* =========================================================
+   FEATURED CARD
+========================================================= */
+
+function FeaturedCard({
+  post,
+  index,
+  formatDate,
+}: {
+  post: BlogPost;
+  index: number;
+  formatDate: (d?: string | null) => string | null;
+}) {
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay: index * 0.08 }}
+      className="group overflow-hidden rounded-2xl border border-[#E8DDD4] bg-white shadow-sm transition hover:shadow-md"
+    >
+      <Link to={`/blog/${post.slug}`} className="block">
+        <div className="relative aspect-[16/9] overflow-hidden bg-[#E7DED4]">
+          {post.coverImage ? (
+            <img
+              src={post.coverImage}
+              alt={post.title}
+              className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-[#4A1F0E]">
+              <BookOpen className="h-12 w-12 text-[#D4A017]" />
+            </div>
+          )}
+          {post.category && (
+            <span className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#4A1F0E] shadow-sm">
+              {post.category}
+            </span>
+          )}
+        </div>
+
+        <div className="p-6">
+          <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+            {post.publishedAt && (
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                {formatDate(post.publishedAt)}
+              </span>
+            )}
+            {post.readingTime && (
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                {post.readingTime}
+              </span>
+            )}
+          </div>
+
+          <h3 className="text-xl font-bold leading-snug text-[#3A180C] transition group-hover:text-[#C17B4F]">
+            {post.title}
+          </h3>
+
+          {post.excerpt && (
+            <p className="mt-3 line-clamp-2 text-sm leading-6 text-gray-600">
+              {post.excerpt}
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center justify-between">
+            <span className="text-sm font-medium text-[#C17B4F]">
+              {post.author || "David Emuria"}
+            </span>
+            <span className="text-sm font-semibold text-[#4A1F0E] transition group-hover:text-[#C17B4F]">
+              Read article →
+            </span>
+          </div>
+        </div>
+      </Link>
+    </motion.article>
   );
 }
 
+/* =========================================================
+   REGULAR POST CARD
+========================================================= */
+
+function PostCard({
+  post,
+  index,
+  formatDate,
+}: {
+  post: BlogPost;
+  index: number;
+  formatDate: (d?: string | null) => string | null;
+}) {
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay: Math.min(index * 0.06, 0.3) }}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-[#E8DDD4] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+    >
+      <Link to={`/blog/${post.slug}`} className="flex h-full flex-col">
+        <div className="relative aspect-[16/10] overflow-hidden bg-[#E7DED4]">
+          {post.coverImage ? (
+            <img
+              src={post.coverImage}
+              alt={post.title}
+              className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-[#4A1F0E]">
+              <BookOpen className="h-10 w-10 text-[#D4A017]" />
+            </div>
+          )}
+          {post.category && (
+            <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#4A1F0E]">
+              {post.category}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-1 flex-col p-5">
+          <div className="mb-2.5 flex flex-wrap items-center gap-3 text-[11px] text-gray-500">
+            {post.publishedAt && (
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {formatDate(post.publishedAt)}
+              </span>
+            )}
+            {post.readingTime && (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {post.readingTime}
+              </span>
+            )}
+          </div>
+
+          <h3 className="line-clamp-2 text-lg font-bold leading-snug text-[#3A180C] transition group-hover:text-[#C17B4F]">
+            {post.title}
+          </h3>
+
+          {post.excerpt && (
+            <p className="mt-2 line-clamp-3 flex-1 text-sm leading-6 text-gray-600">
+              {post.excerpt}
+            </p>
+          )}
+
+          <div className="mt-4 flex items-center justify-between border-t border-[#E8DDD4] pt-3">
+            <span className="text-xs font-medium text-[#C17B4F]">
+              {post.author || "David Emuria"}
+            </span>
+            <span className="text-xs font-semibold text-[#4A1F0E]">
+              Read →
+            </span>
+          </div>
+        </div>
+      </Link>
+    </motion.article>
+  );
+}
+
+export default Blog;

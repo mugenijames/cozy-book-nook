@@ -71,23 +71,16 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#F7F3EE] text-[#2E1208]">
       <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
+        {/* ======================= BRAND PANEL ======================= */}
         <section className="relative hidden overflow-hidden bg-[#2E1208] lg:flex">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,160,23,0.22),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(193,123,79,0.20),transparent_42%)]" />
 
           <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
-            <div className="flex items-center gap-3">
-              <img
-                src="/logo.png"
-                alt="David Emuria"
-                className="h-12 w-12 rounded-xl border border-[#D4A017]/60 object-cover"
-              />
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#D4A017]">
-                  David Emuria
-                </p>
-                <p className="text-sm text-white/60">Administration</p>
-              </div>
-            </div>
+            <img
+              src="/logo-emblem.png"
+              alt="David Emuria - Author, Speaker, Consultant"
+              className="h-32 w-auto self-start object-contain drop-shadow-xl"
+            />
 
             <div className="max-w-xl">
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#D4A017]/30 bg-white/5 px-4 py-2 text-xs font-medium text-[#E8C66A]">
@@ -112,22 +105,16 @@ export default function LoginPage() {
           </div>
         </section>
 
+        {/* ========================= FORM ========================= */}
         <section className="flex items-center justify-center px-5 py-10 sm:px-8">
           <div className="w-full max-w-md">
+            {/* Mobile logo */}
             <div className="mb-8 lg:hidden">
-              <div className="mb-5 flex items-center gap-3">
-                <img
-                  src="/logo.png"
-                  alt="David Emuria"
-                  className="h-11 w-11 rounded-xl border border-[#D4A017]/50 object-cover"
-                />
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#C17B4F]">
-                    David Emuria
-                  </p>
-                  <p className="text-sm text-[#8B7355]">Administration</p>
-                </div>
-              </div>
+              <img
+                src="/logo-emblem.png"
+                alt="David Emuria - Author, Speaker, Consultant"
+                className="mx-auto h-28 w-auto object-contain drop-shadow-lg"
+              />
             </div>
 
             <button
