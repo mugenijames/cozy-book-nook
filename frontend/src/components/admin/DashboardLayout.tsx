@@ -1,103 +1,88 @@
-// src/components/admin/AdminLayout.tsx
 import { Outlet, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
 import DashboardSidebar from "./DashboardSidebar";
-import Footer from "@/sections/Footer";
+import { Menu, ExternalLink } from "lucide-react";
 
-export default function AdminLayout() {
-  const { isAdmin, token, isLoading, user } = useAuth();
+export default function DashboardLayout() {
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
+
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!token || !isAdmin) {
-        navigate("/admin/login");
-      }
+    const token =
+      localStorage.getItem("admin_token") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("auth_token");
+
+    if (!token) {
+      navigate("/admin/login", { replace: true });
     }
-  }, [isLoading, token, isAdmin, navigate]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      setSidebarOpen(!mobile);
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F9F6EF]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4A017] mx-auto mb-4" />
-          <p className="text-[#5C4436]">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!token || !isAdmin) return null;
+  }, [navigate]);
 
   return (
-    <div className="flex min-h-screen bg-[#F9F6EF]">
-      {/* Mobile overlay backdrop */}
-      {isMobile && sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar — sticky in flow on desktop, fixed on mobile */}
+    <div className="min-h-screen bg-white">
       <DashboardSidebar
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        isMobile={isMobile}
+        collapsed={collapsed}
+        onToggle={() =>
+          setCollapsed((value) => !value)
+        }
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
       />
 
-      {/* Main area — naturally takes remaining width */}
-      <div className="flex flex-col flex-1 min-w-0">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white border-b border-[#E8DDD4] px-6 py-3 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            {isMobile && (
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="p-1.5 rounded hover:bg-[#F9F6EF] text-[#2E1208] text-xl"
-              >
-                ☰
-              </button>
-            )}
-            <span className="font-heading font-semibold text-[#2E1208]">
-              David Emuria 
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            {user && (
-              <span className="hidden sm:block text-sm text-[#8B7355]">
-                {user.name} · {user.role === "SUPER_ADMIN" ? "Super Admin" : "Admin"}
-              </span>
-            )}
+      <div
+        className={[
+          "min-h-screen bg-white transition-all duration-300",
+          collapsed
+            ? "lg:pl-[76px]"
+            : "lg:pl-[260px]",
+        ].join(" ")}
+      >
+        {/* Header */}
+        <header className="sticky top-0 z-30 border-b border-[#E6E6E6] bg-white/95 backdrop-blur">
+          <div className="flex h-[76px] items-center justify-between px-4 sm:px-6 lg:px-8">
+            {/* Mobile menu */}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#E0E0E0] bg-white text-[#222222] shadow-sm transition hover:border-[#C9A227] hover:text-[#C9A227] lg:hidden"
+              aria-label="Open navigation"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
+            {/* Desktop heading */}
+            <div className="hidden lg:block">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A227]">
+                David Emuria
+              </p>
+
+              <p className="mt-0.5 text-sm font-semibold text-[#222222]">
+                Publishing Administration
+              </p>
+            </div>
+
+            {/* Website */}
             <a
               href="/"
-              className="text-sm text-[#C17B4F] hover:text-[#A55E36] font-medium transition-colors"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-[#E0E0E0] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#333333] shadow-sm transition hover:border-[#C9A227] hover:text-[#A98216]"
             >
-              ← View public site
+              <span className="hidden sm:inline">
+                View Website
+              </span>
+
+              <ExternalLink className="h-4 w-4" />
             </a>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 p-6">
+        {/* Main content */}
+        <main className="min-h-[calc(100vh-76px)] bg-white px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
         </main>
-
-       
       </div>
     </div>
   );

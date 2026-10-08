@@ -13,13 +13,17 @@ export type AdminAccount = {
   updatedAt?: string;
 };
 
-function getToken() {
+function getToken(): string {
   return (
     localStorage.getItem("admin_token") ||
     localStorage.getItem("token") ||
     localStorage.getItem("auth_token") ||
     ""
   );
+}
+
+export function getAdminToken(): string {
+  return getToken();
 }
 
 async function request<T>(
@@ -29,7 +33,7 @@ async function request<T>(
   const token = getToken();
   const headers = new Headers(options.headers);
 
-  if (!headers.has("Content-Type") && options.body) {
+  if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -46,14 +50,19 @@ async function request<T>(
 
   if (!response.ok) {
     throw new Error(
-      data.error || "Request failed. Please try again."
+      data?.error ||
+        data?.message ||
+        `Request failed (${response.status})`
     );
   }
 
   return data as T;
 }
 
-export async function adminLogin(email: string, password: string) {
+export async function adminLogin(
+  email: string,
+  password: string
+) {
   return request<{
     success: boolean;
     token: string;
@@ -124,7 +133,28 @@ export async function updateAdminUser(
 }
 
 export async function deleteAdminUser(id: string) {
-  return request<{ success: boolean }>(`/api/admin/users/${id}`, {
-    method: "DELETE",
+  return request<{ success: boolean }>(
+    `/api/admin/users/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+export async function adminDevLogin() {
+  return request<{
+    success: boolean;
+    development: boolean;
+    token: string;
+    user: {
+      id: string;
+      name: string;
+      email: string;
+      role: AdminRole;
+    };
+    expiresIn: string;
+  }>("/api/auth/dev-login", {
+    method: "POST",
   });
 }
+

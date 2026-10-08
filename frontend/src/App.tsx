@@ -1,12 +1,17 @@
+import {
+  Navigate,
+  Route,
+  Routes,
+} from "react-router-dom";
 
-// frontend/src/App.tsx
-
-import { Navigate, Route, Routes } from "react-router-dom";
 import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+import {
+  ReactQueryDevtools,
+} from "@tanstack/react-query-devtools";
 
 import "./App.css";
 
@@ -57,13 +62,23 @@ import Terms from "@/pages/Terms";
 import LoginPage from "@/pages/admin/Login";
 
 // ============================================================
-// ADMIN
+// ADMIN PAGES
 // ============================================================
 
 import DashboardHome from "@/features/admin/dashboard/DashboardHome";
+
+import AdminBooks from "@/pages/admin/AdminBooks";
+
+import AddBook from "@/components/admin/AddBook";
+
 import BookListPage from "@/features/admin/books/BookListPage";
 import BookFormPage from "@/features/admin/books/BookFormPage";
+
 import AdminUsersPage from "@/features/admin/users/AdminUsersPage";
+
+import AdminBlog from "@/pages/admin/AdminBlog";
+import AdminOrders from "@/pages/admin/AdminOrders";
+import AdminPayments from "@/pages/admin/AdminPayments";
 
 // ============================================================
 // ROUTE PROTECTION
@@ -86,19 +101,42 @@ const queryClient = new QueryClient({
 });
 
 // ============================================================
+// ADD BOOK ROUTE
+// ============================================================
+//
+// After successfully adding a book, return to the Books
+// Management page.
+//
+
+function AddBookRoute() {
+  return (
+    <AddBook
+      onAdded={() => {
+        window.location.href =
+          "/admin/books";
+      }}
+    />
+  );
+}
+
+// ============================================================
 // APP
 // ============================================================
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider
+      client={queryClient}
+    >
       <Routes>
 
         {/* ======================================================
             PUBLIC WEBSITE
         ======================================================= */}
 
-        <Route element={<Layout />}>
+        <Route
+          element={<Layout />}
+        >
 
           {/* ====================================================
               HOME
@@ -110,17 +148,21 @@ function App() {
           />
 
           {/* ====================================================
-              BOOKS
+              PUBLIC BOOKS
           ==================================================== */}
 
           <Route
             path="/books"
-            element={<BooksCatalogPage />}
+            element={
+              <BooksCatalogPage />
+            }
           />
 
           <Route
             path="/book/:slug"
-            element={<BookDetail />}
+            element={
+              <BookDetail />
+            }
           />
 
           {/* ====================================================
@@ -136,13 +178,11 @@ function App() {
               BLOGS
           ==================================================== */}
 
-          {/* Main blog listing page */}
           <Route
             path="/blogs"
             element={<Blogs />}
           />
 
-          {/* Individual blog article */}
           <Route
             path="/blogs/:slug"
             element={<BlogDetail />}
@@ -152,43 +192,43 @@ function App() {
               PROGRAMS
           ==================================================== */}
 
-          {/* Main program page */}
-
           <Route
             path="/programs/:slug"
-            element={<ProgramActivityPage />}
+            element={
+              <ProgramActivityPage />
+            }
           />
-
-          {/* Individual program area / highlight */}
 
           <Route
             path="/programs/:slug/:highlightSlug"
-            element={<ProgramHighlightPage />}
+            element={
+              <ProgramHighlightPage />
+            }
           />
 
           {/* ====================================================
               DEAR DAD INITIATIVE
           ==================================================== */}
 
-          {/* Main Dear Dad Initiative page */}
-
           <Route
             path="/dear-dad"
-            element={<DearDadInitiative />}
+            element={
+              <DearDadInitiative />
+            }
           />
-
-          {/* Donation / Sponsorship / Support page */}
 
           <Route
             path="/dear-dad/support"
-            element={<DearDadSupportPage />}
+            element={
+              <DearDadSupportPage />
+            }
           />
-
-          {/* Partnership / Get Involved page */}
 
           <Route
             path="/dear-dad/get-involved"
-            element={<DearDadGetInvolved />}
+            element={
+              <DearDadGetInvolved />
+            }
           />
 
           {/* ====================================================
@@ -235,38 +275,113 @@ function App() {
 
           <Route
             index
-            element={<DashboardHome />}
+            element={
+              <DashboardHome />
+            }
           />
 
           {/* ====================================================
-              BOOKS
+              BOOK MANAGEMENT
           ==================================================== */}
 
-          {/* Book list */}
+          {/* ----------------------------------------------------
+              Books catalogue
+          ----------------------------------------------------- */}
 
           <Route
             path="books"
-            element={<BookListPage />}
+            element={
+              <AdminBooks />
+            }
           />
 
-          {/* Add book */}
+          {/* ----------------------------------------------------
+              Add new book
+          ----------------------------------------------------- */}
 
           <Route
             path="books/new"
-            element={<BookFormPage />}
+            element={
+              <AddBookRoute />
+            }
           />
 
-          {/* Edit book */}
+          {/* ----------------------------------------------------
+              Edit existing book
+              
+              IMPORTANT:
+              This is now the ONLY edit route.
+
+              URL:
+              /admin/books/:id/edit
+
+              Component:
+              BookFormPage
+          ----------------------------------------------------- */}
 
           <Route
             path="books/:id/edit"
-            element={<BookFormPage />}
+            element={
+              <BookFormPage />
+            }
           />
+
+          {/* ----------------------------------------------------
+              Legacy book list
+
+              Kept available so existing links do not break.
+          ----------------------------------------------------- */}
+
+          <Route
+            path="books/legacy"
+            element={
+              <BookListPage />
+            }
+          />
+
+          {/* ====================================================
+              BLOG MANAGEMENT
+          ==================================================== */}
+
+          <Route
+            path="blog"
+            element={
+              <AdminBlog />
+            }
+          />
+
+          {/* ====================================================
+              ORDER MANAGEMENT
+          ==================================================== */}
+
+          <Route
+            path="orders"
+            element={
+              <AdminOrders />
+            }
+          />
+
+          {/* ====================================================
+              PAYMENT MANAGEMENT
+          ==================================================== */}
+
+          <Route
+            path="payments"
+            element={
+              <AdminPayments />
+            }
+          />
+
+          {/* ====================================================
+              ADMINISTRATOR MANAGEMENT
+          ==================================================== */}
 
           <Route
             path="users"
             element={
-              <ProtectedRoute requireSuperAdmin>
+              <ProtectedRoute
+                requireSuperAdmin
+              >
                 <AdminUsersPage />
               </ProtectedRoute>
             }
@@ -306,4 +421,3 @@ function App() {
 }
 
 export default App;
-

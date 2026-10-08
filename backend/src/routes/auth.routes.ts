@@ -1,9 +1,8 @@
-// backend/src/routes/auth.routes.ts
-
-import { Router } from "express";
+﻿import { Router } from "express";
 
 import {
   adminLogin,
+  devLogin,
   getCurrentAdmin,
 } from "../controllers/auth.controller";
 
@@ -20,6 +19,15 @@ const router = Router();
 router.post(
   "/login",
   adminLogin
+);
+
+/* ============================================================
+   DEVELOPMENT LOGIN
+   ============================================================ */
+
+router.post(
+  "/dev-login",
+  devLogin
 );
 
 /* ============================================================

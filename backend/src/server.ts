@@ -17,6 +17,7 @@ import authRoutes from "./routes/auth.routes";
 import adminUserRoutes from "./routes/admin.user.routes";
 import blogRoutes from "./routes/blog.routes";
 
+
 // Load environment variables
 dotenv.config();
 
@@ -34,7 +35,7 @@ app.use(
     credentials: true,
   })
 );
-
+ 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
