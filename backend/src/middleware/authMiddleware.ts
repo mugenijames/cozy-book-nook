@@ -181,4 +181,4 @@ export const requireSuperAdmin = (
    BACKWARD COMPATIBILITY
    ============================================================ */
 
-export const isAdmin = requireAdmin;
+export const isAdmin = [authenticate, requireAdmin];

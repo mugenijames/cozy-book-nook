@@ -1,5 +1,3 @@
-// backend/src/routes/admin.book.routes.ts
-
 import { Router } from "express";
 
 import {
@@ -10,72 +8,47 @@ import {
   deleteBook,
 } from "../controllers/book.controller";
 
-import { isAdmin } from "../middleware/authMiddleware";
+import {
+  authenticate,
+  isAdmin,
+} from "../middleware/authMiddleware";
 
 const router = Router();
 
-/* -------------------------------------------------------------------------- */
-/* ADMIN BOOK ROUTES                                                          */
-/* -------------------------------------------------------------------------- */
-
-/*
- * GET ALL BOOKS
- *
- * GET /api/admin/books
- */
 router.get(
   "/",
+  authenticate,
   isAdmin,
   getAdminBooks
 );
 
-/*
- * GET ONE BOOK
- *
- * GET /api/admin/books/:id
- *
- * IMPORTANT:
- * This route must exist because BookFormPage calls:
- *
- * /api/admin/books/:id
- */
 router.get(
   "/:id",
+  authenticate,
   isAdmin,
   getAdminBook
 );
 
-/*
- * CREATE BOOK
- *
- * POST /api/admin/books
- */
 router.post(
   "/",
+  authenticate,
   isAdmin,
   createBook
 );
 
-/*
- * UPDATE BOOK
- *
- * PUT /api/admin/books/:id
- */
 router.put(
   "/:id",
+  authenticate,
   isAdmin,
   updateBook
 );
 
-/*
- * DELETE BOOK
- *
- * DELETE /api/admin/books/:id
- */
 router.delete(
   "/:id",
+  authenticate,
   isAdmin,
   deleteBook
 );
 
 export default router;
+
