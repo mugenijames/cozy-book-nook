@@ -45,20 +45,23 @@ interface BookData {
   title: string;
   author: string;
   slug?: string | null;
-
   description?: string | null;
-
   coverImage?: string | null;
-
   pdfUrl?: string | null;
-
   genre?: string | null;
-
   publishedYear?: number | null;
   pages?: number | null;
   rating?: number | null;
   priceCents?: number | null;
 }
+
+// Exchange rates relative to KES
+const EXCHANGE_RATES: Record<string, { rate: number; symbol: string }> = {
+  KES: { rate: 1, symbol: "KES" },
+  USD: { rate: 0.0077, symbol: "$" },
+  EUR: { rate: 0.0071, symbol: "€" },
+  GBP: { rate: 0.0060, symbol: "£" },
+};
 
 /* =========================================================
    BOOK DETAIL PAGE
@@ -67,35 +70,23 @@ interface BookData {
 const BookDetail = () => {
   const { slug } = useParams<{ slug: string }>();
 
-  const [searchParams, setSearchParams] =
-    useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
+  const [book, setBook] = useState<BookData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [book, setBook] =
-    useState<BookData | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [purchased, setPurchased] = useState(false);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [showPayment, setShowPayment] = useState(false);
+  const [showHardcopyOrder, setShowHardcopyOrder] = useState(false);
+  const [showInquiry, setShowInquiry] = useState(false);
 
-  const [downloading, setDownloading] =
-    useState(false);
+  const [buyerEmail, setBuyerEmail] = useState<string | null>(null);
 
-  const [purchased, setPurchased] =
-    useState(false);
-
-  const [showPayment, setShowPayment] =
-    useState(false);
-
-  const [showHardcopyOrder, setShowHardcopyOrder] =
-    useState(false);
-
-  const [showInquiry, setShowInquiry] =
-    useState(false);
-
-  const [buyerEmail, setBuyerEmail] =
-    useState<string | null>(null);
+  // Currency Selector State (Default: KES)
+  const [currency, setCurrency] = useState<string>("KES");
 
   /* =========================================================
      FETCH BOOK
@@ -129,46 +120,17 @@ const BookDetail = () => {
 
       const mapped: BookData = {
         id: String(foundBook.id),
-
         title: foundBook.title,
-
         author: foundBook.author,
-
-        slug:
-          foundBook.slug ??
-          undefined,
-
-        description:
-          foundBook.description ??
-          undefined,
-
-        coverImage:
-          foundBook.coverImage ??
-          undefined,
-
-        pdfUrl:
-          foundBook.pdfUrl ??
-          undefined,
-
-        genre:
-          foundBook.genre ??
-          undefined,
-
-        publishedYear:
-          foundBook.publishedYear ??
-          undefined,
-
-        pages:
-          foundBook.pages ??
-          undefined,
-
-        rating:
-          foundBook.rating ??
-          undefined,
-
-        priceCents:
-          foundBook.priceCents ??
-          undefined,
+        slug: foundBook.slug ?? undefined,
+        description: foundBook.description ?? undefined,
+        coverImage: foundBook.coverImage ?? undefined,
+        pdfUrl: foundBook.pdfUrl ?? undefined,
+        genre: foundBook.genre ?? undefined,
+        publishedYear: foundBook.publishedYear ?? undefined,
+        pages: foundBook.pages ?? undefined,
+        rating: foundBook.rating ?? undefined,
+        priceCents: foundBook.priceCents ?? undefined,
       };
 
       setBook(mapped);
@@ -183,11 +145,7 @@ const BookDetail = () => {
         getRememberedBuyerEmail(String(foundBook.id))
       );
     } catch (err) {
-      console.error(
-        "Failed to fetch book:",
-        err
-      );
-
+      console.error("Failed to fetch book:", err);
       setError("Book not found");
     } finally {
       setLoading(false);
@@ -199,18 +157,14 @@ const BookDetail = () => {
   ========================================================= */
 
   useEffect(() => {
-    const status =
-      searchParams.get("checkout");
+    const status = searchParams.get("checkout");
 
     if (!status || !book) return;
 
     if (status === "success") {
-      toast.success(
-        "Payment received — opening your download now."
-      );
+      toast.success("Payment received — opening your download now.");
 
       markBookAsPurchased(book.id);
-
       setPurchased(true);
 
       const paypalEmail = localStorage.getItem("checkout_email");
@@ -220,63 +174,35 @@ const BookDetail = () => {
       }
 
       searchParams.delete("checkout");
-
-      setSearchParams(
-        searchParams,
-        {
-          replace: true,
-        }
-      );
+      setSearchParams(searchParams, { replace: true });
 
       void handleDownload();
     }
 
     if (status === "cancel") {
-      toast.message(
-        "Checkout cancelled",
-        {
-          description:
-            "You can try again whenever you're ready.",
-        }
-      );
+      toast.message("Checkout cancelled", {
+        description: "You can try again whenever you're ready.",
+      });
 
       searchParams.delete("checkout");
-
-      setSearchParams(
-        searchParams,
-        {
-          replace: true,
-        }
-      );
+      setSearchParams(searchParams, { replace: true });
     }
-  }, [
-    searchParams,
-    setSearchParams,
-    book,
-  ]);
+  }, [searchParams, setSearchParams, book]);
 
   /* =========================================================
-     BOOK PRICE
+     BOOK PRICE & CONVERSION
   ========================================================= */
 
-  const price =
-    book?.priceCents != null
-      ? Number(book.priceCents)
-      : null;
+  const basePriceCents =
+    book?.priceCents != null ? Number(book.priceCents) : null;
 
-  const isFree =
-    price == null ||
-    price === 0;
+  const isFree = basePriceCents == null || basePriceCents === 0;
 
   /* =========================================================
      PDF AVAILABILITY
   ========================================================= */
 
-  const hasPdf =
-    Boolean(
-      book?.pdfUrl &&
-      book.pdfUrl.trim()
-    );
+  const hasPdf = Boolean(book?.pdfUrl && book.pdfUrl.trim());
 
   /* =========================================================
      DOWNLOAD BOOK
@@ -286,172 +212,71 @@ const BookDetail = () => {
     if (!book) return;
 
     if (!book.pdfUrl) {
-      toast.error(
-        "PDF not available for this book yet."
-      );
-
+      toast.error("PDF not available for this book yet.");
       return;
     }
 
     setDownloading(true);
 
     try {
-      /*
-       * Free books and already purchased books
-       * can open the PDF directly.
-       */
-
       if (isFree || purchased) {
-        window.open(
-          book.pdfUrl,
-          "_blank",
-          "noopener,noreferrer"
-        );
-
-        toast.success(
-          `Opening ${book.title}`
-        );
-
+        window.open(book.pdfUrl, "_blank", "noopener,noreferrer");
+        toast.success(`Opening ${book.title}`);
         return;
       }
 
-      /*
-       * Paid book:
-       * ask backend to authorize the download.
-       */
-
-      const {
-        pdfUrl,
-        title,
-      } = await downloadBookPdf(
-        book.id
-      );
+      const { pdfUrl, title } = await downloadBookPdf(book.id);
 
       if (!pdfUrl) {
-        toast.error(
-          "PDF URL not found."
-        );
-
+        toast.error("PDF URL not found.");
         return;
       }
 
-      window.open(
-        pdfUrl,
-        "_blank",
-        "noopener,noreferrer"
-      );
-
-      toast.success(
-        `Opening ${title}`
-      );
+      window.open(pdfUrl, "_blank", "noopener,noreferrer");
+      toast.success(`Opening ${title}`);
     } catch (error: any) {
-      console.error(
-        "Download error:",
-        error
-      );
+      console.error("Download error:", error);
+      const message = error?.message || "";
 
-      const message =
-        error?.message || "";
-
-      if (
-        message
-          .toLowerCase()
-          .includes("purchase") ||
-        message.includes("403")
-      ) {
-        toast.error(
-          "Please purchase this book first to download."
-        );
-
+      if (message.toLowerCase().includes("purchase") || message.includes("403")) {
+        toast.error("Please purchase this book first to download.");
         setShowPayment(true);
       } else {
-        toast.error(
-          message ||
-          "Failed to download PDF."
-        );
+        toast.error(message || "Failed to download PDF.");
       }
     } finally {
       setDownloading(false);
     }
   };
 
-  /* =========================================================
-     BUY / DOWNLOAD BUTTON
-  ========================================================= */
-
   const handleBuyClick = () => {
     if (!book) return;
 
-    /*
-     * If there is no PDF, don't allow
-     * a digital download.
-     */
-
     if (!hasPdf) {
-      toast.error(
-        "PDF not available for this book yet."
-      );
-
+      toast.error("PDF not available for this book yet.");
       return;
     }
 
-    /*
-     * Free book
-     */
-
-    if (isFree) {
+    if (isFree || purchased) {
       void handleDownload();
-
       return;
     }
-
-    /*
-     * Already purchased
-     */
-
-    if (purchased) {
-      void handleDownload();
-
-      return;
-    }
-
-    /*
-     * Paid book
-     */
 
     setShowPayment(true);
   };
 
-  /* =========================================================
-     PAYMENT SUBMITTED
-  ========================================================= */
-
   const handlePaymentSubmitted = (submittedBuyerEmail: string) => {
     if (!book) return;
 
-    markBookAsPurchased(
-      book.id
-    );
-
+    markBookAsPurchased(book.id);
     setPurchased(true);
-
     setShowPayment(false);
 
     rememberBuyerEmail(book.id, submittedBuyerEmail);
     setBuyerEmail(submittedBuyerEmail);
 
-    /*
-     * Payment is already confirmed by this point (PaymentModal only
-     * calls this after M-Pesa polling succeeds, or after a successful
-     * PayPal return). So we open the download immediately instead of
-     * waiting for the user to click "Download Now" again.
-     */
     void handleDownload();
   };
-
-  /* =========================================================
-     LOADING STATE
-  ========================================================= */
 
   if (loading) {
     return (
@@ -466,10 +291,6 @@ const BookDetail = () => {
     );
   }
 
-  /* =========================================================
-     ERROR STATE
-  ========================================================= */
-
   if (error || !book) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center bg-[#EEF2F7] px-6">
@@ -483,8 +304,7 @@ const BookDetail = () => {
           </h1>
 
           <p className="mt-3 text-[15px] leading-relaxed text-gray-600">
-            The title you're looking for doesn't exist, or may have
-            been removed from the catalog.
+            The title you're looking for doesn't exist, or may have been removed from the catalog.
           </p>
 
           <div className="mt-7 flex flex-wrap justify-center gap-3">
@@ -508,46 +328,22 @@ const BookDetail = () => {
     );
   }
 
-  /* =========================================================
-     COVER
-  ========================================================= */
-
-  const coverSrc =
-    resolveBookCoverUrl(
-      book.coverImage
-    );
-
-  /* =========================================================
-     RENDER
-  ========================================================= */
+  const coverSrc = resolveBookCoverUrl(book.coverImage);
 
   return (
     <>
-      {/* =====================================================
-          PAYMENT MODAL
-      ===================================================== */}
-
-      {showPayment &&
-        price != null && (
-          <PaymentModal
-            book={{
-              id: book.id,
-              title: book.title,
-              priceCents: price,
-              slug: book.slug,
-            }}
-            onClose={() =>
-              setShowPayment(false)
-            }
-            onPaymentSubmitted={
-              handlePaymentSubmitted
-            }
-          />
-        )}
-
-      {/* =====================================================
-          HARDCOPY ORDER MODAL
-      ===================================================== */}
+      {showPayment && basePriceCents != null && (
+        <PaymentModal
+          book={{
+            id: book.id,
+            title: book.title,
+            priceCents: basePriceCents,
+            slug: book.slug,
+          }}
+          onClose={() => setShowPayment(false)}
+          onPaymentSubmitted={handlePaymentSubmitted}
+        />
+      )}
 
       <HardcopyOrderModal
         isOpen={showHardcopyOrder}
@@ -558,14 +354,8 @@ const BookDetail = () => {
           priceCents: book.priceCents ?? null,
           coverImage: book.coverImage,
         }}
-        onClose={() =>
-          setShowHardcopyOrder(false)
-        }
+        onClose={() => setShowHardcopyOrder(false)}
       />
-
-      {/* =====================================================
-          INQUIRY MODAL
-      ===================================================== */}
 
       {showInquiry && (
         <InquiryModal
@@ -574,66 +364,35 @@ const BookDetail = () => {
             title: book.title,
             author: book.author,
           }}
-          onClose={() =>
-            setShowInquiry(false)
-          }
+          onClose={() => setShowInquiry(false)}
         />
       )}
 
-      {/* =====================================================
-          MAIN PAGE
-      ===================================================== */}
-
       <main className="min-h-screen overflow-x-hidden bg-[#EEF2F7] py-8 sm:py-12">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-
-          {/* =================================================
-              BREADCRUMB
-          ================================================= */}
-
           <nav className="mb-8 flex items-center gap-2 text-sm text-[#5C4436]/70">
-            <Link
-              to="/"
-              className="transition hover:text-[#C17B4F]"
-            >
+            <Link to="/" className="transition hover:text-[#C17B4F]">
               Home
             </Link>
             <span className="text-[#C9B8A8]">/</span>
-            <Link
-              to="/books"
-              className="transition hover:text-[#C17B4F]"
-            >
+            <Link to="/books" className="transition hover:text-[#C17B4F]">
               Catalog
             </Link>
             <span className="text-[#C9B8A8]">/</span>
-            <span className="truncate text-[#2E1208]">
-              {book.title}
-            </span>
+            <span className="truncate text-[#2E1208]">{book.title}</span>
           </nav>
-
-          {/* =================================================
-              BOOK CONTAINER
-          ================================================= */}
 
           <section className="overflow-hidden rounded-[1.75rem] border border-black/5 bg-white shadow-xl">
             <div className="grid gap-12 p-6 sm:p-10 md:grid-cols-[minmax(280px,0.72fr)_1.28fr] md:gap-14 md:p-14 lg:p-16">
-
-              {/* =================================================
-                  BOOK COVER — sticky, with a page-stack effect
-              ================================================= */}
-
+              
+              {/* BOOK COVER */}
               <div className="md:sticky md:top-24 md:self-start">
                 <div className="mx-auto flex max-w-[320px] flex-col items-center">
-
                   <div className="relative w-full">
-                    {/* Ambient shadow */}
                     <div className="absolute inset-x-6 bottom-1 h-8 rounded-full bg-black/20 blur-2xl" />
-
-                    {/* Stacked page edges, peeking from behind */}
                     <div className="absolute inset-y-2 -right-1.5 w-full rounded-r-2xl rounded-l-md bg-[#E2D2C2]" />
                     <div className="absolute inset-y-1 -right-0.5 w-full rounded-r-2xl rounded-l-md bg-[#EDE1D3]" />
 
-                    {/* Book cover */}
                     <div className="relative rounded-r-2xl rounded-l-md bg-[#2E1208] p-[5px] shadow-[10px_18px_32px_rgba(46,18,8,0.28)] transition-transform duration-500 hover:-translate-y-1">
                       <div className="absolute left-0 top-0 z-10 h-full w-2 rounded-l-md bg-black/25" />
 
@@ -655,7 +414,6 @@ const BookDetail = () => {
                     </div>
                   </div>
 
-                  {/* Availability stamp */}
                   <div className="mt-6 flex items-center gap-2 rounded-full border border-[#C9B8A8]/60 bg-white px-4 py-1.5">
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
@@ -668,19 +426,15 @@ const BookDetail = () => {
                       {purchased
                         ? "Owned by you"
                         : isFree
-                          ? "Free digital copy"
-                          : "Digital edition"}
+                        ? "Free digital copy"
+                        : "Digital edition"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* =================================================
-                  BOOK INFORMATION
-              ================================================= */}
-
+              {/* BOOK INFORMATION */}
               <div className="flex min-w-0 flex-col">
-
                 {book.genre && (
                   <span className="mb-4 inline-flex w-fit items-center gap-1.5 border-b-2 border-[#C17B4F] pb-1 text-xs font-bold uppercase tracking-[0.15em] text-[#C17B4F]">
                     {book.genre}
@@ -694,10 +448,7 @@ const BookDetail = () => {
                 <p className="mt-4 flex items-center gap-2 text-base text-gray-600 sm:text-lg">
                   <User className="h-5 w-5 text-[#C17B4F]" />
                   <span>
-                    by{" "}
-                    <strong className="text-[#2E1208]">
-                      {book.author}
-                    </strong>
+                    by <strong className="text-[#2E1208]">{book.author}</strong>
                   </span>
                 </p>
 
@@ -718,10 +469,6 @@ const BookDetail = () => {
                     </span>
                   </div>
                 )}
-
-                {/* =================================================
-                    CATALOG METADATA — stamped labels
-                ================================================= */}
 
                 {(book.publishedYear != null || book.pages != null) && (
                   <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 border-y border-dashed border-[#C9B8A8]/60 py-4">
@@ -751,10 +498,6 @@ const BookDetail = () => {
                   </div>
                 )}
 
-                {/* =================================================
-                    DESCRIPTION
-                ================================================= */}
-
                 {book.description && (
                   <div className="mt-8">
                     <h2 className="font-heading text-lg font-bold text-[#2E1208]">
@@ -766,25 +509,15 @@ const BookDetail = () => {
                   </div>
                 )}
 
-                {/* =================================================
-                    LIBRARY CATALOG CARD — price + actions
-                    (signature element)
-                ================================================= */}
-
+                {/* LIBRARY CATALOG CARD — price + currency selector + actions */}
                 <div className="relative mt-9 overflow-hidden rounded-2xl border border-[#C9B8A8]/50 bg-[#FBF8F4] shadow-sm">
-
-                  {/* Perforated top edge */}
                   <div className="flex items-center gap-1.5 border-b border-dashed border-[#C9B8A8]/70 bg-[#F3EBE0] px-6 py-2.5">
                     {Array.from({ length: 18 }).map((_, i) => (
-                      <span
-                        key={i}
-                        className="h-1 w-1 rounded-full bg-[#C9B8A8]/70"
-                      />
+                      <span key={i} className="h-1 w-1 rounded-full bg-[#C9B8A8]/70" />
                     ))}
                   </div>
 
                   <div className="p-6 sm:p-7">
-
                     <div className="flex flex-wrap items-end justify-between gap-4">
                       <div>
                         <span className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-500">
@@ -797,19 +530,38 @@ const BookDetail = () => {
                           </p>
                         ) : (
                           <p className="mt-1.5 font-heading text-3xl font-bold text-[#2E1208]">
-                            {formatPrice(price!)}
+                            {currency === "KES" ? (
+                              formatPrice(basePriceCents!)
+                            ) : (
+                              <span>
+                                {EXCHANGE_RATES[currency]?.symbol || ""}{((basePriceCents! / 100) * (EXCHANGE_RATES[currency]?.rate || 1)).toFixed(2)}
+                              </span>
+                            )}
                           </p>
                         )}
                       </div>
 
+                      {/* Currency Selector Dropdown */}
                       {!isFree && (
-                        <span className="rounded-full bg-[#2E1208]/5 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-[#5C4436]">
-                          KES
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <label htmlFor="currency-select" className="text-xs font-medium text-gray-600">
+                            Currency:
+                          </label>
+                          <select
+                            id="currency-select"
+                            value={currency}
+                            onChange={(e) => setCurrency(e.target.value)}
+                            className="rounded-lg border border-[#C9B8A8] bg-white px-3 py-1.5 text-xs font-semibold text-[#2E1208] shadow-sm focus:outline-none focus:ring-1 focus:ring-[#C17B4F]"
+                          >
+                            <option value="KES">KES</option>
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                          </select>
+                        </div>
                       )}
                     </div>
 
-                    {/* Actions */}
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                       <Button
                         type="button"
@@ -829,8 +581,8 @@ const BookDetail = () => {
                         {purchased
                           ? "Download Now"
                           : isFree
-                            ? "Download Free"
-                            : "Buy & Download"}
+                          ? "Download Free"
+                          : "Buy & Download"}
                       </Button>
 
                       <Button
@@ -855,45 +607,14 @@ const BookDetail = () => {
                   </div>
                 </div>
 
-                {/* =================================================
-                    STATUS NOTES
-                ================================================= */}
-
                 {!hasPdf && (
                   <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                    <strong>PDF coming soon.</strong> The digital copy
-                    for this title is not available yet.
-                  </div>
-                )}
-
-                {!purchased && !isFree && hasPdf && (
-                  <div className="mt-5 rounded-xl bg-[#EEF2F7] p-4 text-sm leading-6 text-[#5C4436]">
-                    Click <strong>Buy &amp; Download</strong> to purchase
-                    this book. Your download will unlock right after
-                    payment verification.
-                  </div>
-                )}
-
-                {purchased && hasPdf && (
-                  <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-                    ✓ You have purchased this book. Click{" "}
-                    <strong>Download Now</strong> to access your PDF copy.
-                  </div>
-                )}
-
-                {isFree && hasPdf && (
-                  <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
-                    📚 This book is free. You can download the PDF at
-                    no cost.
+                    <strong>PDF coming soon.</strong> The digital copy for this title is not available yet.
                   </div>
                 )}
               </div>
             </div>
           </section>
-
-          {/* =================================================
-              BACK TO BOOKS
-          ================================================= */}
 
           <div className="mt-8 flex justify-center">
             <Link

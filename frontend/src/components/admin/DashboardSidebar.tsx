@@ -27,38 +27,20 @@ type SidebarItem = {
 };
 
 const workspaceItems: SidebarItem[] = [
-  {
-    label: "Overview",
-    href: "/admin",
-    icon: LayoutDashboard,
-  },
+  { label: "Overview", href: "/admin", icon: LayoutDashboard },
 ];
 
 const contentItems: SidebarItem[] = [
-  {
-    label: "Books",
-    href: "/admin/books",
-    icon: BookOpen,
-  },
-  {
-    label: "Blog",
-    href: "/admin/blog",
-    icon: FileText,
-  },
+  { label: "Books", href: "/admin/books", icon: BookOpen },
+  { label: "Blog", href: "/admin/blog", icon: FileText },
 ];
 
 const commerceItems: SidebarItem[] = [
-  {
-    label: "Orders",
-    href: "/admin/orders",
-    icon: ShoppingCart,
-  },
-  {
-    label: "Payments",
-    href: "/admin/payments",
-    icon: CreditCard,
-  },
+  { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  { label: "Payments", href: "/admin/payments", icon: CreditCard },
 ];
+
+const LOGO_SRC = "/logo.png";
 
 export default function DashboardSidebar({
   collapsed,
@@ -89,13 +71,7 @@ export default function DashboardSidebar({
   const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
   const administrationItems: SidebarItem[] = isSuperAdmin
-    ? [
-        {
-          label: "Administrators",
-          href: "/admin/users",
-          icon: Users,
-        },
-      ]
+    ? [{ label: "Administrators", href: "/admin/users", icon: Users }]
     : [];
 
   const handleNavigation = (href: string) => {
@@ -108,9 +84,10 @@ export default function DashboardSidebar({
     localStorage.removeItem("admin_user");
     localStorage.removeItem("token");
     localStorage.removeItem("auth_token");
+    localStorage.removeItem("user");
 
     onMobileClose?.();
-    navigate("/admin/login");
+    navigate("/admin/login", { replace: true });
   };
 
   const isActive = (href: string) => {
@@ -124,10 +101,7 @@ export default function DashboardSidebar({
     );
   };
 
-  const renderSection = (
-    title: string,
-    items: SidebarItem[]
-  ) => {
+  const renderSection = (title: string, items: SidebarItem[]) => {
     if (!items.length) return null;
 
     return (
@@ -149,11 +123,10 @@ export default function DashboardSidebar({
                 type="button"
                 onClick={() => handleNavigation(item.href)}
                 title={collapsed ? item.label : undefined}
+                aria-current={active ? "page" : undefined}
                 className={[
                   "group relative flex w-full items-center rounded-lg px-4 py-3 text-left transition-all duration-200",
-                  collapsed
-                    ? "justify-center px-3"
-                    : "gap-3",
+                  collapsed ? "justify-center px-3" : "gap-3",
                   active
                     ? "bg-[#B88A2A] text-white shadow-sm"
                     : "text-[#D2C5BD] hover:bg-[#3A2419] hover:text-white",
@@ -207,54 +180,43 @@ export default function DashboardSidebar({
             : "-translate-x-full lg:translate-x-0",
         ].join(" ")}
       >
-        {/* Brand */}
+        {/* Brand and logo */}
         <div
           className={[
-            "flex h-[76px] shrink-0 items-center border-b border-[#4A3326]",
-            collapsed
-              ? "justify-center px-3"
-              : "justify-between px-5",
+            "flex h-[88px] shrink-0 items-center border-b border-[#4A3326]",
+            collapsed ? "justify-center px-2" : "justify-between px-4",
           ].join(" ")}
         >
-          {!collapsed ? (
-            <button
-              type="button"
-              onClick={() => handleNavigation("/admin")}
-              className="flex items-center gap-3"
-            >
-              {/* Temporary logo */}
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#C9A227] shadow-sm">
-                <BookOpen
-                  size={21}
-                  strokeWidth={2}
-                  className="text-white"
-                />
-              </div>
+          <button
+            type="button"
+            onClick={() => handleNavigation("/admin")}
+            title="David Emuria Admin"
+            aria-label="Go to dashboard overview"
+            className={[
+              "flex min-w-0 items-center",
+              collapsed ? "justify-center" : "gap-3",
+            ].join(" ")}
+          >
+            <img
+              src={LOGO_SRC}
+              alt="David Emuria — Author, Speaker, Consultant"
+              className={[
+                "shrink-0 object-contain",
+                collapsed ? "h-12 w-12" : "h-[64px] w-[64px]",
+              ].join(" ")}
+            />
 
-              <div className="text-left">
-                <div className="text-sm font-bold tracking-[0.08em] text-white">
+            {!collapsed && (
+              <div className="min-w-0 text-left">
+                <div className="text-sm font-bold tracking-[0.06em] text-white">
                   DAVID EMURIA
                 </div>
-
-                <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#D5B45C]">
+                <div className="mt-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#D5B45C]">
                   Admin Portal
                 </div>
               </div>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => handleNavigation("/admin")}
-              title="David Emuria Admin"
-              className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#C9A227]"
-            >
-              <BookOpen
-                size={21}
-                strokeWidth={2}
-                className="text-white"
-              />
-            </button>
-          )}
+            )}
+          </button>
 
           <button
             type="button"
@@ -271,13 +233,10 @@ export default function DashboardSidebar({
           {renderSection("Workspace", workspaceItems)}
           {renderSection("Content", contentItems)}
           {renderSection("Commerce", commerceItems)}
-          {renderSection(
-            "Administration",
-            administrationItems
-          )}
+          {renderSection("Administration", administrationItems)}
         </div>
 
-        {/* Bottom */}
+        {/* Account and actions */}
         <div className="border-t border-[#4A3326] p-3">
           {!collapsed && user && (
             <div className="mb-3 rounded-lg border border-[#4A3326] bg-[#351F15] px-3 py-3">
@@ -290,9 +249,7 @@ export default function DashboardSidebar({
               </div>
 
               <div className="mt-2 inline-flex rounded-full bg-[#4A351A] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-[#D5B45C]">
-                {user.role === "SUPER_ADMIN"
-                  ? "Super Admin"
-                  : "Admin"}
+                {isSuperAdmin ? "Super Admin" : "Admin"}
               </div>
             </div>
           )}
@@ -303,9 +260,7 @@ export default function DashboardSidebar({
             title={collapsed ? "Logout" : undefined}
             className={[
               "flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium text-[#C8B8AE] transition-colors hover:bg-[#3A2419] hover:text-white",
-              collapsed
-                ? "justify-center px-3"
-                : "gap-3",
+              collapsed ? "justify-center px-3" : "gap-3",
             ].join(" ")}
           >
             <LogOut size={19} />
@@ -315,11 +270,8 @@ export default function DashboardSidebar({
           <button
             type="button"
             onClick={onToggle}
-            title={
-              collapsed
-                ? "Expand sidebar"
-                : "Collapse sidebar"
-            }
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className="mt-2 hidden w-full items-center justify-center rounded-lg border border-[#4A3326] py-2.5 text-[#B69D8C] transition-colors hover:bg-[#3A2419] hover:text-white lg:flex"
           >
             {collapsed ? (
