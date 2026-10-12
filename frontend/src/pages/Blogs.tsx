@@ -10,12 +10,11 @@ import {
   Calendar,
   Clock,
   Search,
-  Tag,
   Loader2,
   X,
 } from "lucide-react";
 
-import { getBlogPosts } from "@/services/api"; // adjust if needed
+import { getBlogPosts } from "@/services/api";
 
 type BlogPost = {
   id: string;
@@ -44,9 +43,15 @@ const Blog = () => {
   } = useQuery({
     queryKey: ["blog", "published"],
     queryFn: async () => {
-      const data = await getBlogPosts();
-      // Only show published posts on the public side
-      return (data as BlogPost[]).filter((post) => post.published === true);
+      const response = await getBlogPosts();
+
+      // Safely extract posts array from response object or direct array
+      const rawPosts: BlogPost[] = Array.isArray(response)
+        ? response
+        : (response as any)?.blogs || (response as any)?.data || [];
+
+      // Show published posts on the public side
+      return rawPosts.filter((post) => Boolean(post.published));
     },
   });
 
@@ -246,7 +251,7 @@ const Blog = () => {
             </div>
           )}
 
-          {/* No results */}
+          {/* No search results */}
           {!isLoading &&
             !isError &&
             posts.length > 0 &&
@@ -271,7 +276,7 @@ const Blog = () => {
               </div>
             )}
 
-          {/* Featured Posts */}
+          {/* Featured Posts Grid */}
           {!isLoading && featuredPosts.length > 0 && (
             <div className="mb-14">
               <h2 className="mb-6 text-sm font-bold uppercase tracking-[0.18em] text-[#C17B4F]">
@@ -279,7 +284,12 @@ const Blog = () => {
               </h2>
               <div className="grid gap-6 md:grid-cols-2">
                 {featuredPosts.map((post, index) => (
-                  <FeaturedCard key={post.id} post={post} index={index} formatDate={formatDate} />
+                  <FeaturedCard
+                    key={post.id}
+                    post={post}
+                    index={index}
+                    formatDate={formatDate}
+                  />
                 ))}
               </div>
             </div>
@@ -336,7 +346,7 @@ function FeaturedCard({
       transition={{ duration: 0.5, delay: index * 0.08 }}
       className="group overflow-hidden rounded-2xl border border-[#E8DDD4] bg-white shadow-sm transition hover:shadow-md"
     >
-      <Link to={`/blog/${post.slug}`} className="block">
+      <Link to={`/blogs/${post.slug}`} className="block">
         <div className="relative aspect-[16/9] overflow-hidden bg-[#E7DED4]">
           {post.coverImage ? (
             <img
@@ -417,7 +427,7 @@ function PostCard({
       transition={{ duration: 0.5, delay: Math.min(index * 0.06, 0.3) }}
       className="group flex flex-col overflow-hidden rounded-2xl border border-[#E8DDD4] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
     >
-      <Link to={`/blog/${post.slug}`} className="flex h-full flex-col">
+      <Link to={`/blogs/${post.slug}`} className="flex h-full flex-col">
         <div className="relative aspect-[16/10] overflow-hidden bg-[#E7DED4]">
           {post.coverImage ? (
             <img

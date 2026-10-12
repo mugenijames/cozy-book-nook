@@ -375,17 +375,6 @@ export interface BlogPost {
 // SUBMIT BOOK INQUIRY
 // ============================================================
 
-/**
- * Submit a book inquiry.
- *
- * Backend endpoint:
- *
- * POST /api/orders
- *
- * The backend should recognize:
- *
- * orderType: "INQUIRY"
- */
 export const submitBookInquiry = async (
   payload: InquiryPayload
 ): Promise<InquiryResponse> => {
@@ -573,16 +562,6 @@ export const deleteBook = (
 // PDF UPLOAD
 // ============================================================
 
-/**
- * Upload a PDF to the backend.
- *
- * IMPORTANT:
- * Do NOT manually set Content-Type.
- *
- * The browser automatically sets:
- *
- * multipart/form-data; boundary=...
- */
 export const uploadBookPdf = async (
   file: File
 ): Promise<PdfUploadResponse> => {
@@ -925,10 +904,11 @@ export const getBlogPosts = async (): Promise<BlogPost[]> => {
     return [];
   }
 
-  const data = await apiFetch<any>("/api/blog");
+  const data = await apiFetch<any>("/api/blogs");
 
   // Handle different possible response shapes from the backend
   if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.blogs)) return data.blogs;
   if (Array.isArray(data?.posts)) return data.posts;
   if (Array.isArray(data?.data)) return data.data;
 
@@ -946,9 +926,13 @@ export const getBlogPost = async (
     throw new Error("Blog post not found (mock mode)");
   }
 
-  return apiFetch<BlogPost>(
-    `/api/blog/${encodeURIComponent(slug)}`
+  const data = await apiFetch<any>(
+    `/api/blogs/${encodeURIComponent(slug)}`
   );
+
+  // Handle wrapper object { success: true, blog: {...} } or direct object
+  if (data?.blog) return data.blog;
+  return data;
 };
 
 // ============================================================

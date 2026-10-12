@@ -62,7 +62,7 @@ const emptyForm: BlogForm = {
   tags: "",
   author: "",
   readingTime: "",
-  published: false,
+  published: true, // Defaults to published on creation
   featured: false,
   seoTitle: "",
   seoDescription: "",
@@ -402,8 +402,7 @@ export default function AdminBlog() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/60">
-              Create, edit and publish articles for the David Emuria
-              audience.
+              Create, edit and publish articles for the David Emuria audience.
             </p>
           </div>
 
@@ -866,8 +865,7 @@ export default function AdminBlog() {
                           Publish article
                         </span>
                         <span className="mt-1 block text-xs text-[#8B7355]">
-                          Make this article visible on the public
-                          website.
+                          Make this article visible on the public website immediately.
                         </span>
                       </span>
                     </label>
@@ -943,31 +941,22 @@ export default function AdminBlog() {
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-3 border-t border-[#E8DDD4] bg-[#FCFAF7] px-5 py-4 sm:flex-row sm:justify-end sm:px-7">
+              <div className="flex items-center justify-end gap-3 border-t border-[#E8DDD4] bg-[#FCFAF7] px-5 py-4 sm:px-7">
                 <button
                   type="button"
                   onClick={closeEditor}
-                  className="rounded-xl border border-[#E8DDD4] px-5 py-3 text-sm font-semibold text-[#5C4436] hover:bg-white"
+                  className="rounded-xl border border-[#E8DDD4] bg-white px-5 py-2.5 text-sm font-semibold text-[#8B7355] transition hover:bg-[#F7F3EE]"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  disabled={
-                    createMutation.isPending ||
-                    updateMutation.isPending
-                  }
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2E1208] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#452014] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#2E1208] px-6 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-[#4A2010] disabled:opacity-50"
                 >
                   <Save className="h-4 w-4" />
-
-                  {createMutation.isPending ||
-                  updateMutation.isPending
-                    ? "Saving..."
-                    : editingBlog
-                    ? "Save changes"
-                    : "Create post"}
+                  {editingBlog ? "Save changes" : "Create post"}
                 </button>
               </div>
             </form>

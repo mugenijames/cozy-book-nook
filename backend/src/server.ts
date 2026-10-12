@@ -1,3 +1,5 @@
+// backend/src/server.ts
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -16,7 +18,6 @@ import bookPreviewRoutes from "./routes/bookPreview.routes";
 import authRoutes from "./routes/auth.routes";
 import adminUserRoutes from "./routes/admin.user.routes";
 import blogRoutes from "./routes/blog.routes";
-
 
 // Load environment variables
 dotenv.config();
@@ -76,8 +77,9 @@ app.get("/api", (_req, res) => {
       books: "/api/books",
       adminBooks: "/api/admin/books",
 
-      // Blogs
+      // Blogs (Supports both /api/blogs and /api/blog)
       blogs: "/api/blogs",
+      blogAlias: "/api/blog",
       adminBlogs: "/api/blogs/admin",
 
       // Authentication
@@ -112,13 +114,11 @@ app.get("/api", (_req, res) => {
 ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   BLOG ROUTES
+   BLOG ROUTES (Mounted with both plural and singular aliases)
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/blogs",
-  blogRoutes
-);
+app.use("/api/blogs", blogRoutes);
+app.use("/api/blog", blogRoutes);
 
 /* --------------------------------------------------------------------------
    PUBLIC BOOK ROUTES
@@ -260,7 +260,7 @@ app.use(
 app.listen(PORT, () => {
   console.log("");
   console.log("==================================================");
-  console.log("        COZY BOOK NOOK API SERVER");
+  console.log("         COZY BOOK NOOK API SERVER");
   console.log("==================================================");
   console.log("");
 
@@ -281,11 +281,7 @@ app.listen(PORT, () => {
   );
 
   console.log(
-    `📝 Blogs: http://localhost:${PORT}/api/blogs`
-  );
-
-  console.log(
-    `🔐 Admin Blogs: http://localhost:${PORT}/api/blogs/admin`
+    `📝 Blogs: http://localhost:${PORT}/api/blogs & /api/blog`
   );
 
   console.log(
@@ -300,4 +296,3 @@ app.listen(PORT, () => {
   console.log("==================================================");
   console.log("");
 });
-
