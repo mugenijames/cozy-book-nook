@@ -11,6 +11,8 @@ import {
   PiggyBank,
   Users,
 } from "lucide-react";
+ 
+import davidImage from "@/assets/seminar.jpeg";
 
 // ============================================================
 // TYPES
@@ -86,7 +88,7 @@ export const PROGRAM_ICON_MAP: Record<
 
 const images = {
   church:
-    "https://images.unsplash.com/photo-1438032005730-c779502df39b?auto=format&fit=crop&w=1600&q=85",
+    "@/assets/min2.jpeg",
 
   prayer:
     "https://images.unsplash.com/photo-1507692049790-de58290a4334?auto=format&fit=crop&w=1200&q=85",
@@ -98,7 +100,7 @@ const images = {
     "https://images.unsplash.com/photo-1519491050282-cf00c82424b4?auto=format&fit=crop&w=1200&q=85",
 
   leadership:
-    "https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=85",
+    "@/assets/student-leaders-empowerment-kakuma3.jpg",
 
   teamwork:
     "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=85",

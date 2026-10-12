@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Quote, ChevronDown, ChevronUp } from "lucide-react";
-import davidImg from "@/assets/david.png";
+import davidImg from "@/assets/seminar.jpeg";
 
 const About = () => {
   const [expanded, setExpanded] = useState(false);
@@ -65,7 +65,7 @@ const About = () => {
                 whileHover={{ scale: 1.025 }}
                 className="h-full w-full object-cover object-top transition-transform duration-700"
               />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#172033]/45 via-transparent to-transparent" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[gold]/50 via-transparent to-transparent" />
             </div>
 
             {/* Identity card */}
