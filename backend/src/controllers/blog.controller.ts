@@ -1,3 +1,5 @@
+// backend/src/controllers/blogController.ts
+
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
 
@@ -99,7 +101,7 @@ export const getAllBlogs = async (
 };
 
 /*
- * ADMIN: Create blog post
+ * ADMIN: Create blog post (Defaults to published)
  */
 export const createBlog = async (
   req: Request,
@@ -142,7 +144,8 @@ export const createBlog = async (
       });
     }
 
-    const shouldPublish = Boolean(published);
+    // Default to published (true) if not explicitly set to false
+    const shouldPublish = published !== undefined ? Boolean(published) : true;
 
     const blog = await prisma.blogPost.create({
       data: {

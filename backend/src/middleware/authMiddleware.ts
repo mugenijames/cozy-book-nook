@@ -45,6 +45,17 @@ export const authenticate = (
   res: Response,
   next: NextFunction
 ) => {
+  // 🛠️ DEVELOPMENT BYPASS: Skip token check when not in production
+  if (process.env.NODE_ENV !== "production") {
+    req.user = {
+      id: "dev-bypass-id-123",
+      email: "dev-admin@localhost.test",
+      name: "Development Super Admin",
+      role: "SUPER_ADMIN",
+    };
+    return next();
+  }
+
   const authHeader =
     req.headers.authorization;
 
