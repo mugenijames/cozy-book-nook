@@ -53,6 +53,7 @@ interface BookData {
   pages?: number | null;
   rating?: number | null;
   priceCents?: number | null;
+  hasDigitalEdition?: boolean;
 }
 
 // Exchange rates relative to KES
@@ -131,6 +132,7 @@ const BookDetail = () => {
         pages: foundBook.pages ?? undefined,
         rating: foundBook.rating ?? undefined,
         priceCents: foundBook.priceCents ?? undefined,
+        hasDigitalEdition: Boolean(foundBook.hasDigitalEdition),
       };
 
       setBook(mapped);
@@ -202,7 +204,7 @@ const BookDetail = () => {
      PDF AVAILABILITY
   ========================================================= */
 
-  const hasPdf = Boolean(book?.pdfUrl && book.pdfUrl.trim());
+  const hasPdf = Boolean(book?.hasDigitalEdition || (book?.pdfUrl && book.pdfUrl.trim()));
 
   /* =========================================================
      DOWNLOAD BOOK
@@ -211,7 +213,7 @@ const BookDetail = () => {
   const handleDownload = async () => {
     if (!book) return;
 
-    if (!book.pdfUrl) {
+    if (!hasPdf) {
       toast.error("PDF not available for this book yet.");
       return;
     }
@@ -220,9 +222,11 @@ const BookDetail = () => {
 
     try {
       if (isFree || purchased) {
-        window.open(book.pdfUrl, "_blank", "noopener,noreferrer");
-        toast.success(`Opening ${book.title}`);
-        return;
+        if (book.pdfUrl) {
+          window.open(book.pdfUrl, "_blank", "noopener,noreferrer");
+          toast.success(`Opening ${book.title}`);
+          return;
+        }
       }
 
       const { pdfUrl, title } = await downloadBookPdf(book.id);
@@ -566,7 +570,7 @@ const BookDetail = () => {
                       <Button
                         type="button"
                         onClick={handleBuyClick}
-                        disabled={downloading || (!hasPdf && !isFree)}
+                        disabled={downloading || !hasPdf}
                         className={`min-h-[52px] flex-1 rounded-xl px-7 font-semibold shadow-md transition-all sm:flex-none ${
                           purchased || isFree
                             ? "bg-green-600 text-white hover:bg-green-700"

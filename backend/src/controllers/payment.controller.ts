@@ -140,10 +140,10 @@ export const initiateMpesaPayment = async (req: Request, res: Response) => {
         BusinessShortCode: MPESA_SHORTCODE,
         Password: password,
         Timestamp: timestamp,
-        TransactionType: "CustomerPayBillOnline",
+        TransactionType: "CustomerPayBillOnline", // ✅ Corrected for Paybill Number (Paybill)
         Amount: Math.round(numericAmount),
         PartyA: formattedPhone,
-        PartyB: MPESA_SHORTCODE,
+        PartyB: MPESA_SHORTCODE, // ✅ Paybill receives funds
         PhoneNumber: formattedPhone,
         CallBackURL: `${process.env.API_PUBLIC_URL}/api/payments/mpesa/callback`,
         AccountReference: `BOOK-${book.slug || bookId.slice(0, 8)}`,

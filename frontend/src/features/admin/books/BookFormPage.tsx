@@ -308,8 +308,9 @@ const BookFormPage = () => {
       try {
         setLoadingBook(true);
 
+        // Fetch using the admin endpoint to ensure pdfUrl is included
         const book = await apiFetch<BookResponse>(
-          `/api/books/${id}`
+          `/api/admin/books/${id}`
         );
 
         console.log(
@@ -348,9 +349,9 @@ const BookFormPage = () => {
           listPrice:
             book.priceCents != null
               ? (
-                Number(book.priceCents) /
-                100
-              ).toFixed(2)
+                  Number(book.priceCents) /
+                  100
+                ).toFixed(2)
               : "",
 
           coverImage:
@@ -421,17 +422,11 @@ const BookFormPage = () => {
     const file =
       event.target.files?.[0];
 
-    /*
-     * Reset input so the same file can be
-     * selected again later.
-     */
     event.target.value = "";
 
     if (!file) {
       return;
     }
-
-    /* Validate type */
 
     const allowedTypes = [
       "image/jpeg",
@@ -447,8 +442,6 @@ const BookFormPage = () => {
       return;
     }
 
-    /* Validate size */
-
     const maxSize =
       10 * 1024 * 1024;
 
@@ -461,54 +454,10 @@ const BookFormPage = () => {
 
     try {
       setUploadingCover(true);
+      setCoverFileName(file.name);
 
-      setCoverFileName(
-        file.name
-      );
-
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "🖼️ STARTING COVER UPLOAD"
-      );
-
-      console.log(
-        "File:",
-        file.name
-      );
-
-      console.log(
-        "Size:",
-        file.size
-      );
-
-      console.log(
-        "Type:",
-        file.type
-      );
-
-      console.log(
-        "========================================"
-      );
-
-      const formData =
-        new FormData();
-
-      /*
-       * IMPORTANT:
-       *
-       * Your backend upload.routes.ts expects:
-       *
-       * uploadImage.single("cover")
-       *
-       * Therefore the field MUST be "cover".
-       */
-      formData.append(
-        "cover",
-        file
-      );
+      const formData = new FormData();
+      formData.append("cover", file);
 
       const response =
         await apiFetch<CoverUploadResponse>(
@@ -518,11 +467,6 @@ const BookFormPage = () => {
             body: formData,
           }
         );
-
-      console.log(
-        "🖼️ COVER UPLOAD RESPONSE:",
-        response
-      );
 
       const coverUrl =
         response.url ||
@@ -537,9 +481,6 @@ const BookFormPage = () => {
         );
       }
 
-      /*
-       * Save directly into React Hook Form.
-       */
       setValue(
         "coverImage",
         coverUrl,
@@ -548,11 +489,6 @@ const BookFormPage = () => {
           shouldTouch: true,
           shouldValidate: true,
         }
-      );
-
-      console.log(
-        "✅ COVER URL SAVED:",
-        coverUrl
       );
 
       toast.success(
@@ -581,10 +517,6 @@ const BookFormPage = () => {
      ========================================================================== */
 
   const handleRemoveCover = () => {
-    console.log(
-      "🗑️ Removing book cover"
-    );
-
     setValue(
       "coverImage",
       "",
@@ -640,50 +572,10 @@ const BookFormPage = () => {
 
     try {
       setUploadingPdf(true);
+      setPdfFileName(file.name);
 
-      setPdfFileName(
-        file.name
-      );
-
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "📕 STARTING PDF UPLOAD"
-      );
-
-      console.log(
-        "File:",
-        file.name
-      );
-
-      console.log(
-        "Size:",
-        file.size
-      );
-
-      console.log(
-        "Type:",
-        file.type
-      );
-
-      console.log(
-        "========================================"
-      );
-
-      const formData =
-        new FormData();
-
-      /*
-       * Backend expects:
-       *
-       * uploadPdf.single("pdf")
-       */
-      formData.append(
-        "pdf",
-        file
-      );
+      const formData = new FormData();
+      formData.append("pdf", file);
 
       const response =
         await apiFetch<PdfUploadResponse>(
@@ -693,11 +585,6 @@ const BookFormPage = () => {
             body: formData,
           }
         );
-
-      console.log(
-        "📕 PDF UPLOAD RESPONSE:",
-        response
-      );
 
       if (
         !response.success ||
@@ -709,9 +596,6 @@ const BookFormPage = () => {
         );
       }
 
-      /*
-       * Save PDF URL.
-       */
       setValue(
         "pdfUrl",
         response.pdfUrl,
@@ -722,9 +606,6 @@ const BookFormPage = () => {
         }
       );
 
-      /*
-       * Save preview image URL.
-       */
       setValue(
         "pdfPreviewImage",
         response.pdfPreviewImage ||
@@ -734,16 +615,6 @@ const BookFormPage = () => {
           shouldTouch: true,
           shouldValidate: true,
         }
-      );
-
-      console.log(
-        "✅ PDF URL SAVED:",
-        response.pdfUrl
-      );
-
-      console.log(
-        "🖼️ PDF PREVIEW SAVED:",
-        response.pdfPreviewImage
       );
 
       toast.success(
@@ -772,10 +643,6 @@ const BookFormPage = () => {
      ========================================================================== */
 
   const handleRemovePdf = () => {
-    console.log(
-      "🗑️ Removing PDF"
-    );
-
     setValue(
       "pdfUrl",
       "",
@@ -804,51 +671,19 @@ const BookFormPage = () => {
   };
 
   /* ==========================================================================
-     GENERATE AI PREVIEW
+     GENRE & PREVIEW
      ========================================================================== */
 
   const generatePreviewForBook = async (
     bookId: string,
     uploadedPdfUrl?: string | null
   ) => {
-    if (!bookId) {
-      throw new Error(
-        "Cannot generate preview without a book ID."
-      );
-    }
-
-    if (!uploadedPdfUrl) {
-      console.log(
-        "ℹ️ No PDF attached. Skipping AI preview."
-      );
-
+    if (!bookId || !uploadedPdfUrl) {
       return null;
     }
 
     try {
       setGeneratingPreview(true);
-
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "🤖 GENERATING AI BOOK PREVIEW"
-      );
-
-      console.log(
-        "Book ID:",
-        bookId
-      );
-
-      console.log(
-        "PDF URL:",
-        uploadedPdfUrl
-      );
-
-      console.log(
-        "========================================"
-      );
 
       const response =
         await apiFetch<PreviewResponse>(
@@ -857,11 +692,6 @@ const BookFormPage = () => {
             method: "POST",
           }
         );
-
-      console.log(
-        "🤖 AI PREVIEW RESPONSE:",
-        response
-      );
 
       if (!response.success) {
         throw new Error(
@@ -894,29 +724,15 @@ const BookFormPage = () => {
   };
 
   /* ==========================================================================
-     SUBMIT
+     SUBMIT (FIXED TO TARGET /api/admin/books)
      ========================================================================== */
 
   const onSubmit = async (
     values: BookFormValues
   ) => {
-    if (uploadingPdf) {
+    if (uploadingPdf || uploadingCover || generatingPreview) {
       toast.error(
-        "Please wait for the PDF upload to finish."
-      );
-      return;
-    }
-
-    if (uploadingCover) {
-      toast.error(
-        "Please wait for the cover upload to finish."
-      );
-      return;
-    }
-
-    if (generatingPreview) {
-      toast.error(
-        "Please wait for preview generation to finish."
+        "Please wait for ongoing uploads or tasks to finish."
       );
       return;
     }
@@ -933,42 +749,6 @@ const BookFormPage = () => {
       const currentPreviewImage =
         values.pdfPreviewImage?.trim() ||
         null;
-
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "📦 FORM SUBMISSION"
-      );
-
-      console.log(
-        "Title:",
-        values.title
-      );
-
-      console.log(
-        "Cover:",
-        currentCoverImage
-      );
-
-      console.log(
-        "PDF:",
-        currentPdfUrl
-      );
-
-      console.log(
-        "PDF Preview:",
-        currentPreviewImage
-      );
-
-      console.log(
-        "========================================"
-      );
-
-      /* --------------------------------------------------------------------
-         PRICE
-         -------------------------------------------------------------------- */
 
       let priceCents:
         | number
@@ -994,34 +774,26 @@ const BookFormPage = () => {
         }
       }
 
-      /* --------------------------------------------------------------------
-         NUMERIC VALUES
-         -------------------------------------------------------------------- */
-
       const publishedYear =
         values.publishedYear.trim() !== ""
           ? Number(
-            values.publishedYear
-          )
+              values.publishedYear
+            )
           : null;
 
       const pages =
         values.pages.trim() !== ""
           ? Number(
-            values.pages
-          )
+              values.pages
+            )
           : null;
 
       const rating =
         values.rating.trim() !== ""
           ? Number(
-            values.rating
-          )
+              values.rating
+            )
           : 0;
-
-      /* --------------------------------------------------------------------
-         PAYLOAD
-         -------------------------------------------------------------------- */
 
       const payload = {
         title:
@@ -1060,35 +832,21 @@ const BookFormPage = () => {
           undefined,
       };
 
-      console.log(
-        "📦 PAYLOAD:",
-        JSON.stringify(
-          payload,
-          null,
-          2
-        )
-      );
-
       let savedBook:
         | BookResponse
         | undefined;
 
       /* --------------------------------------------------------------------
-         UPDATE
+         UPDATE BOOK (Targeting /api/admin/books/:id)
          -------------------------------------------------------------------- */
 
       if (
         isEditing &&
         id
       ) {
-        console.log(
-          "✏️ Updating existing book:",
-          id
-        );
-
         savedBook =
           await apiFetch<BookResponse>(
-            `/api/books/${id}`,
+            `/api/admin/books/${id}`,
             {
               method: "PUT",
               body:
@@ -1100,17 +858,13 @@ const BookFormPage = () => {
       }
 
       /* --------------------------------------------------------------------
-         CREATE
+         CREATE BOOK (Targeting /api/admin/books)
          -------------------------------------------------------------------- */
 
       else {
-        console.log(
-          "📚 Creating new book"
-        );
-
         savedBook =
           await apiFetch<BookResponse>(
-            "/api/books",
+            "/api/admin/books",
             {
               method: "POST",
               body:
@@ -1121,56 +875,11 @@ const BookFormPage = () => {
           );
       }
 
-      /* --------------------------------------------------------------------
-         SAVED
-         -------------------------------------------------------------------- */
-
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "✅ BOOK SUCCESSFULLY SAVED"
-      );
-
-      console.log(
-        "Saved book:",
-        savedBook
-      );
-
-      console.log(
-        "Book ID:",
-        savedBook?.id
-      );
-
-      console.log(
-        "Saved cover:",
-        savedBook?.coverImage
-      );
-
-      console.log(
-        "Saved PDF:",
-        savedBook?.pdfUrl
-      );
-
-      console.log(
-        "Saved preview:",
-        savedBook?.pdfPreviewImage
-      );
-
-      console.log(
-        "========================================"
-      );
-
       if (!savedBook?.id) {
         throw new Error(
           "The backend saved the book but did not return a book ID."
         );
       }
-
-      /* --------------------------------------------------------------------
-         AI PREVIEW
-         -------------------------------------------------------------------- */
 
       if (
         savedBook.pdfUrl
@@ -1180,10 +889,6 @@ const BookFormPage = () => {
           savedBook.pdfUrl
         );
       }
-
-      /* --------------------------------------------------------------------
-         SUCCESS
-         -------------------------------------------------------------------- */
 
       toast.success(
         isEditing
@@ -1219,7 +924,6 @@ const BookFormPage = () => {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin" />
-
           <p className="text-sm text-gray-500">
             Loading book...
           </p>
@@ -1236,13 +940,9 @@ const BookFormPage = () => {
     <div className="min-h-screen bg-[#EEF2F7] p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-5xl">
 
-        {/* ================================================================
-            HEADER
-            ================================================================ */}
-
+        {/* HEADER */}
         <div className="mb-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-
             <Button
               type="button"
               variant="outline"
@@ -1274,14 +974,10 @@ const BookFormPage = () => {
                 cover and digital PDF.
               </p>
             </div>
-
           </div>
         </div>
 
-        {/* ================================================================
-            FORM
-            ================================================================ */}
-
+        {/* FORM */}
         <form
           onSubmit={handleSubmit(
             onSubmit
@@ -1289,14 +985,9 @@ const BookFormPage = () => {
           className="space-y-6"
         >
 
-          {/* ==============================================================
-              BASIC INFORMATION
-              ============================================================== */}
-
+          {/* BASIC INFORMATION */}
           <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-
             <div className="mb-6 flex items-center gap-3">
-
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C17B4F]/10">
                 <BookOpen className="h-5 w-5 text-[#C17B4F]" />
               </div>
@@ -1310,15 +1001,12 @@ const BookFormPage = () => {
                   Enter the details of the book.
                 </p>
               </div>
-
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
 
               {/* TITLE */}
-
               <div className="md:col-span-2">
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Title *
                 </label>
@@ -1339,13 +1027,10 @@ const BookFormPage = () => {
                     {errors.title.message}
                   </p>
                 )}
-
               </div>
 
               {/* AUTHOR */}
-
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Author *
                 </label>
@@ -1366,13 +1051,10 @@ const BookFormPage = () => {
                     {errors.author.message}
                   </p>
                 )}
-
               </div>
 
               {/* GENRE */}
-
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Genre
                 </label>
@@ -1383,13 +1065,10 @@ const BookFormPage = () => {
                   )}
                   placeholder="Fiction, Business, Christian..."
                 />
-
               </div>
 
               {/* YEAR */}
-
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Published Year
                 </label>
@@ -1401,13 +1080,10 @@ const BookFormPage = () => {
                   )}
                   placeholder="2026"
                 />
-
               </div>
 
               {/* PAGES */}
-
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Pages
                 </label>
@@ -1419,13 +1095,10 @@ const BookFormPage = () => {
                   )}
                   placeholder="250"
                 />
-
               </div>
 
               {/* RATING */}
-
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Rating
                 </label>
@@ -1440,15 +1113,12 @@ const BookFormPage = () => {
                   )}
                   placeholder="4.5"
                 />
-
               </div>
 
               {/* PRICE */}
-
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Price
+                  Price ($)
                 </label>
 
                 <Input
@@ -1460,17 +1130,10 @@ const BookFormPage = () => {
                   )}
                   placeholder="10.00"
                 />
-
-                <p className="mt-1 text-xs text-gray-500">
-                  Enter the selling price.
-                </p>
-
               </div>
 
               {/* SLUG */}
-
               <div>
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Slug
                 </label>
@@ -1481,13 +1144,10 @@ const BookFormPage = () => {
                   )}
                   placeholder="book-title"
                 />
-
               </div>
 
               {/* DESCRIPTION */}
-
               <div className="md:col-span-2">
-
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Description
                 </label>
@@ -1499,561 +1159,191 @@ const BookFormPage = () => {
                   rows={6}
                   placeholder="Write a description of the book..."
                 />
-
               </div>
 
             </div>
           </section>
 
-          {/* ==============================================================
-              BOOK COVER
-              ============================================================== */}
-
+          {/* COVER IMAGE SECTION */}
           <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-
             <div className="mb-6 flex items-center gap-3">
-
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
                 <ImageIcon className="h-5 w-5 text-orange-600" />
               </div>
 
               <div>
                 <h2 className="font-bold text-[#2E1208]">
-                  Book Cover
+                  Book Cover Image
                 </h2>
-
                 <p className="text-sm text-gray-500">
-                  Upload the cover image for this book.
+                  Upload a cover image for the book.
                 </p>
               </div>
-
             </div>
 
-            {/* UPLOAD */}
-
-            <label
-              className={`
-                flex
-                min-h-[180px]
-                cursor-pointer
-                flex-col
-                items-center
-                justify-center
-                rounded-2xl
-                border-2
-                border-dashed
-                p-6
-                text-center
-                transition
-                ${uploadingCover
-                  ? "cursor-not-allowed border-orange-300 bg-orange-50"
-                  : "border-gray-300 hover:border-[#C17B4F] hover:bg-[#C17B4F]/5"
-                }
-              `}
-            >
-
-              {uploadingCover ? (
-                <>
-                  <Loader2 className="mb-3 h-10 w-10 animate-spin text-orange-600" />
-
-                  <p className="font-semibold text-orange-700">
-                    Uploading cover...
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    Please wait.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Upload className="mb-3 h-10 w-10 text-[#C17B4F]" />
-
-                  <p className="font-semibold text-[#2E1208]">
-                    Click to upload book cover
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    JPG, PNG, WebP or GIF up to 10MB
-                  </p>
-                </>
-              )}
-
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
-                className="hidden"
-                disabled={
-                  uploadingCover ||
-                  uploadingPdf ||
-                  generatingPreview
-                }
-                onChange={
-                  handleCoverUpload
-                }
-              />
-
-            </label>
-
-            {/* COVER PREVIEW */}
-
-            {coverImage ? (
-              <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5">
-
-                <div className="flex items-start gap-4">
-
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-100">
-                    <ImageIcon className="h-6 w-6 text-green-700" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-
-                      <div>
-                        <p className="font-semibold text-green-800">
-                          Cover uploaded
-                        </p>
-
-                        <p className="text-sm text-green-700">
-                          {coverFileName ||
-                            "Book cover"}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        disabled={
-                          loading ||
-                          uploadingCover ||
-                          uploadingPdf ||
-                          generatingPreview
-                        }
-                        onClick={
-                          handleRemoveCover
-                        }
-                        className="rounded-full p-2 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        title="Remove cover"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-
-                    </div>
-
-                    {/* IMAGE */}
-
-                    <div className="mt-4 overflow-hidden rounded-xl border bg-white p-4">
-
-                      <img
-                        src={coverImage}
-                        alt={
-                          valuesToAlt(
-                            watch("title")
-                          )
-                        }
-                        className="mx-auto block max-h-[500px] w-auto max-w-full rounded-lg object-contain"
-                        onLoad={() => {
-                          console.log(
-                            "✅ Cover image loaded successfully"
-                          );
-                        }}
-                        onError={(event) => {
-                          console.error(
-                            "❌ Cover image failed to load:",
-                            coverImage
-                          );
-
-                          event.currentTarget.style.display =
-                            "none";
-                        }}
-                      />
-
-                    </div>
-
-                    {/* URL */}
-
-                    <div className="mt-4 rounded-lg bg-white p-3">
-
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Cover Image URL
+            <div className="space-y-4">
+              {coverImage ? (
+                <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={coverImage}
+                      alt="Cover Preview"
+                      className="h-16 w-12 rounded object-cover shadow-sm"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        {coverFileName || "Cover Image Loaded"}
                       </p>
-
-                      <p className="break-all text-xs text-gray-700">
-                        {coverImage}
-                      </p>
-
-                    </div>
-
-                    {/* OPEN IMAGE */}
-
-                    <div className="mt-3">
-
                       <a
                         href={coverImage}
                         target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full border border-green-300 bg-white px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+                        rel="noreferrer"
+                        className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
                       >
-                        <ExternalLink className="h-4 w-4" />
-                        Open Cover
+                        View Full Image <ExternalLink className="h-3 w-3" />
                       </a>
-
                     </div>
-
                   </div>
-                </div>
-              </div>
-            ) : (
-              !uploadingCover && (
-                <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-700">
-                  No book cover is currently attached.
-                </div>
-              )
-            )}
 
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleRemoveCover}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Remove
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-6 text-center hover:border-gray-400">
+                  <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                  <p className="text-sm font-medium text-gray-700">
+                    Click to upload or drag and drop
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    PNG, JPG, WEBP up to 10MB
+                  </p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverUpload}
+                    className="mt-4 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
+                  />
+                </div>
+              )}
+              {uploadingCover && (
+                <div className="flex items-center gap-2 text-sm text-orange-600">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Uploading cover image...
+                </div>
+              )}
+            </div>
           </section>
 
-          {/* ==============================================================
-              PDF
-              ============================================================== */}
-
+          {/* DIGITAL PDF SECTION */}
           <section className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-
             <div className="mb-6 flex items-center gap-3">
-
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
                 <FileText className="h-5 w-5 text-blue-600" />
               </div>
 
               <div>
                 <h2 className="font-bold text-[#2E1208]">
-                  Digital PDF
+                  Digital Edition (PDF)
                 </h2>
-
                 <p className="text-sm text-gray-500">
-                  Upload the PDF for the digital edition.
+                  Upload the book's PDF document for digital distribution.
                 </p>
               </div>
-
             </div>
 
-            {/* PDF UPLOAD */}
-
-            <label
-              className={`
-                flex
-                min-h-[180px]
-                cursor-pointer
-                flex-col
-                items-center
-                justify-center
-                rounded-2xl
-                border-2
-                border-dashed
-                p-6
-                text-center
-                transition
-                ${uploadingPdf ||
-                  generatingPreview
-                  ? "cursor-not-allowed border-blue-300 bg-blue-50"
-                  : "border-gray-300 hover:border-[#C17B4F] hover:bg-[#C17B4F]/5"
-                }
-              `}
-            >
-
-              {uploadingPdf ? (
-                <>
-                  <Loader2 className="mb-3 h-10 w-10 animate-spin text-blue-600" />
-
-                  <p className="font-semibold text-blue-700">
-                    Uploading PDF...
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    Please wait.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Upload className="mb-3 h-10 w-10 text-[#C17B4F]" />
-
-                  <p className="font-semibold text-[#2E1208]">
-                    Click to upload PDF
-                  </p>
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    PDF files up to 20MB
-                  </p>
-                </>
-              )}
-
-              <input
-                type="file"
-                accept="application/pdf,.pdf"
-                className="hidden"
-                disabled={
-                  uploadingPdf ||
-                  uploadingCover ||
-                  generatingPreview
-                }
-                onChange={
-                  handlePdfUpload
-                }
-              />
-
-            </label>
-
-            {/* CURRENT PDF */}
-
-            {pdfUrl ? (
-              <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-5">
-
-                <div className="flex items-start gap-4">
-
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-100">
-                    <FileText className="h-6 w-6 text-green-700" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-
-                      <div>
-                        <p className="font-semibold text-green-800">
-                          PDF uploaded
-                        </p>
-
-                        <p className="text-sm text-green-700">
-                          {pdfFileName ||
-                            "Digital book PDF"}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        disabled={
-                          loading ||
-                          uploadingPdf ||
-                          uploadingCover ||
-                          generatingPreview
-                        }
-                        onClick={
-                          handleRemovePdf
-                        }
-                        className="rounded-full p-2 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        title="Remove PDF"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-
+            <div className="space-y-4">
+              {pdfUrl ? (
+                <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-12 w-10 items-center justify-center rounded bg-blue-100 text-blue-700 font-bold">
+                      PDF
                     </div>
-
-                    {/* PDF PREVIEW IMAGE */}
-
-                    {pdfPreviewImage && (
-                      <div className="mt-4 rounded-xl border bg-white p-4">
-
-                        <p className="mb-3 text-sm font-semibold text-gray-700">
-                          PDF Preview
-                        </p>
-
-                        <img
-                          src={
-                            pdfPreviewImage
-                          }
-                          alt="PDF first page preview"
-                          className="mx-auto block max-h-[500px] w-auto max-w-full rounded-lg border object-contain"
-                          onLoad={() => {
-                            console.log(
-                              "✅ PDF preview loaded"
-                            );
-                          }}
-                          onError={() => {
-                            console.error(
-                              "❌ PDF preview failed:",
-                              pdfPreviewImage
-                            );
-                          }}
-                        />
-
-                      </div>
-                    )}
-
-                    {/* PDF URL */}
-
-                    <div className="mt-4 rounded-lg bg-white p-3">
-
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        PDF URL
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        {pdfFileName || "PDF Document Attached"}
                       </p>
-
-                      <p className="break-all text-xs text-gray-700">
-                        {pdfUrl}
-                      </p>
-
-                    </div>
-
-                    {/* ACTIONS */}
-
-                    <div className="mt-4 flex flex-wrap gap-3">
-
                       <a
                         href={pdfUrl}
                         target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-full border border-green-300 bg-white px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+                        rel="noreferrer"
+                        className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
                       >
-                        <ExternalLink className="h-4 w-4" />
-                        Open PDF
+                        View PDF File <ExternalLink className="h-3 w-3" />
                       </a>
-
-                      {pdfPreviewImage && (
-                        <a
-                          href={
-                            pdfPreviewImage
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-full border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Open Preview
-                        </a>
-                      )}
-
                     </div>
-
                   </div>
+
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleRemovePdf}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Remove
+                  </Button>
                 </div>
-              </div>
-            ) : (
-              !uploadingPdf &&
-              !generatingPreview && (
-                <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-700">
-                  No PDF is currently attached to this book.
-                </div>
-              )
-            )}
-
-          </section>
-
-          {/* ==============================================================
-              AI PREVIEW
-              ============================================================== */}
-
-          <section className="rounded-2xl border border-purple-100 bg-purple-50 p-6">
-
-            <div className="flex items-start gap-4">
-
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-100">
-                <Sparkles className="h-6 w-6 text-purple-600" />
-              </div>
-
-              <div>
-
-                <h3 className="font-bold text-purple-900">
-                  AI Book Preview
-                </h3>
-
-                <p className="mt-1 text-sm leading-6 text-purple-800">
-                  After the book is saved with a
-                  PDF, the system automatically
-                  analyzes the uploaded PDF and
-                  generates the book preview.
-                </p>
-
-                <div className="mt-3 rounded-lg bg-white/70 p-3 text-xs text-purple-700">
-
-                  <p>
-                    <strong>
-                      PDF →
-                    </strong>{" "}
-                    AI analysis →
-                    summary →
-                    key themes →
-                    reading information →
-                    Preview
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 p-6 text-center hover:border-gray-400">
+                  <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                  <p className="text-sm font-medium text-gray-700">
+                    Click to upload or drag and drop PDF file
                   </p>
-
+                  <p className="text-xs text-gray-500 mt-1">
+                    PDF format up to 20MB
+                  </p>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handlePdfUpload}
+                    className="mt-4 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                  />
                 </div>
-
-              </div>
-
+              )}
+              {uploadingPdf && (
+                <div className="flex items-center gap-2 text-sm text-blue-600">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Uploading PDF file...
+                </div>
+              )}
             </div>
-
           </section>
 
-          {/* ==============================================================
-              SAVE
-              ============================================================== */}
-
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-
+          {/* SUBMIT BUTTON */}
+          <div className="flex items-center justify-end gap-4">
             <Button
               type="button"
               variant="outline"
-              disabled={
-                loading ||
-                uploadingPdf ||
-                uploadingCover ||
-                generatingPreview
-              }
-              onClick={() =>
-                navigate(
-                  "/admin/books"
-                )
-              }
-              className="rounded-full px-6"
+              disabled={loading || uploadingPdf || uploadingCover}
+              onClick={() => navigate("/admin/books")}
             >
               Cancel
             </Button>
 
             <Button
               type="submit"
-              disabled={
-                loading ||
-                uploadingPdf ||
-                uploadingCover ||
-                generatingPreview
-              }
-              className="rounded-full bg-[#C17B4F] px-7 text-white hover:bg-[#A55E36]"
+              disabled={loading || uploadingPdf || uploadingCover || generatingPreview}
+              className="bg-[#2E1208] text-white hover:bg-[#3d180b]"
             >
-
-              {loading ||
-                generatingPreview ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> Saving...
+                </>
               ) : (
-                <Save className="mr-2 h-5 w-5" />
+                <>
+                  <Save className="h-4 w-4 mr-2" /> {isEditing ? "Update Book" : "Create Book"}
+                </>
               )}
-
-              {generatingPreview
-                ? "Generating Preview..."
-                : loading
-                  ? "Saving..."
-                  : isEditing
-                    ? "Save Changes"
-                    : "Create Book"}
-
             </Button>
-
           </div>
 
         </form>
-
       </div>
     </div>
   );
 };
-
-/* ==========================================================================
-   HELPER
-   ========================================================================== */
-
-function valuesToAlt(
-  title: string
-): string {
-  return title
-    ? `${title} book cover`
-    : "Book cover";
-}
 
 export default BookFormPage;
