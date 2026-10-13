@@ -41,12 +41,22 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${getApiBase()}${path}`, {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const response = await fetch(`${getApiBase()}${cleanPath}`, {
     ...options,
     headers,
   });
 
-  const data = await response.json().catch(() => ({}));
+  // Handle empty or non-JSON responses (like 204 No Content)
+  const text = await response.text();
+  let data: any = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text };
+    }
+  }
 
   if (!response.ok) {
     throw new Error(
@@ -157,4 +167,3 @@ export async function adminDevLogin() {
     method: "POST",
   });
 }
-

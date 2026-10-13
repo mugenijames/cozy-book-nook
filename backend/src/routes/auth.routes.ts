@@ -1,14 +1,12 @@
-﻿import { Router } from "express";
+﻿
+import { Router } from "express";
 
 import {
   adminLogin,
-  devLogin,
   getCurrentAdmin,
 } from "../controllers/auth.controller";
 
-import {
-  authenticate,
-} from "../middleware/authMiddleware";
+import { authenticate } from "../middleware/authMiddleware";
 
 const router = Router();
 
@@ -16,28 +14,12 @@ const router = Router();
    ADMIN LOGIN
    ============================================================ */
 
-router.post(
-  "/login",
-  adminLogin
-);
+router.post("/login", adminLogin);
 
 /* ============================================================
-   DEVELOPMENT LOGIN
+   CURRENT AUTHENTICATED ADMIN
    ============================================================ */
 
-router.post(
-  "/dev-login",
-  devLogin
-);
-
-/* ============================================================
-   CURRENT ADMIN
-   ============================================================ */
-
-router.get(
-  "/me",
-  authenticate,
-  getCurrentAdmin
-);
+router.get("/me", authenticate, getCurrentAdmin);
 
 export default router;

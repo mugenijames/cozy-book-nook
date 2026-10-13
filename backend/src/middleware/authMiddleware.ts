@@ -45,58 +45,36 @@ export const authenticate = (
   res: Response,
   next: NextFunction
 ) => {
-  // 🛠️ DEVELOPMENT BYPASS: Skip token check when not in production
-  if (process.env.NODE_ENV !== "production") {
-    req.user = {
-      id: "dev-bypass-id-123",
-      email: "dev-admin@localhost.test",
-      name: "Development Super Admin",
-      role: "SUPER_ADMIN",
-    };
-    return next();
-  }
-
-  const authHeader =
-    req.headers.authorization;
+  const authHeader = req.headers.authorization;
 
   const token =
-    authHeader &&
-    authHeader.startsWith("Bearer ")
+    authHeader && authHeader.startsWith("Bearer ")
       ? authHeader.substring(7)
       : null;
 
   if (!token) {
     return res.status(401).json({
-      error:
-        "Access denied. Authentication required.",
+      error: "Access denied. Authentication required.",
     });
   }
 
-  const JWT_SECRET =
-    process.env.JWT_SECRET;
+  const JWT_SECRET = process.env.JWT_SECRET;
 
   if (!JWT_SECRET) {
-    console.error(
-      "❌ JWT_SECRET is not configured."
-    );
+    console.error("❌ JWT_SECRET is not configured.");
 
     return res.status(500).json({
-      error:
-        "Authentication system is not configured.",
+      error: "Authentication system is not configured.",
     });
   }
 
   try {
-    const decoded =
-      jwt.verify(
-        token,
-        JWT_SECRET
-      ) as JwtPayload;
+    const decoded = jwt.verify(
+      token,
+      JWT_SECRET
+    ) as JwtPayload;
 
-    if (
-      !decoded.id ||
-      !decoded.role
-    ) {
+    if (!decoded.id || !decoded.role) {
       return res.status(401).json({
         error: "Invalid authentication token.",
       });
@@ -107,8 +85,7 @@ export const authenticate = (
       decoded.role !== "SUPER_ADMIN"
     ) {
       return res.status(403).json({
-        error:
-          "This account does not have administrator privileges.",
+        error: "This account does not have administrator privileges.",
       });
     }
 
@@ -121,14 +98,10 @@ export const authenticate = (
 
     next();
   } catch (error) {
-    console.error(
-      "❌ JWT verification failed:",
-      error
-    );
+    console.error("❌ JWT verification failed:", error);
 
     return res.status(401).json({
-      error:
-        "Invalid or expired authentication token.",
+      error: "Invalid or expired authentication token.",
     });
   }
 };
@@ -153,8 +126,7 @@ export const requireAdmin = (
     req.user.role !== "SUPER_ADMIN"
   ) {
     return res.status(403).json({
-      error:
-        "Administrator access required.",
+      error: "Administrator access required.",
     });
   }
 
@@ -176,12 +148,9 @@ export const requireSuperAdmin = (
     });
   }
 
-  if (
-    req.user.role !== "SUPER_ADMIN"
-  ) {
+  if (req.user.role !== "SUPER_ADMIN") {
     return res.status(403).json({
-      error:
-        "Super administrator access required.",
+      error: "Super administrator access required.",
     });
   }
 

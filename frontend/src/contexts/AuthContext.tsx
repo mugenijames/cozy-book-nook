@@ -1,9 +1,12 @@
+// frontend/src/context/AuthContext.tsx
+
 import {
   createContext,
   useContext,
   useState,
   ReactNode,
   useEffect,
+  useCallback,
 } from "react";
 import type { AdminRole } from "@/services/adminAuth";
 import { getCurrentAdmin } from "@/services/adminAuth";
@@ -54,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("admin_token");
     localStorage.removeItem("auth_token");
@@ -66,13 +69,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     setToken(null);
     setUser(null);
-  };
+  }, []);
 
   useEffect(() => {
     const storedToken =
       localStorage.getItem("token") ||
       localStorage.getItem("admin_token");
     const storedUser = readStoredUser();
+
+    // Check token expiry if stored
+    const tokenExpiry = localStorage.getItem("token_expiry");
+    if (tokenExpiry && Date.now() > Number(tokenExpiry)) {
+      logout();
+      setIsLoading(false);
+      return;
+    }
 
     if (!storedToken || !storedUser) {
       setIsLoading(false);
@@ -84,6 +95,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     getCurrentAdmin()
       .then((data) => {
+        if (!data?.user) {
+          logout();
+          return;
+        }
+
         const nextUser = {
           id: data.user.id,
           name: data.user.name,
@@ -101,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }, [logout]);
 
   const login = (newToken: string, nextUser: AuthUser) => {
     localStorage.setItem("token", newToken);
@@ -111,7 +127,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("admin_user", JSON.stringify(nextUser));
     localStorage.setItem(
       "token_expiry",
-      String(Date.now() + 8 * 60 * 60 * 1000)
+      String(Date.now() + 8 * 60 * 60 * 1000) // Matches 8h backend expiration
     );
 
     setToken(newToken);
