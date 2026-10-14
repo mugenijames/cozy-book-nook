@@ -30,8 +30,6 @@ import Home from "@/pages/Home";
 import BooksCatalogPage from "@/pages/Books";
 import BookDetail from "@/pages/BookDetail";
 import Courses from "@/pages/Courses";
-import AdminCourseBuilder from "@/pages/admin/AdminCourseBuilder";
-import AdminCourseEnrollments from "@/pages/admin/AdminCourseEnrollments";
 import CourseDetail from "@/pages/CourseDetail";
 import CourseLearn from "@/pages/CourseLearn";
 import ProgramActivityPage from "@/pages/ProgramActivity";
@@ -84,6 +82,8 @@ import AdminBlog from "@/pages/admin/AdminBlog";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminPayments from "@/pages/admin/AdminPayments";
 import AdminCourses from "@/pages/admin/AdminCourses";
+import AdminCourseBuilder from "@/pages/admin/AdminCourseBuilder";
+import AdminCourseEnrollments from "@/pages/admin/AdminCourseEnrollments";
 
 // ============================================================
 // ROUTE PROTECTION
@@ -171,7 +171,7 @@ function App() {
           />
 
           {/* ====================================================
-              COURSES
+              PUBLIC COURSES
           ==================================================== */}
 
           <Route
@@ -184,30 +184,6 @@ function App() {
             element={<CourseDetail />}
           />
 
-          {/* ====================================================
-              COURSE MANAGEMENT
-          ==================================================== */}
-
-          <Route
-            path="courses"
-            element={
-              <AdminCourses />
-            }
-          />
-
-          <Route
-            path="courses/:courseId/builder"
-            element={
-              <AdminCourseBuilder />
-            }
-          />
-
-          <Route
-            path="courses/:courseId/enrollments"
-            element={
-              <AdminCourseEnrollments />
-            }
-          />
           {/* ====================================================
               BLOGS
           ==================================================== */}
@@ -357,12 +333,29 @@ function App() {
 
           {/* ====================================================
               COURSE MANAGEMENT
+              /admin/courses
+              /admin/courses/:courseId/builder
+              /admin/courses/:courseId/enrollments
           ==================================================== */}
 
           <Route
             path="courses"
             element={
               <AdminCourses />
+            }
+          />
+
+          <Route
+            path="courses/:courseId/builder"
+            element={
+              <AdminCourseBuilder />
+            }
+          />
+
+          <Route
+            path="courses/:courseId/enrollments"
+            element={
+              <AdminCourseEnrollments />
             }
           />
 
