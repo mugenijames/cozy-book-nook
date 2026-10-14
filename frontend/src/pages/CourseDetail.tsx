@@ -1,29 +1,25 @@
 // frontend/src/pages/CourseDetail.tsx
 
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react"
+import { useParams, useNavigate } from "react-router-dom"; // <-- Make sure this points to react-router-dom
 import { getPublicCourseBySlug, Course } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   Clock,
   Award,
-  CheckCircle2,
   Lock,
   PlayCircle,
-  FileText,
   User,
   ShieldCheck,
-  ChevronRight,
   Loader2,
   Sparkles,
 } from "lucide-react";
-import CoursePaymentModal from "@/components/CoursePaymentModal";
+import { CoursePaymentModal } from "@/components/CoursePaymentModal"; // Match named or default export
 
 export default function CourseDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
