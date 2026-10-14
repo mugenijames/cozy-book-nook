@@ -23,7 +23,7 @@ import kakumaRefugeeChurch from "@/assets/Kakuma-refugee-church-outreach.jpg";
 import itolekaGirlsSchool from "@/assets/itoleka-girls-senior-school.jpg";
 import maianiBoysCu from "@/assets/joint-cu-service-ABC-Maiani-boys-makueni-county.jpg";
 import leadersEmpowerment from "@/assets/leaders-empowerment.jpg";
-import leadersTraining from "@/assets/leaders-training.jpg";
+import leadersTraining from "@/assets/leaders-training.jpeg";
 
 // ============================================================
 // TYPES
