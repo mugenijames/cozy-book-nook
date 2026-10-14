@@ -137,6 +137,43 @@ model Testimonial {
   @@map("testimonials")
 }
 
+// ============================================================
+// STUDENTS (NEW)
+// One record per person. The studentNumber (e.g. STU-2026-00042)
+// is assigned on their first enrolment/registration and is what
+// staff use to look students up. The internal `id` stays a UUID.
+// ============================================================
+
+model Student {
+  id            String   @id @default(uuid())
+  studentNumber String   @unique
+  fullName      String
+  email         String   @unique
+  phone         String?
+  passwordHash  String?  // set when the student creates a login
+  isActive      Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  courseEnrollments    CourseEnrollment[]
+  programRegistrations ProgramRegistration[]
+
+  @@index([fullName])
+  @@index([isActive])
+  @@index([createdAt])
+  @@map("students")
+}
+
+// Atomic counter used to generate sequential student numbers
+// (key example: "student-2026")
+model Counter {
+  key   String @id
+  value Int    @default(0)
+
+  @@map("counters")
+}
+
 model Program {
   id              String                @id @default(uuid())
   slug            String                @unique
@@ -188,6 +225,10 @@ model ProgramModule {
 model ProgramRegistration {
   id           String   @id @default(uuid())
   programId    String
+
+  // NEW — link to the student record (nullable so existing rows still work)
+  studentId    String?
+
   fullName     String
   email        String
   phone        String?
@@ -200,8 +241,10 @@ model ProgramRegistration {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   program      Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  student      Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
 
   @@index([programId])
+  @@index([studentId])
   @@index([email])
   @@index([status])
   @@index([createdAt])
@@ -302,6 +345,10 @@ model Lesson {
 model CourseEnrollment {
   id               String           @id @default(uuid())
   courseId         String
+
+  // NEW — link to the student record (nullable so existing rows still work)
+  studentId        String?
+
   fullName         String
   email            String
   phone            String?
@@ -319,11 +366,13 @@ model CourseEnrollment {
   updatedAt        DateTime         @updatedAt
 
   course           Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student          Student?         @relation(fields: [studentId], references: [id], onDelete: SetNull)
   progress         CourseProgress[]
   payments         CoursePayment[]
 
   @@unique([courseId, email])
   @@index([courseId])
+  @@index([studentId])
   @@index([email])
   @@index([paymentStatus])
   @@index([enrollmentStatus])
