@@ -23,7 +23,6 @@ import {
   Layers,
   Users,
   GraduationCap,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -272,7 +271,7 @@ export default function AdminCourses() {
                 </div>
               </div>
 
-              {/* ACTION TOOLBAR */}
+              {/* ACTION TOOLBAR (Absolute paths to prevent public redirect) */}
               <div className="p-5 pt-0 space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <Link to={`/admin/courses/${course.id}/builder`}>
