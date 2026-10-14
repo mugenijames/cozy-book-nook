@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   BookOpen,
+  GraduationCap,
   FileText,
   ShoppingCart,
   CreditCard,
@@ -32,6 +33,7 @@ const workspaceItems: SidebarItem[] = [
 
 const contentItems: SidebarItem[] = [
   { label: "Books", href: "/admin/books", icon: BookOpen },
+  { label: "Courses", href: "/admin/courses", icon: GraduationCap },
   { label: "Blog", href: "/admin/blog", icon: FileText },
 ];
 

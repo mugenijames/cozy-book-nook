@@ -1,5 +1,7 @@
-import { Outlet, useNavigate } from "react-router-dom";
+// frontend/src/components/admin/DashboardLayout.tsx
+
 import { useEffect, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import DashboardSidebar from "./DashboardSidebar";
 import { Menu, ExternalLink } from "lucide-react";
 
@@ -22,27 +24,25 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Sidebar Navigation Component */}
       <DashboardSidebar
         collapsed={collapsed}
-        onToggle={() =>
-          setCollapsed((value) => !value)
-        }
+        onToggle={() => setCollapsed((value) => !value)}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
 
+      {/* Main Wrapper */}
       <div
         className={[
           "min-h-screen bg-white transition-all duration-300",
-          collapsed
-            ? "lg:pl-[76px]"
-            : "lg:pl-[260px]",
+          collapsed ? "lg:pl-[76px]" : "lg:pl-[260px]",
         ].join(" ")}
       >
-        {/* Header */}
+        {/* Sticky Top Header */}
         <header className="sticky top-0 z-30 border-b border-[#E6E6E6] bg-white/95 backdrop-blur">
           <div className="flex h-[76px] items-center justify-between px-4 sm:px-6 lg:px-8">
-            {/* Mobile menu */}
+            {/* Mobile menu trigger */}
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
@@ -52,34 +52,30 @@ export default function DashboardLayout() {
               <Menu className="h-5 w-5" />
             </button>
 
-            {/* Desktop heading */}
+            {/* Desktop Branding Title */}
             <div className="hidden lg:block">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A227]">
                 David Emuria
               </p>
-
               <p className="mt-0.5 text-sm font-semibold text-[#222222]">
                 Publishing Administration
               </p>
             </div>
 
-            {/* Website */}
+            {/* Live Website Link */}
             <a
               href="/"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 rounded-lg border border-[#E0E0E0] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#333333] shadow-sm transition hover:border-[#C9A227] hover:text-[#A98216]"
             >
-              <span className="hidden sm:inline">
-                View Website
-              </span>
-
+              <span className="hidden sm:inline">View Website</span>
               <ExternalLink className="h-4 w-4" />
             </a>
           </div>
         </header>
 
-        {/* Main content */}
+        {/* Dynamic Nested Admin Pages */}
         <main className="min-h-[calc(100vh-76px)] bg-white px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
         </main>

@@ -18,6 +18,7 @@ import bookPreviewRoutes from "./routes/bookPreview.routes";
 import authRoutes from "./routes/auth.routes";
 import adminUserRoutes from "./routes/admin.user.routes";
 import blogRoutes from "./routes/blog.routes";
+import courseRoutes from "./routes/course.routes";
 
 // Load environment variables
 dotenv.config();
@@ -36,7 +37,7 @@ app.use(
     credentials: true,
   })
 );
- 
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -77,10 +78,14 @@ app.get("/api", (_req, res) => {
       books: "/api/books",
       adminBooks: "/api/admin/books",
 
-      // Blogs (Supports both /api/blogs and /api/blog)
+      // Blogs
       blogs: "/api/blogs",
       blogAlias: "/api/blog",
       adminBlogs: "/api/blogs/admin",
+
+      // Courses
+      courses: "/api/courses",
+      adminCourses: "/api/courses/admin",
 
       // Authentication
       auth: "/api/auth",
@@ -114,110 +119,83 @@ app.get("/api", (_req, res) => {
 ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   BLOG ROUTES (Mounted with both plural and singular aliases)
+   BLOG ROUTES
 -------------------------------------------------------------------------- */
 
 app.use("/api/blogs", blogRoutes);
 app.use("/api/blog", blogRoutes);
 
 /* --------------------------------------------------------------------------
+   COURSE ROUTES
+-------------------------------------------------------------------------- */
+
+app.use("/api/courses", courseRoutes);
+
+/* --------------------------------------------------------------------------
    PUBLIC BOOK ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/books",
-  bookRoutes
-);
+app.use("/api/books", bookRoutes);
 
 /* --------------------------------------------------------------------------
    ADMIN BOOK ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/admin/books",
-  adminBookRoutes
-);
+app.use("/api/admin/books", adminBookRoutes);
 
 /* --------------------------------------------------------------------------
    UPLOAD ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api",
-  uploadRoutes
-);
+app.use("/api", uploadRoutes);
 
 /* --------------------------------------------------------------------------
    CHECKOUT ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/checkout",
-  checkoutRoutes
-);
+app.use("/api/checkout", checkoutRoutes);
 
 /* --------------------------------------------------------------------------
    INVITATION ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/invite",
-  invitationRoutes
-);
+app.use("/api/invite", invitationRoutes);
 
 /* --------------------------------------------------------------------------
    INQUIRY ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/inquiries",
-  inquiryRoutes
-);
+app.use("/api/inquiries", inquiryRoutes);
 
 /* --------------------------------------------------------------------------
    ORDER ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/orders",
-  orderRoutes
-);
+app.use("/api/orders", orderRoutes);
 
 /* --------------------------------------------------------------------------
    PAYMENT ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/payments",
-  paymentRoutes
-);
+app.use("/api/payments", paymentRoutes);
 
 /* --------------------------------------------------------------------------
    BOOK PREVIEW ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api",
-  bookPreviewRoutes
-);
+app.use("/api", bookPreviewRoutes);
 
 /* --------------------------------------------------------------------------
    AUTHENTICATION ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/auth",
-  authRoutes
-);
+app.use("/api/auth", authRoutes);
 
 /* --------------------------------------------------------------------------
    ADMIN USER ROUTES
 -------------------------------------------------------------------------- */
 
-app.use(
-  "/api/admin/users",
-  adminUserRoutes
-);
+app.use("/api/admin/users", adminUserRoutes);
 
 /* ==========================================================================
    404 HANDLER
@@ -264,33 +242,14 @@ app.listen(PORT, () => {
   console.log("==================================================");
   console.log("");
 
-  console.log(
-    `🚀 Server: http://localhost:${PORT}`
-  );
-
-  console.log(
-    `❤️ Health: http://localhost:${PORT}/health`
-  );
-
-  console.log(
-    `📚 Books: http://localhost:${PORT}/api/books`
-  );
-
-  console.log(
-    `🔐 Admin Books: http://localhost:${PORT}/api/admin/books`
-  );
-
-  console.log(
-    `📝 Blogs: http://localhost:${PORT}/api/blogs & /api/blog`
-  );
-
-  console.log(
-    `👤 Authentication: http://localhost:${PORT}/api/auth`
-  );
-
-  console.log(
-    `👥 Admin Users: http://localhost:${PORT}/api/admin/users`
-  );
+  console.log(`🚀 Server: http://localhost:${PORT}`);
+  console.log(`❤️ Health: http://localhost:${PORT}/health`);
+  console.log(`📚 Books: http://localhost:${PORT}/api/books`);
+  console.log(`🔐 Admin Books: http://localhost:${PORT}/api/admin/books`);
+  console.log(`📝 Blogs: http://localhost:${PORT}/api/blogs & /api/blog`);
+  console.log(`🎓 Courses: http://localhost:${PORT}/api/courses`);
+  console.log(`👤 Authentication: http://localhost:${PORT}/api/auth`);
+  console.log(`👥 Admin Users: http://localhost:${PORT}/api/admin/users`);
 
   console.log("");
   console.log("==================================================");

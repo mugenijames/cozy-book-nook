@@ -1,386 +1,686 @@
+// frontend/src/pages/CourseDetail.tsx
+
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
-  BookMarked,
+  BookOpen,
   CheckCircle2,
-  Clock3,
+  Clock,
   GraduationCap,
-  Sparkles,
+  Loader2,
+  Lock,
+  PlayCircle,
+  Unlock,
+  User,
 } from "lucide-react";
+import { toast } from "sonner";
 
-const courses = [
-  {
-    slug: "foundations-of-christian-leadership",
-    title: "Foundations of Christian Leadership",
-    description:
-      "Develop biblical leadership principles, servant leadership skills, and practical wisdom for leading people with integrity.",
-    level: "Beginner",
-    duration: "6 Weeks",
-    price: "Free",
-    category: "Christian Leadership",
-    introduction:
-      "Leadership is more than having a position. It is about serving people, developing character, making wise decisions, and influencing others positively. This introductory course provides practical foundations for anyone who desires to grow as a Christian leader.",
-    objectives: [
-      "Understand biblical principles of servant leadership.",
-      "Develop integrity, humility, and responsibility as a leader.",
-      "Learn practical approaches to leading people effectively.",
-      "Understand the relationship between character and leadership.",
-      "Develop a personal leadership growth plan.",
-    ],
-    modules: [
-      "Understanding Biblical Leadership",
-      "Character and Integrity in Leadership",
-      "Servant Leadership",
-      "Leading People and Building Teams",
-      "Decision Making and Wisdom",
-      "Developing Your Leadership Influence",
-    ],
-  },
+import { getApiBase } from "@/services/api";
 
-  {
-    slug: "effective-christian-communication",
-    title: "Effective Christian Communication",
-    description:
-      "Learn how to communicate biblical truth clearly, confidently, and effectively in ministry, leadership, and everyday life.",
-    level: "Intermediate",
-    duration: "4 Weeks",
-    price: "KES 2,500",
-    category: "Communication",
-    introduction:
-      "Effective communication is essential in ministry, leadership, relationships, and everyday life. This course explores practical principles that can help you communicate with clarity, confidence, wisdom, and compassion.",
-    objectives: [
-      "Understand the foundations of effective communication.",
-      "Develop confidence when speaking to individuals and groups.",
-      "Learn how to communicate ideas clearly and simply.",
-      "Improve listening and interpersonal communication skills.",
-      "Apply communication principles in ministry and leadership.",
-    ],
-    modules: [
-      "Foundations of Effective Communication",
-      "Listening and Understanding Others",
-      "Speaking with Clarity and Confidence",
-      "Communication in Ministry and Leadership",
-    ],
-  },
+/* ============================================================
+   TYPES
+============================================================ */
 
-  {
-    slug: "personal-growth-and-purpose",
-    title: "Personal Growth & Purpose",
-    description:
-      "Discover practical principles for personal development, purpose, discipline, and meaningful impact.",
-    level: "Beginner",
-    duration: "5 Weeks",
-    price: "KES 2,000",
-    category: "Personal Development",
-    introduction:
-      "Personal growth begins with understanding who you are, where you are going, and the values that guide your decisions. This course provides practical principles for developing discipline, discovering purpose, and creating meaningful impact.",
-    objectives: [
-      "Develop greater self-awareness.",
-      "Explore purpose, vision, and personal values.",
-      "Build healthy habits and personal discipline.",
-      "Set meaningful and achievable goals.",
-      "Create a practical personal growth plan.",
-    ],
-    modules: [
-      "Understanding Yourself",
-      "Discovering Purpose and Direction",
-      "Discipline and Consistency",
-      "Goal Setting and Personal Vision",
-      "Creating Meaningful Impact",
-    ],
-  },
-];
+type Lesson = {
+  id: string;
+  title: string;
+  description?: string | null;
+  durationMinutes?: number | null;
+  position: number;
+  isFreePreview: boolean;
+  scheduledAt?: string | null;
+};
+
+type Module = {
+  id: string;
+  title: string;
+  description?: string | null;
+  position: number;
+  lessons: Lesson[];
+};
+
+type Course = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  overview?: string | null;
+  thumbnailUrl?: string | null;
+  category?: string | null;
+  level?: string | null;
+  duration?: string | null;
+  estimatedHours?: number | null;
+  priceCents?: number | null;
+  currency?: string;
+  isFree: boolean;
+  unlockPercent?: number;
+  instructorName?: string | null;
+  instructorTitle?: string | null;
+  instructorBio?: string | null;
+  instructorImage?: string | null;
+  objectives?: string[] | null;
+  targetAudience?: string[] | null;
+  requirements?: string[] | null;
+  whatYouLearn?: string[] | null;
+  modules: Module[];
+};
+
+type EnrollmentStatus = {
+  enrolled: boolean;
+  enrollment?: {
+    id: string;
+    paymentStatus: string;
+    amountPaidCents: number;
+    accessGranted: boolean;
+  };
+  totalPaid?: number;
+  requiredCents?: number;
+  remainingToUnlock?: number;
+  accessGranted?: boolean;
+};
+
+/* ============================================================
+   API HELPERS
+============================================================ */
+
+async function fetchCourse(slug: string): Promise<Course> {
+  const res = await fetch(`${getApiBase()}/api/courses/${slug}`);
+  if (!res.ok) throw new Error("Course not found");
+  const data = await res.json();
+  return data.course;
+}
+
+async function fetchEnrollment(
+  courseId: string,
+  email: string
+): Promise<EnrollmentStatus> {
+  const res = await fetch(
+    `${getApiBase()}/api/courses/${courseId}/my-enrollment?email=${encodeURIComponent(email)}`
+  );
+  if (!res.ok) throw new Error("Failed to check enrollment");
+  return res.json();
+}
+
+async function enrolInCourse(payload: {
+  courseId: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+}) {
+  const res = await fetch(
+    `${getApiBase()}/api/courses/${payload.courseId}/enrol`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName: payload.fullName,
+        email: payload.email,
+        phone: payload.phone,
+      }),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Enrolment failed");
+  }
+  return res.json();
+}
+
+/* ============================================================
+   HELPERS
+============================================================ */
+
+function formatPrice(cents?: number | null, currency = "KES") {
+  if (cents == null || cents === 0) return "Free";
+  return `${currency} ${(cents / 100).toLocaleString()}`;
+}
+
+function asList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return [];
+}
+
+/* ============================================================
+   PAGE
+============================================================ */
 
 export default function CourseDetail() {
-  const { slug } = useParams();
+  const { slug } = useParams<{ slug: string }>();
+  const queryClient = useQueryClient();
 
-  const course = courses.find(
-    (item) => item.slug === slug
+  const [email, setEmail] = useState(
+    () => localStorage.getItem("learner_email") || ""
+  );
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [showEnrolForm, setShowEnrolForm] = useState(false);
+
+  const {
+    data: course,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["course", slug],
+    queryFn: () => fetchCourse(slug!),
+    enabled: !!slug,
+  });
+
+  const {
+    data: enrollmentStatus,
+    isLoading: enrollmentLoading,
+  } = useQuery({
+    queryKey: ["enrollment", course?.id, email],
+    queryFn: () => fetchEnrollment(course!.id, email),
+    enabled: !!course?.id && !!email.trim(),
+  });
+
+  const enrolMutation = useMutation({
+    mutationFn: enrolInCourse,
+    onSuccess: (data) => {
+      localStorage.setItem("learner_email", email.trim().toLowerCase());
+      toast.success(
+        data.alreadyEnrolled
+          ? "You are already enrolled in this course."
+          : "Enrolled successfully!"
+      );
+      setShowEnrolForm(false);
+      queryClient.invalidateQueries({
+        queryKey: ["enrollment", course?.id, email],
+      });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Enrolment failed");
+    },
+  });
+
+  const objectives = useMemo(
+    () => asList(course?.objectives ?? course?.whatYouLearn),
+    [course]
+  );
+  const requirements = useMemo(
+    () => asList(course?.requirements),
+    [course]
+  );
+  const audience = useMemo(
+    () => asList(course?.targetAudience),
+    [course]
   );
 
-  if (!course) {
+  const totalLessons = useMemo(() => {
+    if (!course) return 0;
+    return course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+  }, [course]);
+
+  const handleEnrol = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!course) return;
+    if (!fullName.trim() || !email.trim()) {
+      toast.error("Name and email are required");
+      return;
+    }
+    enrolMutation.mutate({
+      courseId: course.id,
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim() || undefined,
+    });
+  };
+
+  /* ============================================================
+     LOADING / ERROR
+  ============================================================ */
+
+  if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#F8F6F2] px-4">
-        <div className="text-center">
-          <BookMarked className="mx-auto h-12 w-12 text-[#C17B4F]" />
+      <main className="flex min-h-screen items-center justify-center bg-[#F7F7F5] pt-24">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-[#C17B4F]" />
+          <p className="text-sm text-gray-500">Loading course...</p>
+        </div>
+      </main>
+    );
+  }
 
-          <h1 className="mt-5 font-heading text-3xl font-bold text-[#2E1208]">
-            Course Not Found
+  if (isError || !course) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white px-6 pt-24">
+        <div className="max-w-md text-center">
+          <GraduationCap className="mx-auto h-12 w-12 text-gray-300" />
+          <h1 className="mt-4 text-3xl font-bold text-[#2E1208]">
+            Course not found
           </h1>
-
-          <p className="mt-3 text-[#6B5548]">
-            The course you are looking for could not be found.
+          <p className="mt-3 text-gray-500">
+            The course you are looking for does not exist or is not published.
           </p>
-
           <Link
             to="/courses"
-            className="mt-7 inline-flex items-center gap-2 rounded-full bg-[#4A1F0E] px-6 py-3 font-semibold text-white transition hover:bg-[#2E1208]"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#4A1F0E] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#2E1208]"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Courses
+            Back to courses
           </Link>
         </div>
       </main>
     );
   }
 
+  const accessGranted =
+    course.isFree || enrollmentStatus?.accessGranted === true;
+  const isEnrolled = enrollmentStatus?.enrolled === true;
+  const remainingToUnlock = enrollmentStatus?.remainingToUnlock ?? 0;
+  const requiredCents = enrollmentStatus?.requiredCents ?? 0;
+  const totalPaid = enrollmentStatus?.totalPaid ?? 0;
+
   return (
-    <main className="min-h-screen bg-[#F8F6F2]">
+    <main className="min-h-screen bg-white pt-24">
 
       {/* ======================================================
           HERO
       ====================================================== */}
 
-      <section className="relative overflow-hidden bg-[#4A1F0E]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(193,123,79,0.30),transparent_45%)]" />
+      <section className="relative overflow-hidden bg-[#F7F7F5] py-12 sm:py-16 lg:py-20">
+        <div className="pointer-events-none absolute -right-40 -top-40 h-96 w-96 rounded-full bg-[#C17B4F]/10 blur-3xl" />
+        <div className="container relative z-10 mx-auto px-5 sm:px-6 lg:px-8">
 
-        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-
-          <Link
-            to="/courses"
-            className="inline-flex items-center gap-2 text-sm font-medium text-[#F4D7C5] transition hover:text-white"
+          <motion.nav
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 flex flex-wrap items-center gap-2 text-sm text-gray-500"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Courses
-          </Link>
+            <Link to="/" className="hover:text-[#C17B4F]">
+              Home
+            </Link>
+            <span>/</span>
+            <Link to="/courses" className="hover:text-[#C17B4F]">
+              Courses
+            </Link>
+            <span>/</span>
+            <span className="font-medium text-[#2E1208]">{course.title}</span>
+          </motion.nav>
 
-          <div className="mt-10 grid gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+          <div className="grid items-start gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
 
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-[#C17B4F]/40 bg-white/10 px-4 py-2 text-sm font-semibold text-[#F4D7C5]">
-                <GraduationCap className="h-4 w-4" />
-                {course.category}
+            {/* Left content */}
+            <motion.div
+              initial={{ opacity: 0, x: -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <div className="mb-4 flex flex-wrap items-center gap-3 text-sm font-semibold uppercase tracking-wider text-[#C17B4F]">
+                {course.category && <span>{course.category}</span>}
+                {course.level && (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <span>{course.level}</span>
+                  </>
+                )}
               </div>
 
-              <h1 className="mt-6 font-heading text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className="text-3xl font-bold leading-tight tracking-tight text-[#2E1208] sm:text-4xl lg:text-5xl">
                 {course.title}
               </h1>
 
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-white/75">
-                {course.description}
-              </p>
+              {course.subtitle && (
+                <p className="mt-4 text-lg leading-8 text-gray-600">
+                  {course.subtitle}
+                </p>
+              )}
 
-              <div className="mt-7 flex flex-wrap gap-3">
-                <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white">
-                  {course.level}
+              <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                {course.duration && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-[#C17B4F]" />
+                    {course.duration}
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1.5">
+                  <BookOpen className="h-4 w-4 text-[#C17B4F]" />
+                  {totalLessons} lessons
                 </span>
-
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white">
-                  <Clock3 className="h-4 w-4" />
-                  {course.duration}
-                </span>
-
-                <span className="rounded-full bg-[#D4A017] px-4 py-2 text-sm font-bold text-white">
-                  {course.price}
-                </span>
+                {course.instructorName && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <User className="h-4 w-4 text-[#C17B4F]" />
+                    {course.instructorName}
+                  </span>
+                )}
               </div>
-            </div>
 
-            <div className="rounded-3xl border border-white/10 bg-white/10 p-8 backdrop-blur-sm">
-              <BookMarked className="h-14 w-14 text-[#D4A017]" />
+              {course.description && (
+                <p className="mt-7 max-w-2xl leading-8 text-gray-600">
+                  {course.description}
+                </p>
+              )}
+            </motion.div>
 
-              <h2 className="mt-6 font-heading text-2xl font-bold text-white">
-                Start Your Learning Journey
-              </h2>
+            {/* Right card — pricing / enrol */}
+            <motion.aside
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.65 }}
+              className="rounded-3xl border border-[#E8DDD4] bg-white p-6 shadow-xl sm:p-8"
+            >
+              {course.thumbnailUrl && (
+                <img
+                  src={course.thumbnailUrl}
+                  alt={course.title}
+                  className="mb-5 aspect-[16/10] w-full rounded-2xl object-cover"
+                />
+              )}
 
-              <p className="mt-3 text-sm leading-7 text-white/70">
-                Explore the course modules and discover practical
-                principles you can apply in your personal life,
-                ministry, leadership, and work.
-              </p>
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-sm text-gray-500">Course fee</p>
+                  <p className="text-3xl font-bold text-[#2E1208]">
+                    {formatPrice(course.priceCents, course.currency)}
+                  </p>
+                </div>
+                {!course.isFree && (
+                  <p className="rounded-full bg-[#F7F7F5] px-3 py-1 text-xs font-semibold text-[#C17B4F]">
+                    Unlock at {course.unlockPercent ?? 50}%
+                  </p>
+                )}
+              </div>
 
-              <button
-                type="button"
-                className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#D4A017] px-5 py-3 font-semibold text-white transition hover:bg-[#B58900]"
-              >
-                Enroll in Course
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
+              {/* Access status */}
+              {email && enrollmentLoading && (
+                <p className="mt-4 text-sm text-gray-500">
+                  Checking enrolment...
+                </p>
+              )}
 
+              {isEnrolled && (
+                <div className="mt-5 rounded-xl border border-gray-100 bg-[#F7F7F5] p-4">
+                  {accessGranted ? (
+                    <div className="flex items-start gap-3">
+                      <Unlock className="mt-0.5 h-5 w-5 text-emerald-600" />
+                      <div>
+                        <p className="font-semibold text-emerald-700">
+                          Access granted
+                        </p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          You can open lessons and learning materials.
+                        </p>
+                        <Link
+                          to={`/learn/${course.slug}`}
+                          className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[#C17B4F]"
+                        >
+                          Go to learning portal
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <Lock className="mt-0.5 h-5 w-5 text-amber-600" />
+                      <div>
+                        <p className="font-semibold text-amber-800">
+                          Access locked
+                        </p>
+                        <p className="mt-1 text-sm text-gray-600">
+                          Paid:{" "}
+                          <strong>
+                            {formatPrice(totalPaid, course.currency)}
+                          </strong>
+                          {" · "}
+                          Required:{" "}
+                          <strong>
+                            {formatPrice(requiredCents, course.currency)}
+                          </strong>
+                        </p>
+                        {remainingToUnlock > 0 && (
+                          <p className="mt-1 text-sm text-gray-600">
+                            Remaining to unlock:{" "}
+                            <strong>
+                              {formatPrice(remainingToUnlock, course.currency)}
+                            </strong>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Enrol CTA */}
+              {!isEnrolled && (
+                <div className="mt-6">
+                  {!showEnrolForm ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowEnrolForm(true)}
+                      className="flex w-full items-center justify-center gap-2 rounded-full bg-[#C17B4F] px-6 py-3.5 text-sm font-bold text-white transition hover:bg-[#A55E36]"
+                    >
+                      Enrol in this course
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <form onSubmit={handleEnrol} className="space-y-3">
+                      <input
+                        type="text"
+                        placeholder="Full name"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        required
+                        className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-[#C17B4F]"
+                      />
+                      <input
+                        type="email"
+                        placeholder="Email address"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-[#C17B4F]"
+                      />
+                      <input
+                        type="tel"
+                        placeholder="Phone (optional)"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-[#C17B4F]"
+                      />
+                      <button
+                        type="submit"
+                        disabled={enrolMutation.isPending}
+                        className="flex w-full items-center justify-center gap-2 rounded-full bg-[#C17B4F] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#A55E36] disabled:opacity-60"
+                      >
+                        {enrolMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Enrolling...
+                          </>
+                        ) : (
+                          "Confirm enrolment"
+                        )}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {/* Returning learner email lookup */}
+              {!email && isEnrolled === false && !showEnrolForm && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs text-gray-500">
+                    Already enrolled? Enter your email to check access.
+                  </p>
+                  <input
+                    type="email"
+                    placeholder="Your email"
+                    onBlur={(e) => {
+                      const v = e.target.value.trim().toLowerCase();
+                      if (v) {
+                        setEmail(v);
+                        localStorage.setItem("learner_email", v);
+                      }
+                    }}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-[#C17B4F]"
+                  />
+                </div>
+              )}
+            </motion.aside>
           </div>
         </div>
       </section>
 
       {/* ======================================================
-          COURSE CONTENT
+          WHAT YOU'LL LEARN + CURRICULUM
       ====================================================== */}
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+      <section className="py-14 sm:py-18 lg:py-20">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="grid gap-12 lg:grid-cols-[1fr_0.95fr] lg:gap-16">
 
-        <div className="grid gap-12 lg:grid-cols-[1.3fr_0.7fr]">
+            {/* Left */}
+            <div className="space-y-10">
+              {objectives.length > 0 && (
+                <div>
+                  <h2 className="text-2xl font-bold text-[#2E1208]">
+                    What you will learn
+                  </h2>
+                  <div className="mt-5 space-y-3">
+                    {objectives.map((item) => (
+                      <div key={item} className="flex items-start gap-3">
+                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#C17B4F]" />
+                        <span className="text-gray-600">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          <div>
+              {requirements.length > 0 && (
+                <div>
+                  <h2 className="text-2xl font-bold text-[#2E1208]">
+                    Requirements
+                  </h2>
+                  <ul className="mt-4 list-disc space-y-2 pl-5 text-gray-600">
+                    {requirements.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#C17B4F]">
-                About This Course
-              </p>
+              {audience.length > 0 && (
+                <div>
+                  <h2 className="text-2xl font-bold text-[#2E1208]">
+                    Who this course is for
+                  </h2>
+                  <ul className="mt-4 list-disc space-y-2 pl-5 text-gray-600">
+                    {audience.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-              <h2 className="mt-3 font-heading text-3xl font-bold text-[#2E1208]">
-                What you will discover
-              </h2>
-
-              <p className="mt-5 leading-8 text-[#6B5548]">
-                {course.introduction}
-              </p>
+              {course.overview && (
+                <div>
+                  <h2 className="text-2xl font-bold text-[#2E1208]">
+                    Course overview
+                  </h2>
+                  <p className="mt-4 leading-8 text-gray-600">
+                    {course.overview}
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Objectives */}
-
-            <div className="mt-12">
-
-              <h2 className="font-heading text-2xl font-bold text-[#2E1208]">
-                Learning Objectives
+            {/* Curriculum */}
+            <div>
+              <h2 className="text-2xl font-bold text-[#2E1208]">
+                Course curriculum
               </h2>
+              <p className="mt-2 text-sm text-gray-500">
+                {course.modules.length} modules · {totalLessons} lessons
+              </p>
 
               <div className="mt-6 space-y-4">
-
-                {course.objectives.map(
-                  (objective) => (
-                    <div
-                      key={objective}
-                      className="flex gap-3"
-                    >
-                      <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-[#C17B4F]" />
-
-                      <p className="leading-7 text-[#6B5548]">
-                        {objective}
-                      </p>
+                {course.modules.map((module) => (
+                  <div
+                    key={module.id}
+                    className="overflow-hidden rounded-2xl border border-[#E8DDD4] bg-[#F7F7F5]"
+                  >
+                    <div className="border-b border-[#E8DDD4] bg-white px-5 py-4">
+                      <h3 className="font-bold text-[#2E1208]">
+                        {module.title}
+                      </h3>
+                      {module.description && (
+                        <p className="mt-1 text-sm text-gray-500">
+                          {module.description}
+                        </p>
+                      )}
                     </div>
-                  )
-                )}
 
+                    <ul className="divide-y divide-[#E8DDD4]">
+                      {module.lessons.map((lesson) => {
+                        const locked =
+                          !lesson.isFreePreview && !accessGranted;
+
+                        return (
+                          <li
+                            key={lesson.id}
+                            className="flex items-center justify-between gap-3 px-5 py-3.5"
+                          >
+                            <div className="flex items-start gap-3">
+                              {locked ? (
+                                <Lock className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                              ) : (
+                                <PlayCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#C17B4F]" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium text-[#2E1208]">
+                                  {lesson.title}
+                                </p>
+                                {lesson.isFreePreview && (
+                                  <span className="text-xs font-semibold text-emerald-600">
+                                    Free preview
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {lesson.durationMinutes && (
+                              <span className="shrink-0 text-xs text-gray-400">
+                                {lesson.durationMinutes} min
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+
+                {course.modules.length === 0 && (
+                  <p className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-500">
+                    Curriculum will be published soon.
+                  </p>
+                )}
               </div>
             </div>
-
-            {/* Modules */}
-
-            <div className="mt-12">
-
-              <div className="flex items-center gap-3">
-                <Sparkles className="h-5 w-5 text-[#C17B4F]" />
-
-                <h2 className="font-heading text-2xl font-bold text-[#2E1208]">
-                  Course Modules
-                </h2>
-              </div>
-
-              <div className="mt-6 space-y-3">
-
-                {course.modules.map(
-                  (module, index) => (
-                    <div
-                      key={module}
-                      className="flex items-center gap-4 rounded-2xl border border-[#E8DDD4] bg-white p-5 shadow-sm"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#4A1F0E] text-sm font-bold text-white">
-                        {index + 1}
-                      </div>
-
-                      <p className="font-semibold text-[#2E1208]">
-                        {module}
-                      </p>
-                    </div>
-                  )
-                )}
-
-              </div>
-            </div>
-
           </div>
-
-          {/* Sidebar */}
-
-          <aside className="lg:sticky lg:top-24 lg:self-start">
-
-            <div className="rounded-3xl border border-[#E8DDD4] bg-white p-7 shadow-sm">
-
-              <p className="text-sm font-bold uppercase tracking-[0.15em] text-[#C17B4F]">
-                Course Information
-              </p>
-
-              <div className="mt-6 space-y-5">
-
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#8B7568]">
-                    Level
-                  </p>
-
-                  <p className="mt-1 font-semibold text-[#2E1208]">
-                    {course.level}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#8B7568]">
-                    Duration
-                  </p>
-
-                  <p className="mt-1 font-semibold text-[#2E1208]">
-                    {course.duration}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-[#8B7568]">
-                    Investment
-                  </p>
-
-                  <p className="mt-1 font-semibold text-[#2E1208]">
-                    {course.price}
-                  </p>
-                </div>
-
-              </div>
-
-              <button
-                type="button"
-                className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl bg-[#4A1F0E] px-5 py-3 font-semibold text-white transition hover:bg-[#2E1208]"
-              >
-                Enroll Now
-                <ArrowRight className="h-4 w-4" />
-              </button>
-
-            </div>
-
-          </aside>
-
         </div>
       </section>
 
       {/* ======================================================
-          BOTTOM CTA
+          BACK LINK
       ====================================================== */}
 
-      <section className="border-t border-[#E8DDD4] bg-white">
-
-        <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6">
-
-          <GraduationCap className="mx-auto h-10 w-10 text-[#C17B4F]" />
-
-          <h2 className="mt-5 font-heading text-3xl font-bold text-[#2E1208]">
-            Continue Your Growth
-          </h2>
-
-          <p className="mx-auto mt-4 max-w-2xl leading-7 text-[#6B5548]">
-            Explore more courses and discover opportunities to
-            grow your knowledge, character, leadership, and purpose.
-          </p>
-
-          <Link
-            to="/courses"
-            className="mt-7 inline-flex items-center gap-2 rounded-full bg-[#4A1F0E] px-6 py-3 font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-[#2E1208] hover:shadow-xl"
-          >
-            Explore More Courses
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-
-        </div>
-
-      </section>
-
+      <div className="border-t border-[#E8DDD4] py-10 text-center">
+        <Link
+          to="/courses"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-[#4A1F0E] transition hover:text-[#C17B4F]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to all courses
+        </Link>
+      </div>
     </main>
   );
 }

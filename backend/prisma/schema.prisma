@@ -208,6 +208,10 @@ model ProgramRegistration {
   @@map("program_registrations")
 }
 
+// ============================================================
+// COURSES (updated)
+// ============================================================
+
 model Course {
   id              String             @id @default(uuid())
   slug            String             @unique
@@ -229,6 +233,10 @@ model Course {
   isFree          Boolean            @default(false)
   isPublished     Boolean            @default(false)
   featured        Boolean            @default(false)
+
+  // NEW — percentage of price required to unlock materials
+  unlockPercent   Int                @default(50)
+
   objectives      Json?
   targetAudience  Json?
   requirements    Json?
@@ -263,21 +271,27 @@ model CourseModule {
 }
 
 model Lesson {
-  id              String           @id @default(uuid())
-  moduleId        String
-  title           String
-  description     String?
-  content         String?
-  videoUrl        String?
-  pdfUrl          String?
-  durationMinutes Int?
-  position        Int              @default(0)
-  isFreePreview   Boolean          @default(false)
-  isPublished     Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  progress        CourseProgress[]
-  module          CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  id                  String           @id @default(uuid())
+  moduleId            String
+  title               String
+  description         String?
+  content             String?
+  videoUrl            String?
+  pdfUrl              String?
+  durationMinutes     Int?
+  position            Int              @default(0)
+  isFreePreview       Boolean          @default(false)
+  isPublished         Boolean          @default(false)
+
+  // NEW — live class support
+  meetingUrl          String?
+  scheduledAt         DateTime?
+  meetingInstructions String?
+
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  progress            CourseProgress[]
+  module              CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   @@index([moduleId])
   @@index([position])
@@ -291,22 +305,53 @@ model CourseEnrollment {
   fullName         String
   email            String
   phone            String?
-  paymentStatus    String           @default("UNPAID")
-  enrollmentStatus String           @default("ACTIVE")
+  paymentStatus    String           @default("UNPAID")   // UNPAID | PARTIAL | PAID
+  enrollmentStatus String           @default("ACTIVE")   // ACTIVE | COMPLETED | CANCELLED
+
+  // NEW — instalment tracking
+  amountPaidCents  Int              @default(0)
+  accessGranted    Boolean          @default(false)
+  accessGrantedAt  DateTime?
+
   enrolledAt       DateTime         @default(now())
   completedAt      DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+
   course           Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   progress         CourseProgress[]
+  payments         CoursePayment[]
 
   @@unique([courseId, email])
   @@index([courseId])
   @@index([email])
   @@index([paymentStatus])
   @@index([enrollmentStatus])
+  @@index([accessGranted])
   @@index([createdAt])
   @@map("course_enrollments")
+}
+
+// NEW — instalment payments for courses
+model CoursePayment {
+  id              String   @id @default(uuid())
+  enrollmentId    String
+  amountCents     Int
+  method          String?          // MPESA | PAYPAL | MANUAL
+  transactionCode String?
+  status          String   @default("PENDING")  // PENDING | CONFIRMED | FAILED
+  notes           String?
+  confirmedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  enrollment      CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId])
+  @@index([status])
+  @@index([transactionCode])
+  @@index([createdAt])
+  @@map("course_payments")
 }
 
 model CourseProgress {
@@ -404,24 +449,24 @@ enum AdminRole {
 }
 
 model BlogPost {
-  id              String    @id @default(uuid())
-  slug            String    @unique
-  title           String
-  excerpt         String?
-  content         String
-  coverImage      String?
-  category        String?
-  tags            Json?
-  author          String?
-  readingTime     String?
-  published       Boolean   @default(false)
-  featured        Boolean   @default(false)
-  publishedAt     DateTime?
-  seoTitle        String?
-  seoDescription  String?
-  views           Int       @default(0)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  slug           String    @unique
+  title          String
+  excerpt        String?
+  content        String
+  coverImage     String?
+  category       String?
+  tags           Json?
+  author         String?
+  readingTime    String?
+  published      Boolean   @default(false)
+  featured       Boolean   @default(false)
+  publishedAt    DateTime?
+  seoTitle       String?
+  seoDescription String?
+  views          Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([published])
   @@index([featured])

@@ -30,6 +30,10 @@ import Home from "@/pages/Home";
 import BooksCatalogPage from "@/pages/Books";
 import BookDetail from "@/pages/BookDetail";
 import Courses from "@/pages/Courses";
+import AdminCourseBuilder from "@/pages/admin/AdminCourseBuilder";
+import AdminCourseEnrollments from "@/pages/admin/AdminCourseEnrollments";
+import CourseDetail from "@/pages/CourseDetail";
+import CourseLearn from "@/pages/CourseLearn";
 import ProgramActivityPage from "@/pages/ProgramActivity";
 import ProgramHighlightPage from "@/pages/ProgramHighlight";
 
@@ -79,6 +83,7 @@ import AdminUsersPage from "@/features/admin/users/AdminUsersPage";
 import AdminBlog from "@/pages/admin/AdminBlog";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminPayments from "@/pages/admin/AdminPayments";
+import AdminCourses from "@/pages/admin/AdminCourses";
 
 // ============================================================
 // ROUTE PROTECTION
@@ -131,7 +136,7 @@ function App() {
       <Routes>
 
         {/* ======================================================
-            PUBLIC WEBSITE
+            PUBLIC WEBSITE (WITH MAIN LAYOUT)
         ======================================================= */}
 
         <Route
@@ -174,6 +179,35 @@ function App() {
             element={<Courses />}
           />
 
+          <Route
+            path="/courses/:slug"
+            element={<CourseDetail />}
+          />
+
+          {/* ====================================================
+              COURSE MANAGEMENT
+          ==================================================== */}
+
+          <Route
+            path="courses"
+            element={
+              <AdminCourses />
+            }
+          />
+
+          <Route
+            path="courses/:courseId/builder"
+            element={
+              <AdminCourseBuilder />
+            }
+          />
+
+          <Route
+            path="courses/:courseId/enrollments"
+            element={
+              <AdminCourseEnrollments />
+            }
+          />
           {/* ====================================================
               BLOGS
           ==================================================== */}
@@ -248,8 +282,17 @@ function App() {
         </Route>
 
         {/* ======================================================
+            STUDENT LEARNING PORTAL (FULL SCREEN, NO MAIN LAYOUT)
+        ====================================================== */}
+
+        <Route
+          path="/learn/:slug"
+          element={<CourseLearn />}
+        />
+
+        {/* ======================================================
             ADMIN LOGIN
-        ======================================================= */}
+        ====================================================== */}
 
         <Route
           path="/admin/login"
@@ -258,7 +301,7 @@ function App() {
 
         {/* ======================================================
             PROTECTED ADMIN AREA
-        ======================================================= */}
+        ====================================================== */}
 
         <Route
           path="/admin"
@@ -284,20 +327,12 @@ function App() {
               BOOK MANAGEMENT
           ==================================================== */}
 
-          {/* ----------------------------------------------------
-              Books catalogue
-          ----------------------------------------------------- */}
-
           <Route
             path="books"
             element={
               <AdminBooks />
             }
           />
-
-          {/* ----------------------------------------------------
-              Add new book
-          ----------------------------------------------------- */}
 
           <Route
             path="books/new"
@@ -306,19 +341,6 @@ function App() {
             }
           />
 
-          {/* ----------------------------------------------------
-              Edit existing book
-              
-              IMPORTANT:
-              This is now the ONLY edit route.
-
-              URL:
-              /admin/books/:id/edit
-
-              Component:
-              BookFormPage
-          ----------------------------------------------------- */}
-
           <Route
             path="books/:id/edit"
             element={
@@ -326,16 +348,21 @@ function App() {
             }
           />
 
-          {/* ----------------------------------------------------
-              Legacy book list
-
-              Kept available so existing links do not break.
-          ----------------------------------------------------- */}
-
           <Route
             path="books/legacy"
             element={
               <BookListPage />
+            }
+          />
+
+          {/* ====================================================
+              COURSE MANAGEMENT
+          ==================================================== */}
+
+          <Route
+            path="courses"
+            element={
+              <AdminCourses />
             }
           />
 
@@ -391,7 +418,7 @@ function App() {
 
         {/* ======================================================
             404 / UNKNOWN ROUTES
-        ======================================================= */}
+        ====================================================== */}
 
         <Route
           path="*"

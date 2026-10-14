@@ -14,52 +14,22 @@ const USE_MOCK_DATA =
 // API BASE URL
 // ============================================================
 
-/**
- * Returns the backend base URL.
- *
- * IMPORTANT:
- * Keep VITE_API_BASE_URL WITHOUT /api.
- *
- * Example:
- *
- * VITE_API_BASE_URL=https://cozy-book-nook-1.onrender.com
- *
- * Endpoints are then written as:
- *
- * /api/books
- * /api/orders
- * /api/upload-pdf
- */
 export const getApiBase = (): string => {
   const configured =
     import.meta.env.VITE_API_BASE_URL ||
     import.meta.env.VITE_API_URL;
 
-  // ----------------------------------------------------------
-  // DEVELOPMENT
-  // ----------------------------------------------------------
-
   if (import.meta.env.DEV) {
     const devBase = configured || "http://localhost:5000";
-
     const cleanBase = devBase.replace(/\/+$/, "");
-
     console.log("📡 DEV API Base URL:", cleanBase);
-
     return cleanBase;
   }
 
-  // ----------------------------------------------------------
-  // PRODUCTION
-  // ----------------------------------------------------------
-
   const prodBase =
     configured || "https://cozy-book-nook-1.onrender.com";
-
   const cleanBase = prodBase.replace(/\/+$/, "");
-
   console.log("📡 PROD API Base URL:", cleanBase);
-
   return cleanBase;
 };
 
@@ -69,7 +39,6 @@ export const getApiBase = (): string => {
 
 const buildUrl = (endpoint: string): string => {
   const base = getApiBase();
-
   const cleanEndpoint = endpoint.startsWith("/")
     ? endpoint
     : `/${endpoint}`;
@@ -98,18 +67,8 @@ export const apiFetch = async <T>(
   options: RequestInit = {}
 ): Promise<T> => {
   const url = buildUrl(endpoint);
-
   const token = getAdminToken();
-
   const headers = new Headers(options.headers || {});
-
-  // ----------------------------------------------------------
-  // CONTENT TYPE
-  // ----------------------------------------------------------
-  //
-  // Do NOT manually set Content-Type for FormData.
-  // The browser automatically creates the multipart boundary.
-  // ----------------------------------------------------------
 
   if (
     !(options.body instanceof FormData) &&
@@ -117,10 +76,6 @@ export const apiFetch = async <T>(
   ) {
     headers.set("Content-Type", "application/json");
   }
-
-  // ----------------------------------------------------------
-  // ADMIN AUTHORIZATION
-  // ----------------------------------------------------------
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -135,12 +90,7 @@ export const apiFetch = async <T>(
     });
 
     const contentType = response.headers.get("content-type") || "";
-
     let data: any = null;
-
-    // --------------------------------------------------------
-    // JSON RESPONSE
-    // --------------------------------------------------------
 
     if (contentType.includes("application/json")) {
       try {
@@ -148,13 +98,7 @@ export const apiFetch = async <T>(
       } catch {
         data = null;
       }
-    }
-
-    // --------------------------------------------------------
-    // TEXT RESPONSE
-    // --------------------------------------------------------
-
-    else {
+    } else {
       try {
         data = await response.text();
       } catch {
@@ -162,24 +106,19 @@ export const apiFetch = async <T>(
       }
     }
 
-    // --------------------------------------------------------
-    // HTTP ERROR
-    // --------------------------------------------------------
-
     if (!response.ok) {
       const serverMessage =
         typeof data === "object" && data
           ? data.error || data.message || data.detail
           : typeof data === "string"
-            ? data
-            : null;
+          ? data
+          : null;
 
       const message =
         serverMessage ||
         `Request failed with status ${response.status}`;
 
       console.error(`❌ API error ${response.status}:`, message);
-
       throw new Error(message);
     }
 
@@ -189,10 +128,8 @@ export const apiFetch = async <T>(
       if (error.message.startsWith("API error (")) {
         throw error;
       }
-
       throw new Error(`API error (${endpoint}): ${error.message}`);
     }
-
     throw new Error(`API error (${endpoint}): Unknown error`);
   }
 };
@@ -214,12 +151,6 @@ export interface Book {
   publishedYear?: number | null;
   pages?: number | null;
   rating: number;
-  /**
-   * Smallest currency unit.
-   *
-   * Example:
-   * KES 500 = 50000 cents
-   */
   priceCents?: number | null;
   aiSummary?: string | null;
   shortSummary?: string | null;
@@ -231,10 +162,6 @@ export interface Book {
   createdAt: string;
   updatedAt: string;
 }
-
-// ============================================================
-// BOOK INPUT TYPES
-// ============================================================
 
 export type BookInput = {
   slug?: string | null;
@@ -261,6 +188,93 @@ export type BookInput = {
 export type BookUpdateInput = Partial<BookInput>;
 
 // ============================================================
+// COURSE TYPES
+// ============================================================
+
+export interface Lesson {
+  id: string;
+  title: string;
+  description?: string | null;
+  content?: string | null;
+  videoUrl?: string | null;
+  pdfUrl?: string | null;
+  durationMinutes?: number | null;
+  position: number;
+  isFreePreview: boolean;
+  isPublished: boolean;
+  meetingUrl?: string | null;
+  scheduledAt?: string | null;
+  meetingInstructions?: string | null;
+}
+
+export interface CourseModule {
+  id: string;
+  title: string;
+  description?: string | null;
+  position: number;
+  lessons: Lesson[];
+}
+
+export interface Course {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle?: string | null;
+  description?: string | null;
+  overview?: string | null;
+  thumbnailUrl?: string | null;
+  category?: string | null;
+  level?: string | null;
+  duration?: string | null;
+  estimatedHours?: number | null;
+  priceCents?: number | null;
+  currency: string;
+  isFree: boolean;
+  isPublished: boolean;
+  featured: boolean;
+  unlockPercent: number;
+  instructorName?: string | null;
+  instructorTitle?: string | null;
+  instructorBio?: string | null;
+  instructorImage?: string | null;
+  objectives?: any;
+  targetAudience?: any;
+  requirements?: any;
+  whatYouLearn?: any;
+  createdAt: string;
+  updatedAt: string;
+  modules?: CourseModule[];
+  _count?: {
+    enrollments?: number;
+    modules?: number;
+  };
+}
+
+export interface CourseEnrollment {
+  id: string;
+  courseId: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  paymentStatus: string;
+  amountPaidCents: number;
+  accessGranted: boolean;
+  accessGrantedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  course?: Course;
+  payments?: Array<{
+    id: string;
+    amountCents: number;
+    method: string;
+    transactionCode?: string | null;
+    status: string;
+    confirmedAt?: string | null;
+    createdAt: string;
+  }>;
+}
+
+// ============================================================
 // ORDER TYPES
 // ============================================================
 
@@ -278,28 +292,16 @@ export interface Order {
   book?: Book;
 }
 
-// ============================================================
-// PURCHASE TYPES
-// ============================================================
-
 export interface PurchaseStatus {
   purchased: boolean;
   orderId?: string;
   purchasedAt?: string;
 }
 
-// ============================================================
-// DOWNLOAD TYPES
-// ============================================================
-
 export interface DownloadResponse {
   pdfUrl: string;
   title: string;
 }
-
-// ============================================================
-// PDF UPLOAD TYPES
-// ============================================================
 
 export interface PdfUploadResponse {
   success?: boolean;
@@ -311,10 +313,6 @@ export interface PdfUploadResponse {
   size?: number;
   mimetype?: string;
 }
-
-// ============================================================
-// INQUIRY TYPES
-// ============================================================
 
 export interface InquiryPayload {
   orderType: "INQUIRY";
@@ -346,10 +344,6 @@ export interface InquiryResponse {
   [key: string]: any;
 }
 
-// ============================================================
-// BLOG TYPES
-// ============================================================
-
 export interface BlogPost {
   id: string;
   slug: string;
@@ -378,31 +372,14 @@ export interface BlogPost {
 export const submitBookInquiry = async (
   payload: InquiryPayload
 ): Promise<InquiryResponse> => {
-  if (!payload) {
-    throw new Error("Inquiry data is required.");
-  }
-
-  if (payload.orderType !== "INQUIRY") {
-    throw new Error("Invalid inquiry type.");
-  }
-
-  if (!payload.customerName?.trim()) {
-    throw new Error("Customer name is required.");
-  }
-
-  if (!payload.email?.trim()) {
-    throw new Error("Customer email is required.");
-  }
-
-  if (!payload.notes?.trim()) {
-    throw new Error("Inquiry message is required.");
-  }
-
+  if (!payload) throw new Error("Inquiry data is required.");
+  if (payload.orderType !== "INQUIRY") throw new Error("Invalid inquiry type.");
+  if (!payload.customerName?.trim()) throw new Error("Customer name is required.");
+  if (!payload.email?.trim()) throw new Error("Customer email is required.");
+  if (!payload.notes?.trim()) throw new Error("Inquiry message is required.");
   if (!Array.isArray(payload.items) || payload.items.length === 0) {
     throw new Error("At least one book is required.");
   }
-
-  console.log("📨 Submitting book inquiry:", payload);
 
   const response = await apiFetch<InquiryResponse>("/api/orders", {
     method: "POST",
@@ -412,527 +389,245 @@ export const submitBookInquiry = async (
       email: payload.email.trim().toLowerCase(),
       phoneNumber: payload.phoneNumber?.trim() || null,
       notes: payload.notes.trim(),
-      deliveryNotes:
-        payload.deliveryNotes?.trim() || payload.notes.trim(),
+      deliveryNotes: payload.deliveryNotes?.trim() || payload.notes.trim(),
       items: payload.items,
     }),
   });
-
-  console.log("✅ Book inquiry submitted:", response);
-  console.log(
-    "📧 Inquiry email notification status:",
-    response?.emailNotifications
-  );
 
   return response;
 };
 
 // ============================================================
-// GET ALL BOOKS
+// BOOK FUNCTIONS
 // ============================================================
 
 export const getBooks = async (): Promise<Book[]> => {
   if (USE_MOCK_DATA) {
-    console.log("📚 Using mock data - showing sample books");
-
     return mockBooks.map((book) => ({
       ...book,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })) as Book[];
   }
-
   return apiFetch<Book[]>("/api/books");
 };
 
-// ============================================================
-// GET SINGLE BOOK
-// ============================================================
-
 export const getBook = async (idOrSlug: string): Promise<Book> => {
   if (USE_MOCK_DATA) {
-    console.log("📚 Using mock data for book:", idOrSlug);
-
-    const book = mockBooks.find(
-      (b) => b.id === idOrSlug || b.slug === idOrSlug
-    );
-
-    if (!book) {
-      throw new Error("Book not found");
-    }
-
-    return {
-      ...book,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    } as Book;
+    const book = mockBooks.find((b) => b.id === idOrSlug || b.slug === idOrSlug);
+    if (!book) throw new Error("Book not found");
+    return { ...book, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as Book;
   }
-
-  return apiFetch<Book>(
-    `/api/books/${encodeURIComponent(idOrSlug)}`
-  );
+  return apiFetch<Book>(`/api/books/${encodeURIComponent(idOrSlug)}`);
 };
-
-// ============================================================
-// CREATE BOOK
-// ============================================================
 
 export const createBook = (bookData: BookInput): Promise<Book> => {
   if (USE_MOCK_DATA) {
-    console.warn("⚠️ Mock mode: createBook");
-
-    const newBook = {
+    return Promise.resolve({
       ...bookData,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       rating: bookData.rating ?? 0,
-    } as Book;
-
-    return Promise.resolve(newBook);
+    } as Book);
   }
-
   return apiFetch<Book>("/api/books", {
     method: "POST",
     body: JSON.stringify(bookData),
   });
 };
 
-// ============================================================
-// UPDATE BOOK
-// ============================================================
-
-export const updateBook = (
-  id: string,
-  bookData: BookUpdateInput
-): Promise<Book> => {
+export const updateBook = (id: string, bookData: BookUpdateInput): Promise<Book> => {
   if (USE_MOCK_DATA) {
-    console.warn("⚠️ Mock mode: updateBook");
-
     const existingBook = mockBooks.find((b) => b.id === id);
-
-    if (!existingBook) {
-      return Promise.reject(new Error("Book not found"));
-    }
-
-    const updatedBook = {
+    if (!existingBook) return Promise.reject(new Error("Book not found"));
+    return Promise.resolve({
       ...existingBook,
       ...bookData,
       id,
       updatedAt: new Date().toISOString(),
-      rating:
-        bookData.rating !== undefined
-          ? bookData.rating
-          : existingBook.rating,
-    } as Book;
-
-    return Promise.resolve(updatedBook);
+    } as Book);
   }
-
   return apiFetch<Book>(`/api/books/${encodeURIComponent(id)}`, {
     method: "PUT",
     body: JSON.stringify(bookData),
   });
 };
 
-// ============================================================
-// DELETE BOOK
-// ============================================================
-
-export const deleteBook = (
-  id: string
-): Promise<{ message: string }> => {
-  if (USE_MOCK_DATA) {
-    console.warn("⚠️ Mock mode: deleteBook");
-
-    return Promise.resolve({
-      message: "Book deleted (mock)",
-    });
-  }
-
-  return apiFetch<{ message: string }>(
-    `/api/books/${encodeURIComponent(id)}`,
-    {
-      method: "DELETE",
-    }
-  );
+export const deleteBook = (id: string): Promise<{ message: string }> => {
+  if (USE_MOCK_DATA) return Promise.resolve({ message: "Book deleted (mock)" });
+  return apiFetch<{ message: string }>(`/api/books/${encodeURIComponent(id)}`, { method: "DELETE" });
 };
 
 // ============================================================
-// PDF UPLOAD
+// COURSE API FUNCTIONS
 // ============================================================
 
-export const uploadBookPdf = async (
-  file: File
-): Promise<PdfUploadResponse> => {
-  if (!file) {
-    throw new Error("No PDF file selected.");
-  }
+export const getPublicCourses = async (): Promise<Course[]> => {
+  const data = await apiFetch<{ success: boolean; courses: Course[] }>("/api/courses");
+  return data.courses || [];
+};
 
-  if (
-    file.type !== "application/pdf" &&
-    !file.name.toLowerCase().endsWith(".pdf")
-  ) {
-    throw new Error("Please select a valid PDF file.");
-  }
+export const getPublicCourseBySlug = async (slug: string): Promise<Course> => {
+  const data = await apiFetch<{ success: boolean; course: Course }>(`/api/courses/${encodeURIComponent(slug)}`);
+  return data.course;
+};
 
+export const enrolInCourse = async (
+  courseId: string,
+  payload: { fullName: string; email: string; phone?: string }
+): Promise<{ success: boolean; alreadyEnrolled: boolean; enrollment: CourseEnrollment }> => {
+  return apiFetch(`/api/courses/${encodeURIComponent(courseId)}/enrol`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+};
+
+export const submitCoursePayment = async (
+  enrollmentId: string,
+  payload: { amountCents: number; method: string; transactionCode?: string; notes?: string }
+): Promise<any> => {
+  return apiFetch(`/api/courses/enrollments/${encodeURIComponent(enrollmentId)}/payments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+};
+
+export const getMyCourseEnrollment = async (courseId: string, email: string): Promise<any> => {
+  return apiFetch(`/api/courses/${encodeURIComponent(courseId)}/my-enrollment?email=${encodeURIComponent(email)}`);
+};
+
+export const getProtectedLesson = async (courseId: string, lessonId: string, email: string): Promise<Lesson> => {
+  const data = await apiFetch<{ success: boolean; lesson: Lesson }>(
+    `/api/courses/${encodeURIComponent(courseId)}/lessons/${encodeURIComponent(lessonId)}?email=${encodeURIComponent(email)}`
+  );
+  return data.lesson;
+};
+
+// ============================================================
+// ADMIN COURSE API FUNCTIONS
+// ============================================================
+
+export const getAdminCourses = async (): Promise<Course[]> => {
+  const data = await apiFetch<{ success: boolean; courses: Course[] }>("/api/courses/admin/all");
+  return data.courses || [];
+};
+
+export const createCourse = async (courseData: Partial<Course>): Promise<Course> => {
+  const data = await apiFetch<{ success: boolean; course: Course }>("/api/courses/admin", {
+    method: "POST",
+    body: JSON.stringify(courseData),
+  });
+  return data.course;
+};
+
+export const updateCourse = async (id: string, courseData: Partial<Course>): Promise<Course> => {
+  const data = await apiFetch<{ success: boolean; course: Course }>(`/api/courses/admin/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(courseData),
+  });
+  return data.course;
+};
+
+export const deleteCourse = async (id: string): Promise<{ message: string }> => {
+  return apiFetch<{ message: string }>(`/api/courses/admin/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+};
+
+export const createCourseModule = async (courseId: string, moduleData: { title: string; description?: string; position?: number }): Promise<CourseModule> => {
+  const data = await apiFetch<{ success: boolean; module: CourseModule }>(`/api/courses/admin/${encodeURIComponent(courseId)}/modules`, {
+    method: "POST",
+    body: JSON.stringify(moduleData),
+  });
+  return data.module;
+};
+
+export const createModuleLesson = async (moduleId: string, lessonData: Partial<Lesson>): Promise<Lesson> => {
+  const data = await apiFetch<{ success: boolean; lesson: Lesson }>(`/api/courses/admin/modules/${encodeURIComponent(moduleId)}/lessons`, {
+    method: "POST",
+    body: JSON.stringify(lessonData),
+  });
+  return data.lesson;
+};
+
+export const getCourseEnrollmentsAdmin = async (courseId: string): Promise<CourseEnrollment[]> => {
+  const data = await apiFetch<{ success: boolean; enrollments: CourseEnrollment[] }>(`/api/courses/admin/${encodeURIComponent(courseId)}/enrollments`);
+  return data.enrollments || [];
+};
+
+export const confirmAdminCoursePayment = async (
+  enrollmentId: string,
+  payload: { amountCents: number; method: string; transactionCode?: string; notes?: string }
+): Promise<any> => {
+  return apiFetch(`/api/courses/admin/enrollments/${encodeURIComponent(enrollmentId)}/confirm-payment`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+};
+
+// ============================================================
+// PDF & DOWNLOAD FUNCTIONS
+// ============================================================
+
+export const uploadBookPdf = async (file: File): Promise<PdfUploadResponse> => {
+  if (!file) throw new Error("No PDF file selected.");
   const formData = new FormData();
   formData.append("file", file);
 
-  console.log("📤 Uploading PDF:", file.name);
-
-  const response = await apiFetch<PdfUploadResponse>(
-    "/api/upload-pdf",
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
+  const response = await apiFetch<PdfUploadResponse>("/api/upload-pdf", {
+    method: "POST",
+    body: formData,
+  });
 
   const pdfUrl = response.pdfUrl || response.url;
-
-  if (!pdfUrl) {
-    console.error(
-      "❌ Upload succeeded but no PDF URL was returned:",
-      response
-    );
-
-    throw new Error(
-      "PDF upload succeeded, but the server did not return a PDF URL."
-    );
-  }
-
-  return {
-    ...response,
-    pdfUrl,
-  };
+  if (!pdfUrl) throw new Error("PDF upload succeeded, but server returned no URL.");
+  return { ...response, pdfUrl };
 };
 
-// ============================================================
-// UPDATE BOOK PDF
-// ============================================================
-
-export const uploadPdfAndUpdateBook = async (
-  bookId: string,
-  file: File
-): Promise<Book> => {
-  console.log("📚 Uploading PDF for book:", bookId);
-
+export const uploadPdfAndUpdateBook = async (bookId: string, file: File): Promise<Book> => {
   const upload = await uploadBookPdf(file);
-
-  if (!upload.pdfUrl) {
-    throw new Error("PDF URL was not returned after upload.");
-  }
-
-  console.log("✅ PDF uploaded:", upload.pdfUrl);
-
-  const updatedBook = await updateBook(bookId, {
-    pdfUrl: upload.pdfUrl,
-    ...(upload.pdfPreviewImage
-      ? { pdfPreviewImage: upload.pdfPreviewImage }
-      : {}),
-  });
-
-  console.log("✅ Book updated with PDF URL:", updatedBook.pdfUrl);
-
-  return updatedBook;
+  return updateBook(bookId, { pdfUrl: upload.pdfUrl });
 };
 
-// ============================================================
-// CHECKOUT STATUS
-// ============================================================
-
-export type CheckoutStatus = {
-  enabled: boolean;
-};
-
-export const getCheckoutStatus = (): Promise<CheckoutStatus> => {
-  if (USE_MOCK_DATA) {
-    return Promise.resolve({
-      enabled: false,
-    });
-  }
-
-  return apiFetch<CheckoutStatus>("/api/checkout/status");
-};
-
-// ============================================================
-// CREATE CHECKOUT SESSION
-// ============================================================
-
-export const createCheckoutSession = (
-  bookId: string
-): Promise<{ url: string }> => {
-  if (USE_MOCK_DATA) {
-    console.warn("⚠️ Mock mode: Stripe checkout disabled");
-
-    return Promise.resolve({
-      url: "/#books",
-    });
-  }
-
-  return apiFetch<{ url: string }>("/api/checkout/session", {
-    method: "POST",
-    body: JSON.stringify({ bookId }),
-  });
-};
-
-// ============================================================
-// DOWNLOAD PURCHASED BOOK
-// ============================================================
-
-export const downloadBookPdf = async (
-  bookId: string
-): Promise<DownloadResponse> => {
-  if (USE_MOCK_DATA) {
-    console.warn("⚠️ Mock mode: Returning placeholder PDF URL");
-
-    return {
-      pdfUrl: "https://example.com/sample.pdf",
-      title: "Sample Book",
-    };
-  }
-
-  const response = await apiFetch<DownloadResponse>(
-    `/api/books/${encodeURIComponent(bookId)}/download`
-  );
-
-  if (!response.pdfUrl) {
-    throw new Error("PDF URL not found.");
-  }
-
+export const downloadBookPdf = async (bookId: string): Promise<DownloadResponse> => {
+  if (USE_MOCK_DATA) return { pdfUrl: "https://example.com/sample.pdf", title: "Sample Book" };
+  const response = await apiFetch<DownloadResponse>(`/api/books/${encodeURIComponent(bookId)}/download`);
+  if (!response.pdfUrl) throw new Error("PDF URL not found.");
   return response;
 };
 
-// ============================================================
-// DOWNLOAD BY EMAIL
-// ============================================================
-
-export const downloadBookByEmail = async (
-  bookId: string,
-  email: string
-): Promise<DownloadResponse> => {
-  if (USE_MOCK_DATA) {
-    console.warn("⚠️ Mock mode: Returning placeholder PDF URL");
-
-    return {
-      pdfUrl: "https://example.com/sample.pdf",
-      title: "Sample Book",
-    };
-  }
-
-  return apiFetch<DownloadResponse>(
-    `/api/checkout/download/${encodeURIComponent(
-      bookId
-    )}?email=${encodeURIComponent(email)}`
-  );
-};
-
-// ============================================================
-// DOWNLOAD BOOK
-// ============================================================
-
-export const downloadBook = async (
-  bookId: string,
-  email: string
-): Promise<void> => {
-  try {
-    const { pdfUrl, title } = await downloadBookByEmail(
-      bookId,
-      email
-    );
-
-    if (!pdfUrl) {
-      throw new Error("PDF URL not available.");
-    }
-
-    window.open(pdfUrl, "_blank", "noopener,noreferrer");
-
-    const downloadedBooks = JSON.parse(
-      localStorage.getItem("downloaded_books") || "[]"
-    );
-
-    if (!downloadedBooks.includes(bookId)) {
-      localStorage.setItem(
-        "downloaded_books",
-        JSON.stringify([...downloadedBooks, bookId])
-      );
-    }
-
-    console.log(`✅ Download started for ${title}`);
-  } catch (error) {
-    console.error("❌ Download error:", error);
-    throw error;
-  }
-};
-
-// ============================================================
-// CHECK PURCHASE STATUS
-// ============================================================
-
-export const checkPurchaseStatus = async (
-  bookId: string,
-  email: string
-): Promise<PurchaseStatus> => {
-  if (USE_MOCK_DATA) {
-    const purchasedBooks = JSON.parse(
-      localStorage.getItem("purchased_books") || "[]"
-    );
-
-    const purchased = purchasedBooks.some(
-      (book: any) => book.id === bookId
-    );
-
-    return {
-      purchased,
-    };
-  }
-
-  return apiFetch<PurchaseStatus>(
-    `/api/checkout/purchase/${encodeURIComponent(
-      bookId
-    )}?email=${encodeURIComponent(email)}`
-  );
-};
-
-// ============================================================
-// GET USER PURCHASES
-// ============================================================
-
-export const getUserPurchases = async (
-  email: string
-): Promise<Order[]> => {
-  if (USE_MOCK_DATA) {
-    console.warn("⚠️ Mock mode: Returning sample purchases");
-    return [];
-  }
-
-  return apiFetch<Order[]>(
-    `/api/checkout/my-purchases?email=${encodeURIComponent(email)}`
-  );
-};
-
-// ============================================================
-// APPROVE MANUAL PAYMENT
-// ============================================================
-
-export const approveManualPayment = async (data: {
-  bookId: string;
-  email: string;
-  transactionCode: string;
-  paymentMethod: string;
-  amountCents?: number;
-}): Promise<{
-  success: boolean;
-  orderId: string;
-  message: string;
-}> => {
-  const token = getAdminToken();
-
-  if (!token) {
-    throw new Error("Admin authentication required.");
-  }
-
-  return apiFetch<{
-    success: boolean;
-    orderId: string;
-    message: string;
-  }>("/api/checkout/approve-manual", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-};
-
-// ============================================================
-// LOCAL PURCHASE STATE
-// ============================================================
-
 export const markBookAsPurchased = (bookId: string): void => {
-  const purchasedBooks = JSON.parse(
-    localStorage.getItem("purchased_books") || "[]"
-  );
-
+  const purchasedBooks = JSON.parse(localStorage.getItem("purchased_books") || "[]");
   if (!purchasedBooks.some((book: any) => book.id === bookId)) {
     localStorage.setItem(
       "purchased_books",
-      JSON.stringify([
-        ...purchasedBooks,
-        {
-          id: bookId,
-          purchasedAt: new Date().toISOString(),
-        },
-      ])
+      JSON.stringify([...purchasedBooks, { id: bookId, purchasedAt: new Date().toISOString() }])
     );
   }
 };
 
-// ============================================================
-// CHECK LOCAL PURCHASE
-// ============================================================
-
 export const isBookPurchasedLocally = (bookId: string): boolean => {
-  const purchasedBooks = JSON.parse(
-    localStorage.getItem("purchased_books") || "[]"
-  );
-
+  const purchasedBooks = JSON.parse(localStorage.getItem("purchased_books") || "[]");
   return purchasedBooks.some((book: any) => book.id === bookId);
 };
 
 // ============================================================
-// GET DIRECT PDF URL
-// ============================================================
-
-export const getBookPdfUrl = async (
-  bookId: string
-): Promise<string> => {
-  const book = await getBook(bookId);
-
-  if (!book.pdfUrl) {
-    throw new Error("This book does not have a PDF uploaded yet.");
-  }
-
-  return book.pdfUrl;
-};
-
-// ============================================================
-// GET ALL BLOG POSTS (public)
+// BLOG FUNCTIONS
 // ============================================================
 
 export const getBlogPosts = async (): Promise<BlogPost[]> => {
-  if (USE_MOCK_DATA) {
-    console.log("📝 Using mock blog data");
-    return [];
-  }
-
+  if (USE_MOCK_DATA) return [];
   const data = await apiFetch<any>("/api/blogs");
-
-  // Handle different possible response shapes from the backend
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.blogs)) return data.blogs;
   if (Array.isArray(data?.posts)) return data.posts;
-  if (Array.isArray(data?.data)) return data.data;
-
   return [];
 };
 
-// ============================================================
-// GET SINGLE BLOG POST BY SLUG
-// ============================================================
-
-export const getBlogPost = async (
-  slug: string
-): Promise<BlogPost> => {
-  if (USE_MOCK_DATA) {
-    throw new Error("Blog post not found (mock mode)");
-  }
-
-  const data = await apiFetch<any>(
-    `/api/blogs/${encodeURIComponent(slug)}`
-  );
-
-  // Handle wrapper object { success: true, blog: {...} } or direct object
-  if (data?.blog) return data.blog;
-  return data;
+export const getBlogPost = async (slug: string): Promise<BlogPost> => {
+  const data = await apiFetch<any>(`/api/blogs/${encodeURIComponent(slug)}`);
+  return data?.blog || data;
 };
 
 // ============================================================
@@ -942,23 +637,28 @@ export const getBlogPost = async (
 export default {
   getApiBase,
   apiFetch,
-  submitBookInquiry,
   getBooks,
   getBook,
   createBook,
   updateBook,
   deleteBook,
+  getPublicCourses,
+  getPublicCourseBySlug,
+  enrolInCourse,
+  submitCoursePayment,
+  getMyCourseEnrollment,
+  getProtectedLesson,
+  getAdminCourses,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+  createCourseModule,
+  createModuleLesson,
+  getCourseEnrollmentsAdmin,
+  confirmAdminCoursePayment,
   uploadBookPdf,
   uploadPdfAndUpdateBook,
-  getBookPdfUrl,
-  getCheckoutStatus,
-  createCheckoutSession,
   downloadBookPdf,
-  downloadBookByEmail,
-  downloadBook,
-  checkPurchaseStatus,
-  getUserPurchases,
-  approveManualPayment,
   markBookAsPurchased,
   isBookPurchasedLocally,
   getBlogPosts,
