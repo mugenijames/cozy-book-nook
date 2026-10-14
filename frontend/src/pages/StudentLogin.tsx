@@ -1,9 +1,4 @@
 // frontend/src/pages/StudentLogin.tsx
-//
-// One page, two modes:
-//   - "login":  email + password
-//   - "access": first time / forgot password -> emails a one-time link
-//               (the link opens /set-password?token=...)
 
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
@@ -12,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Mode = "login" | "access";
 

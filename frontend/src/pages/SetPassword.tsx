@@ -1,7 +1,4 @@
 // frontend/src/pages/SetPassword.tsx
-//
-// Opened from the emailed link:  /set-password?token=...
-// Sets the student's password, signs them in, and sends them to /profile.
 
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -10,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MIN_LENGTH = 8; // must match the backend rule
 

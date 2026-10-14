@@ -58,6 +58,15 @@ import Privacy from "@/pages/Privacy";
 import Terms from "@/pages/Terms";
 
 // ============================================================
+// STUDENT PORTAL
+// ============================================================
+
+import StudentLogin from "@/pages/StudentLogin";
+import SetPassword from "@/pages/SetPassword";
+import StudentProfile from "@/pages/StudentProfile";
+import { StudentRoute } from "@/contexts/AuthContext";
+
+// ============================================================
 // AUTHENTICATION
 // ============================================================
 
@@ -255,6 +264,29 @@ function App() {
             element={<Terms />}
           />
 
+          {/* ====================================================
+              STUDENT PORTAL
+              /student/login and /set-password are public.
+              /profile requires a signed-in student.
+          ==================================================== */}
+
+          <Route
+            path="/student/login"
+            element={<StudentLogin />}
+          />
+
+          <Route
+            path="/set-password"
+            element={<SetPassword />}
+          />
+
+          <Route element={<StudentRoute />}>
+            <Route
+              path="/profile"
+              element={<StudentProfile />}
+            />
+          </Route>
+
         </Route>
 
         {/* ======================================================
@@ -391,6 +423,21 @@ function App() {
               <AdminPayments />
             }
           />
+
+          {/* ====================================================
+              STUDENT MANAGEMENT (staff search by student number)
+              Uncomment once AdminStudents.tsx exists, and add
+              `import AdminStudents from "@/pages/admin/AdminStudents";`
+          ==================================================== */}
+
+          {/*
+          <Route
+            path="students"
+            element={
+              <AdminStudents />
+            }
+          />
+          */}
 
           {/* ====================================================
               ADMINISTRATOR MANAGEMENT
